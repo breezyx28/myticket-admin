@@ -38,8 +38,11 @@ jobs:
           node-version: '22'
           cache: npm
 
+      # `npm ci` fails if package-lock.json is even slightly out of sync (common with npm 11 +
+      # optional/platform-specific deps like @emnapi/*). `npm install` updates the lock in CI and proceeds.
+      # For stricter reproducibility, run `npm install` locally, commit an updated lockfile, and switch back to `npm ci`.
       - name: Install dependencies
-        run: npm ci
+        run: npm install --no-audit --no-fund
 
       - name: Build
         run: npm run build
