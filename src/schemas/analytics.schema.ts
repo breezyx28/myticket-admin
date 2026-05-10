@@ -18,6 +18,12 @@ export const financialAnalyticsSchema = z.object({
   payoutsPendingSar: z.number().nonnegative(),
   revenueByDay: z.array(revenuePointSchema),
   revenueBreakdownByCategory: z.array(revenueBreakdownRowSchema),
+  /** Handoff `GET /analytics/financial` — optional when API omits charts. */
+  range: z.string().optional(),
+  since: z.string().optional(),
+  ordersPaidCount: z.number().int().nonnegative().optional(),
+  ordersPaidTotalAmount: z.number().nonnegative().optional(),
+  refundsProcessedTotalAmount: z.number().nonnegative().optional(),
 });
 
 export type FinancialAnalytics = z.infer<typeof financialAnalyticsSchema>;
@@ -42,6 +48,7 @@ export const platformCountersSchema = z.object({
 
 export type PlatformCounters = z.infer<typeof platformCountersSchema>;
 
+/** Legacy row shape for mock-only leaderboards (unused when live API returns GMV tables). */
 export const leaderboardRowSchema = z.object({
   id: z.string(),
   label: z.string(),
@@ -49,10 +56,28 @@ export const leaderboardRowSchema = z.object({
   value: z.number(),
 });
 
+/** `GET /analytics/leaderboards` (handoff) — GMV rankings. */
+export const leaderboardEventGmvRowSchema = z.object({
+  id: z.string(),
+  code: z.string(),
+  title: z.string(),
+  revenueGross: z.string(),
+  status: z.string(),
+  organizerId: z.string(),
+});
+
+export const leaderboardOrganizerGmvRowSchema = z.object({
+  organizerId: z.string(),
+  totalRevenueGross: z.number(),
+  displayName: z.string(),
+  slug: z.string(),
+  code: z.string(),
+});
+
 export const leaderboardsSchema = z.object({
-  topEvents: z.array(leaderboardRowSchema),
-  topOrganizers: z.array(leaderboardRowSchema),
-  topCategories: z.array(leaderboardRowSchema),
+  events: z.array(leaderboardEventGmvRowSchema),
+  organizers: z.array(leaderboardOrganizerGmvRowSchema),
+  generatedAt: z.string().optional(),
 });
 
 export type Leaderboards = z.infer<typeof leaderboardsSchema>;

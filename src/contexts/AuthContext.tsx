@@ -1,23 +1,20 @@
 import { DEMO_ADMIN_EMAIL } from '@/config/demoAuth';
-import { AuthContext, type AuthContextValue, type SessionUser } from '@/contexts/adminAuthContext';
+import { allowDemoAuth, adminLoginOtp, adminLoginPhone, getApiBaseUrl } from '@/config/env';
+import {
+  AuthContext,
+  type AuthContextValue,
+  type SessionUser,
+  type SignInFailureReason,
+} from '@/contexts/adminAuthContext';
+import {
+  clearPersistedSession,
+  loadPersistedSession,
+  savePersistedSession,
+  type PersistedAdminSessionV2,
+} from '@/lib/authSession';
+import { postAdminLogout } from '@/services/adminFetchBaseQuery';
+import { parseAdminLoginTokens, parseAdminLoginUser } from '@/schemas/api/auth.dto';
 import { useCallback, useMemo, useState, type ReactNode } from 'react';
-
-const SESSION_KEY = 'myticket_admin_session_v1';
-
-function loadSession(): SessionUser | null {
-  try {
-    const raw = sessionStorage.getItem(SESSION_KEY);
-    if (!raw) return null;
-    return JSON.parse(raw) as SessionUser;
-  } catch {
-    return null;
-  }
-}
-
-function saveSession(u: SessionUser | null) {
-  if (!u) sessionStorage.removeItem(SESSION_KEY);
-  else sessionStorage.setItem(SESSION_KEY, JSON.stringify(u));
-}
 
 /** Demo: `DEMO_ADMIN_EMAIL` / password OR any email containing "+admin" */
 function resolveDemoAdmin(email: string): boolean {
@@ -26,25 +23,89 @@ function resolveDemoAdmin(email: string): boolean {
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<SessionUser | null>(() => loadSession());
+  const [user, setUser] = useState<SessionUser | null>(() => loadPersistedSession()?.user ?? null);
 
-  const signIn = useCallback((params: { email: string; password: string }) => {
+  const signIn = useCallback(async (params: { email: string; password: string }) => {
     const email = params.email.trim();
     if (!email || params.password.length < 4) return { ok: false as const, reason: 'invalid' as const };
-    if (!resolveDemoAdmin(email)) return { ok: false as const, reason: 'not_admin' as const };
-    const next: SessionUser = {
+
+    if (allowDemoAuth() && resolveDemoAdmin(email)) {
+      const nextUser: SessionUser = {
+        email,
+        name: email.split('@')[0] ?? 'Admin',
+        role: 'admin',
+      };
+      const session: PersistedAdminSessionV2 = {
+        v: 2,
+        user: nextUser,
+        accessToken: null,
+        refreshToken: null,
+      };
+      savePersistedSession(session);
+      setUser(nextUser);
+      return { ok: true as const };
+    }
+
+    const base = getApiBaseUrl();
+    if (!base) return { ok: false as const, reason: 'server' as const };
+
+    const body: Record<string, string> = {
       email,
-      name: email.split('@')[0] ?? 'Admin',
-      role: 'admin',
+      password: params.password,
     };
-    setUser(next);
-    saveSession(next);
+    const phone = adminLoginPhone();
+    const otp = adminLoginOtp();
+    if (phone !== undefined) body.phone = phone;
+    if (otp !== undefined) body.otp = otp;
+    if (!('phone' in body)) body.phone = '';
+    if (!('otp' in body)) body.otp = '';
+
+    let res: Response;
+    try {
+      res = await fetch(`${base}/api/v1/admin/auth/login`, {
+        method: 'POST',
+        headers: {
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(body),
+      });
+    } catch {
+      return { ok: false as const, reason: 'network' as const };
+    }
+
+    let json: unknown;
+    try {
+      json = await res.json();
+    } catch {
+      json = null;
+    }
+
+    if (!res.ok) {
+      const reason: SignInFailureReason = res.status >= 500 ? 'server' : 'credentials';
+      return { ok: false as const, reason };
+    }
+
+    const tokens = parseAdminLoginTokens(json);
+    if (!tokens) {
+      return { ok: false as const, reason: 'session' as const };
+    }
+
+    const nextUser = parseAdminLoginUser(json, email);
+    savePersistedSession({
+      v: 2,
+      user: nextUser,
+      accessToken: tokens.accessToken,
+      refreshToken: tokens.refreshToken ?? null,
+    });
+    setUser(nextUser);
     return { ok: true as const };
   }, []);
 
   const signOut = useCallback(() => {
+    void postAdminLogout();
+    clearPersistedSession();
     setUser(null);
-    saveSession(null);
   }, []);
 
   const value = useMemo<AuthContextValue>(

@@ -2,7 +2,12 @@ import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { notifyError, notifySuccess } from '@/lib/notify';
 import { suspendUserSchema, type SuspendUserInput } from '@/schemas/user.schema';
-import { useGetUserQuery, useSuspendUserMutation } from '@/services/adminApi';
+import {
+  useGetUserQuery,
+  useImpersonateUserMutation,
+  useSuspendUserMutation,
+  useUnsuspendUserMutation,
+} from '@/services/adminApi';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm, useWatch } from 'react-hook-form';
 import { Link, useParams } from 'react-router-dom';
@@ -11,6 +16,8 @@ export function UserDetailPage() {
   const { id = '' } = useParams();
   const q = useGetUserQuery(id, { skip: !id });
   const [suspend, suspendState] = useSuspendUserMutation();
+  const [unsuspend, unsuspendState] = useUnsuspendUserMutation();
+  const [impersonate, impersonateState] = useImpersonateUserMutation();
   const form = useForm<SuspendUserInput>({
     resolver: zodResolver(suspendUserSchema),
     defaultValues: { reason: '', permanent: false },
@@ -70,21 +77,67 @@ export function UserDetailPage() {
 
       <Card className="rounded-3xl border-ink-10 shadow-card-sm">
         <CardHeader>
+          <CardTitle className="text-lg">Admin actions</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              loading={impersonateState.isLoading}
+              onClick={async () => {
+                try {
+                  const res = await impersonate(u.id).unwrap();
+                  notifySuccess(
+                    res.data && typeof res.data === 'object' && res.data !== null && 'url' in res.data
+                      ? 'Impersonation payload received (check response for redirect URL).'
+                      : 'Impersonation request completed.'
+                  );
+                } catch {
+                  notifyError('Impersonation failed.');
+                }
+              }}
+            >
+              Impersonate
+            </Button>
+            {u.suspended ? (
+              <Button
+                type="button"
+                variant="secondary"
+                loading={unsuspendState.isLoading}
+                onClick={async () => {
+                  try {
+                    await unsuspend(u.id).unwrap();
+                    notifySuccess('User unsuspended.');
+                  } catch {
+                    notifyError('Unsuspend failed.');
+                  }
+                }}
+              >
+                Unsuspend
+              </Button>
+            ) : null}
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="rounded-3xl border-ink-10 shadow-card-sm">
+        <CardHeader>
           <CardTitle className="text-lg">Suspend account</CardTitle>
         </CardHeader>
         <CardContent>
           {u.suspended ? (
-            <p className="text-[14px] font-medium text-ink-60">This account is already suspended (mock).</p>
+            <p className="text-[14px] font-medium text-ink-60">This account is suspended. Use Unsuspend above.</p>
           ) : (
             <form
               className="space-y-4"
               onSubmit={form.handleSubmit(async (values) => {
                 try {
                   await suspend({ id: u.id, body: values }).unwrap();
-                  notifySuccess('User suspended (mock).');
+                  notifySuccess('User suspended.');
                   form.reset();
                 } catch {
-                  notifyError('Suspension failed (mock).');
+                  notifyError('Suspension failed.');
                 }
               })}
             >
@@ -109,7 +162,7 @@ export function UserDetailPage() {
                 <p className="text-[12px] font-medium text-coral">{form.formState.errors.reason.message}</p>
               ) : null}
               <Button type="submit" variant="danger" loading={suspendState.isLoading}>
-                Suspend (mock)
+                Suspend
               </Button>
             </form>
           )}

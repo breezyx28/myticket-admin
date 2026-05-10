@@ -10,6 +10,7 @@ import {
 import {
   useAddSupportReplyMutation,
   useGetSupportThreadQuery,
+  useReopenSupportCaseMutation,
   useUpdateSupportStatusMutation,
 } from '@/services/adminApi';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -21,6 +22,7 @@ export function SupportThreadPage() {
   const { id = '' } = useParams();
   const q = useGetSupportThreadQuery(id, { skip: !id });
   const [update, updateState] = useUpdateSupportStatusMutation();
+  const [reopen, reopenState] = useReopenSupportCaseMutation();
   const [reply, replyState] = useAddSupportReplyMutation();
   const form = useForm<UpdateSupportStatusInput>({
     resolver: zodResolver(updateSupportStatusSchema),
@@ -81,7 +83,7 @@ export function SupportThreadPage() {
 
       <Card className="rounded-3xl border-ink-10 shadow-card-sm">
         <CardHeader>
-          <CardTitle className="text-lg">Admin reply (Sprint 5 mock)</CardTitle>
+          <CardTitle className="text-lg">Admin reply</CardTitle>
         </CardHeader>
         <CardContent>
           <form
@@ -89,7 +91,7 @@ export function SupportThreadPage() {
             onSubmit={replyForm.handleSubmit(async (values) => {
               try {
                 await reply({ threadId: t.id, body: values.body }).unwrap();
-                notifySuccess('Reply sent (mock).');
+                notifySuccess('Reply sent.');
                 replyForm.reset({ body: '' });
               } catch {
                 notifyError('Could not send reply.');
@@ -108,7 +110,7 @@ export function SupportThreadPage() {
               <p className="text-[12px] font-medium text-coral">{replyForm.formState.errors.body.message}</p>
             ) : null}
             <Button type="submit" variant="secondary" loading={replyState.isLoading}>
-              Send reply (mock)
+              Send reply
             </Button>
           </form>
         </CardContent>
@@ -119,12 +121,35 @@ export function SupportThreadPage() {
           <CardTitle className="text-lg">Status</CardTitle>
         </CardHeader>
         <CardContent>
+          {t.status === 'resolved' ? (
+            <div className="mb-6">
+              <Button
+                type="button"
+                variant="outline"
+                loading={reopenState.isLoading}
+                onClick={async () => {
+                  try {
+                    await reopen(t.id).unwrap();
+                    notifySuccess('Case reopened.');
+                  } catch {
+                    notifyError('Could not reopen case.');
+                  }
+                }}
+              >
+                Reopen case
+              </Button>
+              <p className="mt-2 text-[12px] text-ink-60">
+                POST <span className="font-mono text-ink">/support-cases/{'{id}'}/reopen</span> — empty body. The API may return{' '}
+                <span className="font-mono text-ink">422</span> if the case is not resolved or closed.
+              </p>
+            </div>
+          ) : null}
           <form
             className="max-w-md space-y-4"
             onSubmit={form.handleSubmit(async (values) => {
               try {
                 await update({ id: t.id, body: values }).unwrap();
-                notifySuccess('Support status updated (mock).');
+                notifySuccess('Support status updated.');
               } catch {
                 notifyError('Could not update status.');
               }
@@ -149,7 +174,7 @@ export function SupportThreadPage() {
               />
             </label>
             <Button type="submit" variant="dark" loading={updateState.isLoading}>
-              Update (mock)
+              Update
             </Button>
           </form>
         </CardContent>

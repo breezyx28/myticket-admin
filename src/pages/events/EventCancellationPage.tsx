@@ -115,11 +115,11 @@ export function EventCancellationPage() {
           divider
           eyebrow="Confirmation"
           title="Destructive action"
-          description="Title match plus acknowledgement protect against fat-finger cancels while refunds are still mocked."
+          description="Title match plus acknowledgement protect against fat-finger cancels. Live calls map to admin event reject per the API collection."
         >
           <Card className="rounded-3xl border-coral/25 bg-coral/5 shadow-card-md">
             <CardHeader>
-              <CardTitle className="text-xl font-extrabold text-coral">Cancel event (mock)</CardTitle>
+              <CardTitle className="text-xl font-extrabold text-coral">Cancel event</CardTitle>
             </CardHeader>
             <CardContent>
               <form
@@ -133,10 +133,10 @@ export function EventCancellationPage() {
                   }
                   try {
                     await cancel(values).unwrap();
-                    notifySuccess('Event marked as cancelled (mock). Attendees would be notified in production.');
+                    notifySuccess('Event rejection submitted. Attendees would be notified by the platform.');
                     setSelected(null);
                   } catch {
-                    notifyError('Cancellation failed (mock).');
+                    notifyError('Cancellation request failed.');
                   }
                 })}
               >
@@ -160,7 +160,7 @@ export function EventCancellationPage() {
                       form.setValue('acknowledgement', e.target.checked, { shouldValidate: true, shouldDirty: true })
                     }
                   />
-                  I understand tickets will be marked cancelled and users notified (mock).
+                  I understand tickets will be marked cancelled and users notified.
                 </label>
                 {form.formState.errors.confirmTitle ? (
                   <p className="text-[12px] font-bold text-coral">{form.formState.errors.confirmTitle.message}</p>
@@ -169,7 +169,7 @@ export function EventCancellationPage() {
                   <p className="text-[12px] font-bold text-coral">{form.formState.errors.acknowledgement.message}</p>
                 ) : null}
                 <Button type="submit" variant="danger" loading={cancelState.isLoading}>
-                  Cancel event (mock)
+                  Cancel event
                 </Button>
               </form>
             </CardContent>

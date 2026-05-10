@@ -1,7 +1,7 @@
 import { setRevenueChartRange } from '@/app/analyticsUiSlice';
 import { useAppDispatch, useAppSelector } from '@/app/hooks';
 import { Button } from '@/components/ui/Button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { StatBubble } from '@/components/ui/StatBubble';
 import { ChartContainer, ChartTooltip } from '@/components/ui/chart';
 import { formatSarAxis, formatSarCompact } from '@/lib/formatSar';
@@ -14,6 +14,8 @@ import type { RevenueChartRange } from '@/types/analytics';
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, XAxis, YAxis } from 'recharts';
 
 const RANGE_OPTIONS: { id: RevenueChartRange; label: string }[] = [
+  { id: '24h', label: '24 hours' },
+  { id: '1d', label: '1 day' },
   { id: '7d', label: '7 days' },
   { id: '30d', label: '30 days' },
   { id: '90d', label: '90 days' },
@@ -41,12 +43,6 @@ function SarRevenueTooltip({
   );
 }
 
-function formatLeaderMetric(row: { value: number; metric: string }) {
-  const m = row.metric.toLowerCase();
-  if (m.includes('sar') || m.includes('revenue')) return formatSarCompact(row.value);
-  return `${row.value.toLocaleString()} ${row.metric}`;
-}
-
 export function AnalyticsPage() {
   const dispatch = useAppDispatch();
   const revenueChartRange = useAppSelector((s) => s.analyticsUi.revenueChartRange);
@@ -62,6 +58,8 @@ export function AnalyticsPage() {
     label: row.label,
     revenueSar: row.revenueSar,
   }));
+  const hasTrend = fin.data.revenueByDay.length > 0;
+  const hasBreakdown = breakdownChart.length > 0;
 
   return (
     <div className="space-y-10">
@@ -69,13 +67,14 @@ export function AnalyticsPage() {
         <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-ink-40">Insights</p>
         <h1 className="text-3xl font-extrabold text-ink">Analytics</h1>
         <p className="mt-2 max-w-2xl text-[14px] text-ink-60">
-          Sprint 4: period selector drives the revenue trend (mock series). Totals stay platform-wide; the chart reflects
-          the selected window.
+          Financial totals use <span className="font-mono text-ink">GET /api/v1/admin/analytics/financial?range=…</span>
+          . Charts fill when the API returns time series or category breakdown; otherwise an empty state is shown.
+          Leaderboards use <span className="font-mono text-ink">GET …/analytics/leaderboards</span>.
         </p>
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
-        <span className="text-[12px] font-semibold text-ink-60">Revenue chart range</span>
+        <span className="text-[12px] font-semibold text-ink-60">Financial window</span>
         {RANGE_OPTIONS.map((opt) => (
           <Button
             key={opt.id}
@@ -89,9 +88,21 @@ export function AnalyticsPage() {
         ))}
       </div>
 
+      {fin.data.range || fin.data.since ? (
+        <p className="text-[13px] text-ink-60">
+          API window: <span className="font-mono text-ink">{fin.data.range ?? revenueChartRange}</span>
+          {fin.data.since ? (
+            <>
+              {' '}
+              · since <span className="font-mono text-ink">{fin.data.since}</span>
+            </>
+          ) : null}
+        </p>
+      ) : null}
+
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <StatBubble
-          label="Platform revenue (all-time mock)"
+          label="Platform revenue (mapped)"
           value={formatSarCompact(fin.data.totalRevenueSar)}
           color="bg-ink text-white"
         />
@@ -104,67 +115,96 @@ export function AnalyticsPage() {
         />
       </div>
 
+      {fin.data.ordersPaidCount !== undefined || fin.data.ordersPaidTotalAmount !== undefined ? (
+        <div className="grid gap-4 md:grid-cols-2">
+          {fin.data.ordersPaidCount !== undefined ? (
+            <StatBubble
+              label="Orders paid (count)"
+              value={fin.data.ordersPaidCount.toLocaleString()}
+              color="bg-ink-5 text-ink"
+            />
+          ) : null}
+          {fin.data.ordersPaidTotalAmount !== undefined ? (
+            <StatBubble
+              label="Orders paid (amount)"
+              value={formatSarCompact(fin.data.ordersPaidTotalAmount)}
+              color="bg-ink-5 text-ink"
+            />
+          ) : null}
+        </div>
+      ) : null}
+
       <Card className="rounded-3xl border-ink-10 shadow-card-md">
         <CardHeader>
           <CardTitle className="text-lg">Revenue trend ({revenueChartRange})</CardTitle>
+          <CardDescription>Daily series when provided by the API.</CardDescription>
         </CardHeader>
         <CardContent>
-          <ChartContainer
-            className="h-[320px] w-full"
-            config={{
-              revenueSar: { label: 'Revenue SAR', color: 'var(--color-coral)' },
-            }}
-          >
-            <AreaChart data={fin.data.revenueByDay} margin={{ left: 12, right: 12 }}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} />
-              <XAxis dataKey="date" tickLine={false} axisLine={false} />
-              <YAxis
-                tickLine={false}
-                axisLine={false}
-                width={56}
-                tickFormatter={(v) => formatSarAxis(Number(v))}
-              />
-              <ChartTooltip content={SarRevenueTooltip} />
-              <Area
-                dataKey="revenueSar"
-                name="revenueSar"
-                type="monotone"
-                fill="var(--color-coral)"
-                fillOpacity={0.2}
-                stroke="var(--color-coral)"
-                strokeWidth={2}
-              />
-            </AreaChart>
-          </ChartContainer>
+          {hasTrend ? (
+            <ChartContainer
+              className="h-[320px] w-full"
+              config={{
+                revenueSar: { label: 'Revenue SAR', color: 'var(--color-coral)' },
+              }}
+            >
+              <AreaChart data={fin.data.revenueByDay} margin={{ left: 12, right: 12 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                <XAxis dataKey="date" tickLine={false} axisLine={false} />
+                <YAxis
+                  tickLine={false}
+                  axisLine={false}
+                  width={56}
+                  tickFormatter={(v) => formatSarAxis(Number(v))}
+                />
+                <ChartTooltip content={SarRevenueTooltip} />
+                <Area
+                  dataKey="revenueSar"
+                  name="revenueSar"
+                  type="monotone"
+                  fill="var(--color-coral)"
+                  fillOpacity={0.2}
+                  stroke="var(--color-coral)"
+                  strokeWidth={2}
+                />
+              </AreaChart>
+            </ChartContainer>
+          ) : (
+            <p className="py-12 text-center text-[14px] text-ink-60">No revenue-by-day series in this response.</p>
+          )}
         </CardContent>
       </Card>
 
       <Card className="rounded-3xl border-ink-10 shadow-card-md">
         <CardHeader>
-          <CardTitle className="text-lg">Revenue by category (mock breakdown)</CardTitle>
+          <CardTitle className="text-lg">Revenue by category</CardTitle>
+          <CardDescription>Populated when the API returns a breakdown array.</CardDescription>
         </CardHeader>
         <CardContent>
-          <ChartContainer
-            className="h-[300px] w-full"
-            config={{
-              revenueSar: { label: 'Revenue SAR', color: 'var(--color-indigo)' },
-            }}
-          >
-            <BarChart data={breakdownChart} layout="vertical" margin={{ left: 8, right: 12 }}>
-              <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-              <XAxis type="number" tickLine={false} axisLine={false} tickFormatter={(v) => formatSarAxis(Number(v))} />
-              <YAxis
-                type="category"
-                dataKey="label"
-                width={120}
-                tickLine={false}
-                axisLine={false}
-                tick={{ fontSize: 12 }}
-              />
-              <ChartTooltip content={SarRevenueTooltip} />
-              <Bar dataKey="revenueSar" name="revenueSar" fill="var(--color-indigo)" radius={[0, 8, 8, 0]} />
-            </BarChart>
-          </ChartContainer>
+          {hasBreakdown ? (
+            <ChartContainer
+              className="h-[300px] w-full"
+              config={{
+                revenueSar: { label: 'Revenue SAR', color: 'var(--color-indigo)' },
+              }}
+            >
+              <BarChart data={breakdownChart} layout="vertical" margin={{ left: 8, right: 12 }}>
+                <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+                <XAxis type="number" tickLine={false} axisLine={false} tickFormatter={(v) => formatSarAxis(Number(v))} />
+                <YAxis
+                  type="category"
+                  dataKey="label"
+                  width={120}
+                  tickLine={false}
+                  axisLine={false}
+                  tick={{ fontSize: 12 }}
+                />
+                <ChartTooltip content={SarRevenueTooltip} />
+                <Bar dataKey="revenueSar" name="revenueSar" fill="var(--color-indigo)" radius={[0, 8, 8, 0]} />
+              </BarChart>
+            </ChartContainer>
+          ) : (
+            <p className="py-12 text-center text-[14px] text-ink-60">No category breakdown in this response.</p>
+          )}
         </CardContent>
       </Card>
 
@@ -172,6 +212,10 @@ export function AnalyticsPage() {
         <Card className="rounded-3xl border-ink-10 shadow-card-sm">
           <CardHeader>
             <CardTitle className="text-lg">Users by role</CardTitle>
+            <CardDescription>
+              Sample breakdown for UX only — there is no matching admin GET yet. Use{' '}
+              <span className="font-mono">GET /dashboard/counters</span> on the home dashboard for live aggregates.
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-2 text-[14px] text-ink-60">
             <p>Guest: {counters.data.usersByRole.guest.toLocaleString()}</p>
@@ -183,6 +227,7 @@ export function AnalyticsPage() {
         <Card className="rounded-3xl border-ink-10 shadow-card-sm">
           <CardHeader>
             <CardTitle className="text-lg">Events by status</CardTitle>
+            <CardDescription>Mock-only — same note as users by role.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-2 text-[14px] text-ink-60">
             <p>Active: {counters.data.eventsByStatus.active}</p>
@@ -193,22 +238,58 @@ export function AnalyticsPage() {
         </Card>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-3">
-        {(['topEvents', 'topOrganizers', 'topCategories'] as const).map((key) => (
-          <Card key={key} className="rounded-3xl border-ink-10 shadow-card-sm">
-            <CardHeader>
-              <CardTitle className="text-lg capitalize">{key.replace(/([A-Z])/g, ' $1').trim()}</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              {(boards.data?.[key] ?? []).map((row) => (
-                <div key={row.id} className="flex items-center justify-between rounded-2xl bg-surface-tint px-3 py-2">
-                  <span className="text-[13px] font-semibold text-ink">{row.label}</span>
-                  <span className="font-mono text-[13px] text-ink-60">{formatLeaderMetric(row)}</span>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-        ))}
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Card className="rounded-3xl border-ink-10 shadow-card-sm">
+          <CardHeader>
+            <CardTitle className="text-lg">Top events (GMV)</CardTitle>
+            {boards.data.generatedAt ? (
+              <CardDescription className="font-mono text-[12px]">Generated {boards.data.generatedAt}</CardDescription>
+            ) : null}
+          </CardHeader>
+          <CardContent className="admin-table-scroll">
+            <table className="w-full min-w-[400px] text-left text-[13px]">
+              <thead className="text-[11px] font-bold uppercase text-ink-40">
+                <tr>
+                  <th className="pb-2 pr-2">Title</th>
+                  <th className="pb-2 pr-2">Gross</th>
+                  <th className="pb-2">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {boards.data.events.map((row) => (
+                  <tr key={row.id} className="border-t border-ink-10">
+                    <td className="py-2 pr-2 font-semibold text-ink">{row.title}</td>
+                    <td className="py-2 pr-2 font-mono text-ink-60">{row.revenueGross}</td>
+                    <td className="py-2 text-ink-60">{row.status}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </CardContent>
+        </Card>
+        <Card className="rounded-3xl border-ink-10 shadow-card-sm">
+          <CardHeader>
+            <CardTitle className="text-lg">Top organizers (GMV)</CardTitle>
+          </CardHeader>
+          <CardContent className="admin-table-scroll">
+            <table className="w-full min-w-[400px] text-left text-[13px]">
+              <thead className="text-[11px] font-bold uppercase text-ink-40">
+                <tr>
+                  <th className="pb-2 pr-2">Name</th>
+                  <th className="pb-2">Revenue gross</th>
+                </tr>
+              </thead>
+              <tbody>
+                {boards.data.organizers.map((row) => (
+                  <tr key={row.organizerId} className="border-t border-ink-10">
+                    <td className="py-2 pr-2 font-semibold text-ink">{row.displayName}</td>
+                    <td className="py-2 font-mono text-ink-60">{formatSarCompact(row.totalRevenueGross)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

@@ -101,7 +101,7 @@ export function TalentApprovalDetailPage() {
                   <div className="rounded-2xl border border-ink-10 bg-surface-tint p-4">
                     <p className="text-[10px] font-extrabold uppercase tracking-wide text-ink-40">Bookings</p>
                     <p className="mt-1 font-mono text-2xl font-black text-ink">{row.completedBookings}</p>
-                    <p className="text-[12px] font-semibold text-ink-60">Lifetime on platform (mock)</p>
+                    <p className="text-[12px] font-semibold text-ink-60">Lifetime on platform (sample)</p>
                   </div>
                   <div className="rounded-2xl border border-ink-10 bg-surface-tint p-4">
                     <p className="text-[10px] font-extrabold uppercase tracking-wide text-ink-40">Fan rating</p>
@@ -183,10 +183,10 @@ export function TalentApprovalDetailPage() {
             onClick={async () => {
               try {
                 await approve(row.id).unwrap();
-                notifySuccess('Talent profile approved (mock).');
+                notifySuccess('Talent profile approved.');
                 void nav('/approvals/talent');
               } catch {
-                notifyError('Approval failed (mock).');
+                notifyError('Approval failed.');
               }
             }}
           >
@@ -226,7 +226,7 @@ export function TalentApprovalDetailPage() {
             >
               Open certificate packet →
             </a>
-            <p className="text-[13px] text-ink-60">Opens in a new tab (sample PDF for mock environments).</p>
+            <p className="text-[13px] text-ink-60">Opens in a new tab (sample PDF).</p>
           </CardContent>
         </Card>
       </div>
@@ -241,10 +241,10 @@ export function TalentApprovalDetailPage() {
             onSubmit={form.handleSubmit(async (values) => {
               try {
                 await reject({ id: row.id, body: values }).unwrap();
-                notifySuccess('Talent profile rejected with notes (mock).');
+                notifySuccess('Talent profile rejected with notes.');
                 void nav('/approvals/talent');
               } catch {
-                notifyError('Rejection failed (mock).');
+                notifyError('Rejection failed.');
               }
             })}
           >

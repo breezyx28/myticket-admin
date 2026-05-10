@@ -7,6 +7,7 @@ import { rowMatchesSearch } from '@/lib/listQuery';
 import { notifyError, notifySuccess } from '@/lib/notify';
 import { upsertCategorySchema, type UpsertCategoryInput } from '@/schemas/event.schema';
 import {
+  useDeleteEventCategoryMutation,
   useGetCategoriesQuery,
   useToggleCategoryActiveMutation,
   useUpsertCategoryMutation,
@@ -19,6 +20,7 @@ export function EventCategoriesPage() {
   const { data, isLoading } = useGetCategoriesQuery();
   const [upsert, upsertState] = useUpsertCategoryMutation();
   const [toggleActive, toggleState] = useToggleCategoryActiveMutation();
+  const [deleteCategory, deleteState] = useDeleteEventCategoryMutation();
   const [editingId, setEditingId] = useState<string | null>(null);
 
   const addForm = useForm<UpsertCategoryInput>({
@@ -183,6 +185,30 @@ export function EventCategoriesPage() {
                           >
                             {c.active ? 'Deactivate' : 'Activate'}
                           </Button>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="danger"
+                            disabled={deleteState.isLoading}
+                            loading={deleteState.isLoading && deleteState.originalArgs === c.id}
+                            onClick={async () => {
+                              if (
+                                !window.confirm(
+                                  `Delete category “${c.name}”? This calls DELETE /api/v1/admin/event-categories/${c.id}.`
+                                )
+                              ) {
+                                return;
+                              }
+                              try {
+                                await deleteCategory(c.id).unwrap();
+                                notifySuccess('Category deleted.');
+                              } catch {
+                                notifyError('Could not delete category.');
+                              }
+                            }}
+                          >
+                            Delete
+                          </Button>
                         </td>
                       </tr>
                     )
@@ -198,7 +224,7 @@ export function EventCategoriesPage() {
         divider
         eyebrow="Creation"
         title="Add a new category"
-        description="Mock-only insert — validates naming rules before appending to the in-memory store."
+        description="Validates naming rules before saving. Category writes stay local until admin category endpoints exist in the API."
       >
         <Card className="rounded-3xl border-ink-10 shadow-card-sm">
           <CardHeader>
@@ -210,7 +236,7 @@ export function EventCategoriesPage() {
               onSubmit={addForm.handleSubmit(async (values) => {
                 try {
                   await upsert({ body: values }).unwrap();
-                  notifySuccess('Category created (mock).');
+                  notifySuccess('Category created.');
                   addForm.reset({ name: '', iconKey: 'Music2', colorToken: 'coral' });
                 } catch {
                   notifyError('Could not create category.');
@@ -243,7 +269,7 @@ export function EventCategoriesPage() {
               ) : null}
               <div className="md:col-span-3">
                 <Button type="submit" variant="dark" loading={upsertState.isLoading}>
-                  Save (mock)
+                  Save
                 </Button>
               </div>
             </form>

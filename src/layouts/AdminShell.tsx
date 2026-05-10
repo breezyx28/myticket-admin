@@ -1,10 +1,19 @@
 import { NAV_GROUPS } from '@/config/nav';
 import { Button } from '@/components/ui/Button';
 import { useAuth } from '@/hooks/useAuth';
+import { getAccessToken } from '@/lib/authSession';
+import { shouldUseMockReads } from '@/services/adminReadMode';
 import { cn } from '@/lib/utils';
 import { Bell, LayoutDashboard, LogOut, Menu, Ticket, UserCircle, X } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
+
+function dataSourceBadge(): string {
+  const token = getAccessToken();
+  if (!token) return 'Demo session';
+  if (shouldUseMockReads()) return 'Mock reads';
+  return 'API reads';
+}
 
 export function AdminShell({ children }: { children?: ReactNode }) {
   const { user, signOut } = useAuth();
@@ -35,7 +44,7 @@ export function AdminShell({ children }: { children?: ReactNode }) {
               Control center
             </span>
             <span className="hidden rounded-full bg-mint/30 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-ink md:inline-flex">
-              Mock data
+              {dataSourceBadge()}
             </span>
           </div>
           <div className="hidden items-center gap-2 md:flex">

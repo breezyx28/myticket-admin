@@ -72,6 +72,11 @@ export function AdminEventCard({
         <div className="absolute inset-0 bg-gradient-to-t from-ink/55 via-transparent to-transparent" />
         <div className="absolute left-3 top-3 flex flex-wrap gap-2">
           <EventStatusBadge status={event.status} />
+          {event.featured ? (
+            <span className="rounded-full border border-coral/40 bg-coral/20 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wide text-ink">
+              Featured
+            </span>
+          ) : null}
           {!eligible ? (
             <span className="rounded-full border border-ink-10 bg-white/95 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-ink-60">
               {eligibilityHint ?? 'View only'}

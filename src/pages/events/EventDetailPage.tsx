@@ -2,14 +2,24 @@ import { AdminEventCard } from '@/components/events/AdminEventCard';
 import { EventStatusBadge } from '@/components/events/EventStatusBadge';
 import { AdminSection } from '@/components/layout/AdminSection';
 import { formatSarCompact } from '@/lib/formatSar';
+import { notifyError, notifySuccess } from '@/lib/notify';
+import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { useGetEventQuery } from '@/services/adminApi';
+import {
+  useApproveEventMutation,
+  useFeatureEventMutation,
+  useGetEventQuery,
+  useUnfeatureEventMutation,
+} from '@/services/adminApi';
 import { Link, useParams } from 'react-router-dom';
 import { Ban, CalendarRange, MapPin, Sparkles, Ticket, TrendingUp } from 'lucide-react';
 
 export function EventDetailPage() {
   const { id = '' } = useParams();
   const q = useGetEventQuery(id, { skip: !id });
+  const [approve, approveState] = useApproveEventMutation();
+  const [feature, featureState] = useFeatureEventMutation();
+  const [unfeature, unfeatureState] = useUnfeatureEventMutation();
 
   if (q.isLoading) return <p className="text-ink-60">Loading…</p>;
   if (!q.data) {
@@ -52,7 +62,7 @@ export function EventDetailPage() {
           <Card className="rounded-[32px] border-ink-10 shadow-card-md">
             <CardHeader>
               <CardTitle className="text-xl font-extrabold">Executive readout</CardTitle>
-              <CardDescription>Snapshot metrics for leadership reviews (mock).</CardDescription>
+              <CardDescription>Snapshot metrics for leadership reviews (sample data).</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-2 gap-3">
@@ -154,6 +164,69 @@ export function EventDetailPage() {
 
       <AdminSection
         divider
+        eyebrow="Collection"
+        title="Lifecycle & featuring"
+        description="POSTs from the admin events group: approve (here used to exit archived mock state), feature, and unfeature."
+      >
+        <Card className="rounded-3xl border-ink-10 shadow-card-sm">
+          <CardContent className="flex flex-wrap gap-2 pt-6">
+            <Button
+              type="button"
+              size="sm"
+              variant="dark"
+              disabled={e.status !== 'archived' || approveState.isLoading}
+              loading={approveState.isLoading}
+              onClick={async () => {
+                try {
+                  await approve(e.id).unwrap();
+                  notifySuccess('Event approved.');
+                } catch {
+                  notifyError('Approve failed.');
+                }
+              }}
+            >
+              Approve
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled={e.featured || e.status === 'cancelled' || featureState.isLoading}
+              loading={featureState.isLoading}
+              onClick={async () => {
+                try {
+                  await feature(e.id).unwrap();
+                  notifySuccess('Event featured.');
+                } catch {
+                  notifyError('Feature failed.');
+                }
+              }}
+            >
+              Feature
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled={!e.featured || unfeatureState.isLoading}
+              loading={unfeatureState.isLoading}
+              onClick={async () => {
+                try {
+                  await unfeature(e.id).unwrap();
+                  notifySuccess('Featuring removed.');
+                } catch {
+                  notifyError('Unfeature failed.');
+                }
+              }}
+            >
+              Unfeature
+            </Button>
+          </CardContent>
+        </Card>
+      </AdminSection>
+
+      <AdminSection
+        divider
         eyebrow="Card preview"
         title="Operator card"
         description="This is the same AdminEventCard component used on the overview and cancellation flows for visual continuity."
@@ -171,7 +244,7 @@ export function EventDetailPage() {
         </CardHeader>
         <CardContent>
           <ul className="list-disc space-y-2 pl-5 text-[14px] text-ink-60">
-            <li>No payout holds detected on this organizer (mock).</li>
+            <li>No payout holds detected on this organizer (sample).</li>
             <li>Customer sentiment trending {e.avgRating >= 4.5 ? 'positive' : 'neutral'} vs. similar events.</li>
             <li>Refund policy window closes 48h before doors (product placeholder).</li>
           </ul>

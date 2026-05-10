@@ -61,10 +61,10 @@ export function RoleApplicationDetailPage() {
             onClick={async () => {
               try {
                 await approve(row.id).unwrap();
-                notifySuccess('Role application approved (mock).');
+                notifySuccess('Role application approved.');
                 void nav('/approvals/roles');
               } catch {
-                notifyError('Approval failed (mock).');
+                notifyError('Approval failed.');
               }
             }}
           >
@@ -97,10 +97,10 @@ export function RoleApplicationDetailPage() {
             onSubmit={form.handleSubmit(async (values) => {
               try {
                 await reject({ id: row.id, body: values }).unwrap();
-                notifySuccess('Role application rejected with reason (mock).');
+                notifySuccess('Role application rejected with reason.');
                 void nav('/approvals/roles');
               } catch {
-                notifyError('Rejection failed (mock).');
+                notifyError('Rejection failed.');
               }
             })}
           >

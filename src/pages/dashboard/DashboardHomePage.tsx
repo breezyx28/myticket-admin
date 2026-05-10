@@ -2,8 +2,11 @@ import { AdminEventCard } from '@/components/events/AdminEventCard';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { StatBubble } from '@/components/ui/StatBubble';
 import { AdminSection } from '@/components/layout/AdminSection';
-import { formatSarCompact } from '@/lib/formatSar';
-import { useGetDashboardSummaryQuery, useGetEventsQuery, useGetPendingActionsQuery } from '@/services/adminApi';
+import {
+  useGetDashboardCountersQuery,
+  useGetEventsQuery,
+  useGetPendingActionsQuery,
+} from '@/services/adminApi';
 import { Link } from 'react-router-dom';
 import { Activity, ArrowRight, Cpu, Radio } from 'lucide-react';
 
@@ -12,11 +15,11 @@ function formatInt(n: number) {
 }
 
 export function DashboardHomePage() {
-  const summary = useGetDashboardSummaryQuery();
+  const counters = useGetDashboardCountersQuery();
   const pending = useGetPendingActionsQuery();
   const events = useGetEventsQuery();
 
-  const s = summary.data;
+  const c = counters.data;
   const spotlight = events.data?.slice(0, 3) ?? [];
 
   return (
@@ -25,25 +28,41 @@ export function DashboardHomePage() {
         <p className="text-[11px] font-extrabold uppercase tracking-[0.16em] text-ink-40">Dashboard</p>
         <h1 className="mt-1 text-4xl font-extrabold tracking-tight text-ink">Platform snapshot</h1>
         <p className="mt-2 max-w-2xl text-[15px] leading-relaxed text-ink-60">
-          Revenue, conversion health, and the operational queues that need human attention. Numbers below are mock data
-          shaped like production telemetry.
+          Operational counters from <span className="font-mono text-ink">GET /api/v1/admin/dashboard/counters</span> —
+          same underlying signals as summary, formatted for executive scanning.
         </p>
       </div>
 
       <AdminSection
-        eyebrow="North-star KPIs"
-        title="Revenue & community scale"
-        description="Use these tiles as the executive summary before drilling into analytics or support."
+        eyebrow="Operations"
+        title="Dashboard counters"
+        description="Users, events, support, moderation, roles, and payouts — aligned to the admin API handoff."
       >
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <StatBubble label="Total users" value={s ? formatInt(s.totalUsers) : '—'} color="bg-ink text-white" />
-          <StatBubble label="Live + scheduled events" value={s ? formatInt(s.totalEvents) : '—'} color="bg-lemon text-ink" />
+          <StatBubble label="Users (total)" value={c ? formatInt(c.usersTotal) : '—'} color="bg-ink text-white" />
+          <StatBubble label="Users suspended" value={c ? formatInt(c.usersSuspended) : '—'} color="bg-lemon text-ink" />
           <StatBubble
-            label="Tickets sold (lifetime)"
-            value={s ? formatInt(s.totalTicketsSold) : '—'}
+            label="Events pending approval"
+            value={c ? formatInt(c.eventsPendingApproval) : '—'}
             color="bg-mint text-ink"
           />
-          <StatBubble label="Gross revenue" value={s ? formatSarCompact(s.totalRevenueSar) : '—'} color="bg-coral text-white" />
+          <StatBubble label="Events published" value={c ? formatInt(c.eventsPublished) : '—'} color="bg-coral text-white" />
+          <StatBubble
+            label="Support cases (open pipeline)"
+            value={c ? formatInt(c.supportCasesOpenPipeline) : '—'}
+            color="bg-ink text-white"
+          />
+          <StatBubble
+            label="Listing moderation (queued / in review)"
+            value={c ? formatInt(c.listingModerationQueuedOrInReview) : '—'}
+            color="bg-lemon text-ink"
+          />
+          <StatBubble
+            label="Role applications submitted"
+            value={c ? formatInt(c.roleApplicationsSubmitted) : '—'}
+            color="bg-mint text-ink"
+          />
+          <StatBubble label="Payouts held" value={c ? formatInt(c.payoutsHeld) : '—'} color="bg-coral text-white" />
         </div>
       </AdminSection>
 
@@ -60,7 +79,7 @@ export function DashboardHomePage() {
                 <Radio size={18} strokeWidth={2} />
                 <CardTitle className="text-base font-bold">API availability</CardTitle>
               </div>
-              <CardDescription>Last rolling 24h (mock)</CardDescription>
+              <CardDescription>Last rolling 24h (placeholder)</CardDescription>
             </CardHeader>
             <CardContent>
               <p className="font-mono text-3xl font-black text-mint">99.98%</p>
@@ -89,7 +108,9 @@ export function DashboardHomePage() {
               <CardDescription>Trust & safety backlog</CardDescription>
             </CardHeader>
             <CardContent>
-              <p className="font-mono text-3xl font-black text-amber">18</p>
+              <p className="font-mono text-3xl font-black text-amber">
+                {c ? formatInt(c.listingModerationQueuedOrInReview) : '—'}
+              </p>
               <p className="mt-2 text-[13px] font-semibold text-ink-60">
                 <Link to="/moderation/listings" className="font-bold text-coral hover:underline">
                   Open listings moderation →

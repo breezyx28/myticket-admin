@@ -1,4 +1,8 @@
-import { dashboardSummarySchema, pendingActionsResponseSchema } from '@/schemas/dashboard.schema';
+import {
+  dashboardCountersSchema,
+  dashboardSummaryNestedSchema,
+  pendingActionsResponseSchema,
+} from '@/schemas/dashboard.schema';
 import type { FinancialAnalytics, Leaderboards, PlatformCounters } from '@/schemas/analytics.schema';
 import {
   financialAnalyticsSchema,
@@ -14,14 +18,54 @@ import {
   supportThreadListSchema,
   type SupportThreadDetail,
 } from '@/schemas/support.schema';
+import { adminProfileDirectoryListSchema } from '@/schemas/adminProfileDirectory.schema';
 import { talentProfilesListSchema } from '@/schemas/talentApproval.schema';
+import {
+  adminOrderDetailSchema,
+  adminOrderListSchema,
+  type AdminOrderDetail,
+} from '@/schemas/order.schema';
+import { adminAuctionListSchema } from '@/schemas/auction.schema';
+import { adminComplaintListSchema } from '@/schemas/complaint.schema';
+import { adminScanLogListSchema, adminScannerListSchema } from '@/schemas/scanner.schema';
+import { adminPayoutListSchema } from '@/schemas/payout.schema';
+import { refundBreakdownsViewSchema } from '@/schemas/refundBreakdown.schema';
+import { adminRefundListSchema } from '@/schemas/refund.schema';
 import { adminUserDetailSchema, adminUserListSchema, type AdminUserDetail } from '@/schemas/user.schema';
+import {
+  adminOrganizerKycDetailSchema,
+  type AdminOrganizerKycDetail,
+} from '@/schemas/financeCompliance.schema';
+import {
+  adminActionListSchema,
+  adminAuditLogDetailSchema,
+  adminAuditLogListSchema,
+  type AdminAuditLogDetail,
+} from '@/schemas/adminActivity.schema';
+import {
+  adminDeliveryLogListSchema,
+  adminRecentNotificationListSchema,
+} from '@/schemas/adminNotifications.schema';
+import { adminHealthViewSchema, adminVersionViewSchema } from '@/schemas/adminSystem.schema';
 
-export const MOCK_DASHBOARD_SUMMARY = dashboardSummarySchema.parse({
-  totalUsers: 128_400,
-  totalEvents: 3_421,
-  totalTicketsSold: 910_200,
-  totalRevenueSar: 44_200_000,
+export const MOCK_DASHBOARD_COUNTERS = dashboardCountersSchema.parse({
+  usersTotal: 128_400,
+  usersSuspended: 42,
+  eventsPendingApproval: 12,
+  eventsPublished: 3_200,
+  supportCasesOpenPipeline: 28,
+  listingModerationQueuedOrInReview: 18,
+  roleApplicationsSubmitted: 15,
+  payoutsHeld: 6,
+});
+
+export const MOCK_DASHBOARD_SUMMARY = dashboardSummaryNestedSchema.parse({
+  users: { total: 128_400, suspended: 42 },
+  events: { pendingApproval: 12, published: 3_200 },
+  supportCases: { openPipeline: 28 },
+  listingModeration: { queuedOrInReview: 18 },
+  roleApplications: { submitted: 15 },
+  payouts: { held: 6 },
 });
 
 export const MOCK_PENDING_ACTIONS = pendingActionsResponseSchema.parse([
@@ -165,6 +209,52 @@ export const MOCK_TALENT_PROFILES = talentProfilesListSchema.parse([
   },
 ]);
 
+export const MOCK_VENDOR_PROFILE_DIRECTORY = adminProfileDirectoryListSchema.parse([
+  {
+    id: 'vd-1',
+    displayName: 'Desert Bites Catering',
+    email: 'hello@desertbites.example.com',
+    slug: 'desert-bites',
+    city: 'Riyadh',
+    country: 'Saudi Arabia',
+    status: 'pending',
+    updatedAt: '2026-04-11T08:00:00Z',
+  },
+  {
+    id: 'vd-2',
+    displayName: 'Stage & Co AV',
+    email: 'orders@stageco.example.com',
+    slug: 'stage-co',
+    city: 'Jeddah',
+    country: 'Saudi Arabia',
+    status: 'active',
+    updatedAt: '2026-03-01T12:00:00Z',
+  },
+]);
+
+export const MOCK_ORGANIZER_PROFILE_DIRECTORY = adminProfileDirectoryListSchema.parse([
+  {
+    id: 'org-dir-1',
+    displayName: 'Riyadh Nights',
+    email: 'bookings@riyadhnights.example.com',
+    slug: 'riyadh-nights',
+    city: 'Riyadh',
+    country: 'Saudi Arabia',
+    status: 'pending',
+    updatedAt: '2026-04-10T09:15:00Z',
+  },
+  {
+    id: 'org-dir-2',
+    displayName: 'Coastal Weekenders',
+    email: 'ops@coastalwk.example.com',
+    slug: 'coastal-weekenders',
+    city: 'Dammam',
+    country: 'Saudi Arabia',
+    status: 'verified',
+    updatedAt: '2026-02-20T16:00:00Z',
+  },
+]);
+
 const usersParsed = adminUserListSchema.parse([
   {
     id: 'u-1',
@@ -213,6 +303,7 @@ export const MOCK_EVENTS = adminEventListSchema.parse([
     title: 'Indie Night Riyadh',
     organizerName: 'Riyadh Nights',
     status: 'active',
+    featured: true,
     startsAt: '2026-05-01T19:00:00Z',
     endsAt: '2026-05-01T23:30:00Z',
     ticketsSold: 1240,
@@ -230,6 +321,7 @@ export const MOCK_EVENTS = adminEventListSchema.parse([
     title: 'Desert Jazz Sessions',
     organizerName: 'Desert Sound LLC',
     status: 'ended',
+    featured: false,
     startsAt: '2026-02-14T20:00:00Z',
     endsAt: '2026-02-14T23:00:00Z',
     ticketsSold: 890,
@@ -258,12 +350,14 @@ export const MOCK_EVENTS = adminEventListSchema.parse([
     venueName: 'King Fahad Cultural Centre',
     city: 'Riyadh',
     coverImageUrl: 'https://images.unsplash.com/photo-1507676184212-d03ab07a01bf?w=960&q=80&auto=format&fit=crop',
+    featured: false,
   },
   {
     id: 'ev-4',
     title: 'Tech Summit MENA',
     organizerName: 'Gulf Events Group',
-    status: 'active',
+    status: 'archived',
+    featured: false,
     startsAt: '2026-06-10T09:00:00Z',
     endsAt: '2026-06-11T17:00:00Z',
     ticketsSold: 2100,
@@ -299,7 +393,7 @@ export const MOCK_FEE_CONFIG = feeConfigurationSchema.parse({
 });
 
 export const MOCK_NOTIFICATION_SETTINGS = notificationSettingsSchema.parse({
-  channels: { email: true, inApp: true, push: false },
+  channels: { email: true, inApp: true, push: false, sms: false },
   reminderOffsetsHours: [24, 3],
 });
 
@@ -336,18 +430,29 @@ const rawCounters: PlatformCounters = {
 export const MOCK_PLATFORM_COUNTERS = platformCountersSchema.parse(rawCounters);
 
 const rawLeaderboards: Leaderboards = {
-  topEvents: [
-    { id: 'ev-1', label: 'Indie Night Riyadh', metric: 'Tickets', value: 1240 },
-    { id: 'ev-2', label: 'Desert Jazz Sessions', metric: 'Tickets', value: 890 },
+  events: [
+    {
+      id: '1',
+      code: 'ev-indie',
+      title: 'Indie Night Riyadh',
+      revenueGross: '428000.00',
+      status: 'published',
+      organizerId: '10',
+    },
+    {
+      id: '2',
+      code: 'ev-jazz',
+      title: 'Desert Jazz Sessions',
+      revenueGross: '312000.00',
+      status: 'ended',
+      organizerId: '11',
+    },
   ],
-  topOrganizers: [
-    { id: 'org-1', label: 'Riyadh Nights', metric: 'Revenue SAR', value: 12_400_000 },
-    { id: 'org-2', label: 'Desert Sound LLC', metric: 'Revenue SAR', value: 6_200_000 },
+  organizers: [
+    { organizerId: '10', totalRevenueGross: 12_400_000, displayName: 'Riyadh Nights', slug: 'riyadh-nights', code: 'org-10' },
+    { organizerId: '11', totalRevenueGross: 6_200_000, displayName: 'Desert Sound LLC', slug: 'desert-sound', code: 'org-11' },
   ],
-  topCategories: [
-    { id: 'cat-music', label: 'Music', metric: 'Share %', value: 38 },
-    { id: 'cat-sports', label: 'Sports', metric: 'Share %', value: 22 },
-  ],
+  generatedAt: '2026-05-01T12:00:00Z',
 };
 export const MOCK_LEADERBOARDS = leaderboardsSchema.parse(rawLeaderboards);
 
@@ -378,6 +483,16 @@ export const MOCK_RATINGS = ratingListSchema.parse([
     stars: 5,
     comment: 'Incredible atmosphere.',
     submittedAt: '2026-04-15T21:00:00Z',
+    moderationState: 'visible',
+  },
+  {
+    id: 'rt-2',
+    targetLabel: 'Desert Jazz Sessions',
+    authorEmail: 'critic@example.com',
+    stars: 2,
+    comment: 'Sound was uneven in the back rows.',
+    submittedAt: '2026-03-01T12:00:00Z',
+    moderationState: 'hidden',
   },
 ]);
 
@@ -444,3 +559,407 @@ const supportDetailParsed: SupportThreadDetail[] = [
 export const MOCK_SUPPORT_DETAILS: Record<string, SupportThreadDetail> = Object.fromEntries(
   supportDetailParsed.map((t) => [t.id, t])
 );
+
+const ordersParsed = adminOrderListSchema.parse([
+  {
+    id: 'ord-1',
+    status: 'paid',
+    buyerLabel: 'sara@example.com',
+    eventTitle: 'Indie Night Riyadh',
+    totalSar: 420,
+    ticketCount: 2,
+    createdAt: '2026-04-18T14:22:00Z',
+  },
+  {
+    id: 'ord-2',
+    status: 'pending',
+    buyerLabel: 'marco+organizer@example.com',
+    eventTitle: 'Desert Jazz Sessions',
+    totalSar: 180,
+    ticketCount: 1,
+    createdAt: '2026-04-19T09:05:00Z',
+  },
+  {
+    id: 'ord-3',
+    status: 'refunded',
+    buyerLabel: 'spam@example.com',
+    eventTitle: 'Indie Night Riyadh',
+    totalSar: 210,
+    ticketCount: 1,
+    createdAt: '2026-04-10T16:40:00Z',
+  },
+]);
+
+export const MOCK_ORDERS = ordersParsed;
+
+function orderDetail(row: (typeof ordersParsed)[number]): AdminOrderDetail {
+  return adminOrderDetailSchema.parse({
+    ...row,
+    buyerEmail: row.buyerLabel.includes('@') ? row.buyerLabel : undefined,
+    eventId: row.eventTitle.includes('Riyadh') ? 'ev-1' : 'ev-2',
+    paymentReference: row.status === 'paid' ? 'PAY-CHK-88421' : undefined,
+    notes: row.status === 'refunded' ? 'Chargeback — user disputed with bank.' : undefined,
+  });
+}
+
+export const MOCK_ORDER_DETAILS: Record<string, AdminOrderDetail> = Object.fromEntries(
+  ordersParsed.map((o) => [o.id, orderDetail(o)])
+);
+
+export const MOCK_REFUNDS = adminRefundListSchema.parse([
+  {
+    id: 'rf-1',
+    status: 'completed',
+    amountSar: 210,
+    orderId: 'ord-3',
+    reason: 'Customer no longer attending; policy window honored.',
+    requestedByLabel: 'spam@example.com',
+    eventTitle: 'Indie Night Riyadh',
+    createdAt: '2026-04-11T08:00:00Z',
+  },
+  {
+    id: 'rf-2',
+    status: 'pending',
+    amountSar: 420,
+    orderId: 'ord-1',
+    reason: 'Duplicate charge — user paid twice by mistake.',
+    requestedByLabel: 'sara@example.com',
+    eventTitle: 'Indie Night Riyadh',
+    createdAt: '2026-04-20T11:30:00Z',
+  },
+  {
+    id: 'rf-3',
+    status: 'rejected',
+    amountSar: 99,
+    orderId: undefined,
+    reason: 'Outside refund window per event terms.',
+    requestedByLabel: 'guest@example.com',
+    createdAt: '2026-04-15T16:00:00Z',
+  },
+]);
+
+export const MOCK_REFUND_BREAKDOWNS_VIEW = refundBreakdownsViewSchema.parse({
+  totalRefundedSar: 729,
+  rows: [
+    { key: 'policy', label: 'Within policy window', amountSar: 420, refundCount: 18 },
+    { key: 'duplicate', label: 'Duplicate payment', amountSar: 210, refundCount: 4 },
+    { key: 'chargeback', label: 'Chargeback / dispute', amountSar: 99, refundCount: 2 },
+  ],
+});
+
+export const MOCK_AUCTIONS = adminAuctionListSchema.parse([
+  {
+    id: 'auc-1',
+    title: 'VIP meet & greet — Nour Khalil',
+    status: 'live',
+    organizerName: 'Riyadh Nights',
+    highBidSar: 4_200,
+    endsAt: '2026-05-15T20:00:00Z',
+  },
+  {
+    id: 'auc-2',
+    title: 'Signed drum head — Desert Sound LLC',
+    status: 'scheduled',
+    organizerName: 'Desert Sound LLC',
+    highBidSar: 0,
+    endsAt: '2026-05-22T18:00:00Z',
+  },
+  {
+    id: 'auc-3',
+    title: 'Backstage pass bundle',
+    status: 'ended',
+    organizerName: 'Riyadh Nights',
+    highBidSar: 8_900,
+    endsAt: '2026-04-01T21:00:00Z',
+  },
+  {
+    id: 'auc-4',
+    title: 'Test lot (cancelled)',
+    status: 'cancelled',
+    organizerName: 'Test Organizer Ltd',
+    highBidSar: 100,
+    endsAt: '2026-03-10T12:00:00Z',
+  },
+]);
+
+export const MOCK_SCANNERS = adminScannerListSchema.parse([
+  {
+    id: 'scn-1',
+    displayName: 'Gate A — iPad #1',
+    status: 'active',
+    organizerName: 'Riyadh Nights',
+    deviceLabel: 'iPad Pro 11"',
+    lastSeenAt: '2026-05-09T18:42:00Z',
+  },
+  {
+    id: 'scn-2',
+    displayName: 'VIP lane handheld',
+    status: 'suspended',
+    organizerName: 'Riyadh Nights',
+    deviceLabel: 'Zebra TC52',
+    lastSeenAt: '2026-05-08T09:10:00Z',
+  },
+  {
+    id: 'scn-3',
+    displayName: 'Desert Jazz — secondary',
+    status: 'offline',
+    organizerName: 'Desert Sound LLC',
+    lastSeenAt: '2026-04-20T22:00:00Z',
+  },
+]);
+
+export const MOCK_SCAN_LOGS = adminScanLogListSchema.parse([
+  {
+    id: 'slg-1',
+    scannedAt: '2026-05-09T19:01:12Z',
+    outcome: 'valid',
+    ticketRef: 'TKT-88421-A',
+    scannerLabel: 'Gate A — iPad #1',
+    eventTitle: 'Indie Night Riyadh',
+  },
+  {
+    id: 'slg-2',
+    scannedAt: '2026-05-09T19:02:44Z',
+    outcome: 'duplicate',
+    ticketRef: 'TKT-88421-A',
+    scannerLabel: 'Gate A — iPad #1',
+    eventTitle: 'Indie Night Riyadh',
+  },
+  {
+    id: 'slg-3',
+    scannedAt: '2026-05-09T19:05:01Z',
+    outcome: 'invalid',
+    ticketRef: 'TKT-00000-X',
+    scannerLabel: 'VIP lane handheld',
+    eventTitle: 'Indie Night Riyadh',
+  },
+]);
+
+export const MOCK_COMPLAINTS = adminComplaintListSchema.parse([
+  {
+    id: 'cmp-1',
+    title: 'Misleading seat map for balcony section',
+    status: 'open',
+    category: 'event_accuracy',
+    reporterLabel: 'sara@example.com',
+    targetLabel: 'Indie Night Riyadh',
+    createdAt: '2026-05-08T11:20:00Z',
+  },
+  {
+    id: 'cmp-2',
+    title: 'Refund not received after approved cancellation',
+    status: 'triaged',
+    category: 'payments',
+    reporterLabel: 'guest@example.com',
+    targetLabel: 'Order ord-2',
+    createdAt: '2026-05-07T09:00:00Z',
+    updatedAt: '2026-05-07T15:30:00Z',
+  },
+  {
+    id: 'cmp-3',
+    title: 'Harassment in event comments thread',
+    status: 'escalated',
+    category: 'conduct',
+    reporterLabel: 'moderator@example.com',
+    targetLabel: 'User usr-12',
+    createdAt: '2026-05-01T08:00:00Z',
+    updatedAt: '2026-05-02T10:00:00Z',
+  },
+]);
+
+export const MOCK_ADMIN_HEALTH = adminHealthViewSchema.parse({
+  status: 'ok',
+  message: 'All subsystems responding (mock).',
+  checkedAt: '2026-05-09T22:00:00Z',
+  extras: { database: 'up', redis: 'up', queue: 'up' },
+});
+
+export const MOCK_ADMIN_VERSION = adminVersionViewSchema.parse({
+  version: '1.4.0-mock',
+  commit: 'abc1234',
+  buildDate: '2026-05-01T08:00:00Z',
+  environment: 'development',
+});
+
+export const MOCK_ADMIN_RECENT_NOTIFICATIONS = adminRecentNotificationListSchema.parse([
+  {
+    id: 'nr-1',
+    title: 'Payout approved',
+    body: 'Payout po-1 was approved for Riyadh Nights.',
+    channel: 'email',
+    read: false,
+    createdAt: '2026-05-09T20:01:00Z',
+  },
+  {
+    id: 'nr-2',
+    title: 'New support case',
+    channel: 'in_app',
+    read: true,
+    createdAt: '2026-05-09T18:40:00Z',
+  },
+]);
+
+export const MOCK_ADMIN_DELIVERY_LOG = adminDeliveryLogListSchema.parse([
+  {
+    id: 'dl-1',
+    channel: 'email',
+    status: 'sent',
+    recipient: 'sara@example.com',
+    templateKey: 'order_confirmation',
+    sentAt: '2026-05-09T19:55:12Z',
+  },
+  {
+    id: 'dl-2',
+    channel: 'sms',
+    status: 'failed',
+    recipient: '+966500000000',
+    templateKey: 'event_reminder',
+    sentAt: '2026-05-09T17:12:00Z',
+    errorMessage: 'Carrier timeout',
+  },
+]);
+
+export const MOCK_ADMIN_ACTIONS = adminActionListSchema.parse([
+  {
+    id: 'act-1',
+    actionKey: 'rebuild_search_index',
+    label: 'Rebuild search index',
+    description: 'Queues a full re-index of public events and listings.',
+    category: 'search',
+  },
+  {
+    id: 'act-2',
+    actionKey: 'purge_rate_limit_buckets',
+    label: 'Purge API rate-limit buckets',
+    category: 'infra',
+  },
+]);
+
+export const MOCK_AUDIT_LOGS = adminAuditLogListSchema.parse([
+  {
+    id: 'aud-1',
+    summary: 'Approved payout po-1',
+    createdAt: '2026-05-09T14:22:00Z',
+    actorLabel: 'admin@myticket.test',
+    resourceType: 'payout',
+    resourceId: 'po-1',
+  },
+  {
+    id: 'aud-2',
+    summary: 'Suspended user usr-5',
+    createdAt: '2026-05-08T09:15:00Z',
+    actorLabel: 'admin@myticket.test',
+    resourceType: 'user',
+    resourceId: 'usr-5',
+  },
+  {
+    id: 'aud-3',
+    summary: 'Updated fee configuration',
+    createdAt: '2026-05-01T11:00:00Z',
+    actorLabel: 'finance@myticket.test',
+    resourceType: 'settings',
+    resourceId: 'fee-config',
+  },
+]);
+
+export const MOCK_AUDIT_LOG_DETAILS: Record<string, AdminAuditLogDetail> = {
+  'aud-1': adminAuditLogDetailSchema.parse({
+    id: 'aud-1',
+    summary: 'Approved payout po-1',
+    createdAt: '2026-05-09T14:22:00Z',
+    actorLabel: 'admin@myticket.test',
+    resourceType: 'payout',
+    resourceId: 'po-1',
+    ip: '203.0.113.10',
+    userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
+    changes: { payout_status: { from: 'pending', to: 'approved' } },
+  }),
+  'aud-2': adminAuditLogDetailSchema.parse({
+    id: 'aud-2',
+    summary: 'Suspended user usr-5',
+    createdAt: '2026-05-08T09:15:00Z',
+    actorLabel: 'admin@myticket.test',
+    resourceType: 'user',
+    resourceId: 'usr-5',
+    ip: '198.51.100.2',
+    changes: { suspended: { from: false, to: true } },
+  }),
+};
+
+export const MOCK_PAYOUTS = adminPayoutListSchema.parse([
+  {
+    id: 'po-1',
+    status: 'pending',
+    organizerName: 'Riyadh Nights',
+    amountSar: 48_200,
+    eventTitle: 'Indie Night Riyadh',
+    reference: 'EVT-2026-04-RIY-01',
+    createdAt: '2026-04-21T10:00:00Z',
+  },
+  {
+    id: 'po-2',
+    status: 'approved',
+    organizerName: 'Desert Sound LLC',
+    amountSar: 12_400,
+    eventTitle: 'Desert Jazz Sessions',
+    createdAt: '2026-04-20T14:30:00Z',
+  },
+  {
+    id: 'po-3',
+    status: 'processing',
+    organizerName: 'Riyadh Nights',
+    amountSar: 8_900,
+    createdAt: '2026-04-19T09:00:00Z',
+  },
+  {
+    id: 'po-4',
+    status: 'paid',
+    organizerName: 'Coastal Events',
+    amountSar: 3_100,
+    createdAt: '2026-04-01T12:00:00Z',
+  },
+  {
+    id: 'po-5',
+    status: 'rejected',
+    organizerName: 'Test Organizer Ltd',
+    amountSar: 500,
+    createdAt: '2026-03-28T16:00:00Z',
+  },
+]);
+
+/** Sample organizer KYC bundles (keys match hints on Finance compliance page). */
+export const MOCK_ORGANIZER_KYC_BY_ORG: Record<string, AdminOrganizerKycDetail> = {
+  'org-riyadh-nights': adminOrganizerKycDetailSchema.parse({
+    organizerId: 'org-riyadh-nights',
+    organizerName: 'Riyadh Nights',
+    documents: [
+      {
+        id: 'kyc-doc-1',
+        label: 'Commercial registration',
+        docType: 'cr',
+        status: 'approved',
+        uploadedAt: '2026-04-01T10:00:00Z',
+      },
+      {
+        id: 'kyc-doc-2',
+        label: 'Bank letter',
+        docType: 'bank',
+        status: 'pending',
+        uploadedAt: '2026-04-10T14:00:00Z',
+      },
+    ],
+  }),
+  'org-desert-sound': adminOrganizerKycDetailSchema.parse({
+    organizerId: 'org-desert-sound',
+    organizerName: 'Desert Sound LLC',
+    documents: [
+      {
+        id: 'kyc-doc-3',
+        label: 'CR certificate',
+        docType: 'cr',
+        status: 'pending',
+        uploadedAt: '2026-04-18T09:00:00Z',
+      },
+    ],
+  }),
+};

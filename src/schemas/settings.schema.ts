@@ -22,6 +22,7 @@ export const notificationSettingsSchema = z.object({
     email: z.boolean(),
     inApp: z.boolean(),
     push: z.boolean(),
+    sms: z.boolean(),
   }),
   reminderOffsetsHours: z.array(z.number().positive()),
 });

@@ -1,5 +1,6 @@
 import { Button } from '@/components/ui/Button';
 import { DEMO_ADMIN_EMAIL, DEMO_ADMIN_PASSWORD } from '@/config/demoAuth';
+import { allowDemoAuth } from '@/config/env';
 import { useAuth } from '@/hooks/useAuth';
 import { notifyError, notifySuccess } from '@/lib/notify';
 import { loginFormSchema, type LoginFormValues } from '@/schemas/auth.schema';
@@ -14,26 +15,35 @@ export function LoginPage() {
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginFormSchema),
-    defaultValues: { email: DEMO_ADMIN_EMAIL, password: DEMO_ADMIN_PASSWORD },
+    defaultValues: allowDemoAuth()
+      ? { email: DEMO_ADMIN_EMAIL, password: DEMO_ADMIN_PASSWORD }
+      : { email: '', password: '' },
   });
 
   if (user?.role === 'admin') {
     return <Navigate to={from} replace />;
   }
 
-  function onSubmit(values: LoginFormValues) {
-    const res = signIn({ email: values.email, password: values.password });
+  async function onSubmit(values: LoginFormValues) {
+    const res = await signIn({ email: values.email, password: values.password });
     if (!res.ok) {
       if (res.reason === 'not_admin') {
         notifyError('Access denied — this dashboard is for administrator accounts only.');
         form.setError('root', {
           message: 'Access denied — this dashboard is for Administrator accounts only.',
         });
+      } else if (res.reason === 'network') {
+        notifyError('Could not reach the server. Check your connection and API base URL.');
+        form.setError('root', { message: 'Network error — try again.' });
+      } else if (res.reason === 'session') {
+        notifyError('Login succeeded but the response did not include tokens. Check API contract.');
+        form.setError('root', { message: 'Unexpected login response (missing tokens).' });
+      } else if (res.reason === 'server') {
+        notifyError('Server error during sign-in.');
+        form.setError('root', { message: 'Server error — try again later.' });
       } else {
-        notifyError('Invalid credentials for this demo.');
-        form.setError('root', {
-          message: `Invalid credentials (demo). Use ${DEMO_ADMIN_EMAIL} / ${DEMO_ADMIN_PASSWORD}.`,
-        });
+        notifyError('Invalid email or password.');
+        form.setError('root', { message: 'Invalid credentials.' });
       }
     } else {
       notifySuccess('Signed in to the admin console.');
@@ -49,9 +59,12 @@ export function LoginPage() {
           <p className="mt-2 text-[14px] text-ink-60">
             No self-registration — admin accounts are provisioned internally. No social login on this surface.
           </p>
-          <p className="mt-3 rounded-xl bg-ink-5 px-3 py-2 text-[12px] font-medium text-ink-60">
-            Demo account is pre-filled — press <span className="font-bold text-ink">Continue</span> to sign in.
-          </p>
+          {allowDemoAuth() ? (
+            <p className="mt-3 rounded-xl bg-ink-5 px-3 py-2 text-[12px] font-medium text-ink-60">
+              Demo sign-in is enabled — press <span className="font-bold text-ink">Continue</span> with the pre-filled
+              account, or use any email containing <span className="font-mono">+admin</span>.
+            </p>
+          ) : null}
 
           <form onSubmit={form.handleSubmit(onSubmit)} className="mt-8 space-y-4">
             <div>
@@ -97,9 +110,11 @@ export function LoginPage() {
             <Link to="/forgot-password" className="text-coral hover:underline">
               Forgot password
             </Link>
-            <span className="text-ink-40">
-              Demo: {DEMO_ADMIN_EMAIL} / {DEMO_ADMIN_PASSWORD}
-            </span>
+            {allowDemoAuth() ? (
+              <span className="text-ink-40">
+                Demo: {DEMO_ADMIN_EMAIL} / {DEMO_ADMIN_PASSWORD}
+              </span>
+            ) : null}
           </div>
         </div>
       </div>

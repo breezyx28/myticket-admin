@@ -20,9 +20,10 @@ export const talentProfileSchema = z.object({
   mediaQualityNote: z.string(),
   certificatesSummary: z.string(),
   submittedAt: z.string(),
-  introVideoUrl: z.string().url(),
-  headshotUrl: z.string().url(),
-  portfolioPdfUrl: z.string().url(),
+  /** API may return relative paths; avoid strict `.url()` for live reads. */
+  introVideoUrl: z.string().min(1),
+  headshotUrl: z.string().min(1),
+  portfolioPdfUrl: z.string().min(1),
   governmentIdStatus: governmentIdStatusSchema,
   bankVerified: z.boolean(),
   completedBookings: z.number().int().nonnegative(),

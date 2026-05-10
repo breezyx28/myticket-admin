@@ -5,12 +5,23 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { rowMatchesSearch } from '@/lib/listQuery';
 import { notifyError, notifySuccess } from '@/lib/notify';
 import type { ListingModerationRow } from '@/schemas/moderation.schema';
-import { useGetListingModerationQuery, useMarkListingModerationReviewedMutation } from '@/services/adminApi';
+import {
+  useClaimListingModerationMutation,
+  useEscalateListingModerationMutation,
+  useGetListingModerationQuery,
+  useMarkListingModerationReviewedMutation,
+  useRejectListingModerationMutation,
+  useReleaseListingModerationMutation,
+} from '@/services/adminApi';
 import { useMemo, useState } from 'react';
 
 export function ListingsPage() {
   const { data, isLoading } = useGetListingModerationQuery();
   const [markReviewed, markState] = useMarkListingModerationReviewedMutation();
+  const [claim, claimState] = useClaimListingModerationMutation();
+  const [release, releaseState] = useReleaseListingModerationMutation();
+  const [reject, rejectState] = useRejectListingModerationMutation();
+  const [escalate, escalateState] = useEscalateListingModerationMutation();
   const [search, setSearch] = useState('');
   const [kind, setKind] = useState<'all' | ListingModerationRow['kind']>('all');
   const [status, setStatus] = useState<'all' | ListingModerationRow['status']>('all');
@@ -23,13 +34,31 @@ export function ListingsPage() {
     });
   }, [data, search, kind, status]);
 
+  const mutLoading =
+    markState.isLoading ||
+    claimState.isLoading ||
+    releaseState.isLoading ||
+    rejectState.isLoading ||
+    escalateState.isLoading;
+
+  async function run(okMsg: string, exec: () => Promise<unknown>) {
+    try {
+      await exec();
+      notifySuccess(okMsg);
+    } catch {
+      notifyError('Action failed.');
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div>
         <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-ink-40">Trust & safety</p>
         <h1 className="text-3xl font-extrabold text-ink">Listing moderation</h1>
         <p className="mt-2 max-w-2xl text-[14px] text-ink-60">
-          Sprint 5: review marketplace talent/vendor listings. Marking reviewed updates mock state only.
+          Queue aligned to Postman: <span className="font-mono text-ink">claim</span>,{' '}
+          <span className="font-mono text-ink">release</span>, <span className="font-mono text-ink">approve</span>,{' '}
+          <span className="font-mono text-ink">reject</span>, and <span className="font-mono text-ink">escalate</span>.
         </p>
       </div>
       <Card className="rounded-3xl border-ink-10 shadow-card-sm">
@@ -55,7 +84,10 @@ export function ListingsPage() {
             >
               <option value="all">All queue states</option>
               <option value="queued">Queued</option>
+              <option value="claimed">Claimed</option>
               <option value="actioned">Actioned</option>
+              <option value="rejected">Rejected</option>
+              <option value="escalated">Escalated</option>
             </select>
           </ListFiltersBar>
           {isLoading ? <p className="text-sm text-ink-60">Loading…</p> : null}
@@ -63,7 +95,7 @@ export function ListingsPage() {
             <p className="mb-3 text-sm font-semibold text-ink-60">No listings match your search and filters.</p>
           ) : null}
           <div className="admin-table-scroll">
-            <table className="w-full min-w-[720px] text-left text-[14px]">
+            <table className="w-full min-w-[960px] text-left text-[14px]">
               <thead className="text-[11px] font-bold uppercase tracking-wide text-ink-40">
                 <tr>
                   <th className="px-4 py-3">Listing</th>
@@ -82,34 +114,65 @@ export function ListingsPage() {
                     <td className="px-4 py-3 text-ink-60">{row.ownerEmail}</td>
                     <td className="max-w-[200px] px-4 py-3 text-[13px] text-ink-60">{row.flagReason}</td>
                     <td className="px-4 py-3">
-                      <span
-                        className={
-                          row.status === 'queued'
-                            ? 'rounded-full bg-amber/30 px-2 py-0.5 text-[11px] font-bold uppercase text-ink'
-                            : 'rounded-full bg-lime/40 px-2 py-0.5 text-[11px] font-bold uppercase text-ink'
-                        }
-                      >
+                      <span className="rounded-full bg-ink-5 px-2 py-0.5 text-[11px] font-bold uppercase text-ink-60">
                         {row.status}
                       </span>
                     </td>
                     <td className="px-4 py-3 text-right">
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        disabled={row.status !== 'queued' || markState.isLoading}
-                        loading={markState.isLoading && markState.originalArgs === row.id}
-                        onClick={async () => {
-                          try {
-                            await markReviewed(row.id).unwrap();
-                            notifySuccess('Listing marked reviewed (mock).');
-                          } catch {
-                            notifyError('Could not update listing.');
+                      <div className="flex flex-wrap justify-end gap-1.5">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          disabled={row.status !== 'queued' || mutLoading}
+                          loading={claimState.isLoading && claimState.originalArgs === row.id}
+                          onClick={() => run('Claimed.', () => claim(row.id).unwrap())}
+                        >
+                          Claim
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          disabled={row.status !== 'claimed' || mutLoading}
+                          loading={releaseState.isLoading && releaseState.originalArgs === row.id}
+                          onClick={() => run('Released.', () => release(row.id).unwrap())}
+                        >
+                          Release
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          disabled={mutLoading || (row.status !== 'queued' && row.status !== 'claimed')}
+                          loading={rejectState.isLoading && rejectState.originalArgs === row.id}
+                          onClick={() => run('Rejected.', () => reject(row.id).unwrap())}
+                        >
+                          Reject
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          disabled={mutLoading || (row.status !== 'queued' && row.status !== 'claimed')}
+                          loading={escalateState.isLoading && escalateState.originalArgs === row.id}
+                          onClick={() => run('Escalated.', () => escalate(row.id).unwrap())}
+                        >
+                          Escalate
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="dark"
+                          disabled={
+                            (row.status !== 'queued' && row.status !== 'claimed') || mutLoading
                           }
-                        }}
-                      >
-                        Mark reviewed
-                      </Button>
+                          loading={markState.isLoading && markState.originalArgs === row.id}
+                          onClick={() => run('Approved / reviewed.', () => markReviewed(row.id).unwrap())}
+                        >
+                          Approve
+                        </Button>
+                      </div>
                     </td>
                   </tr>
                 ))}

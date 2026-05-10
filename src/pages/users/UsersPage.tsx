@@ -33,7 +33,7 @@ export function UsersPage() {
       </div>
       <Card className="rounded-3xl border-ink-10 shadow-card-sm">
         <CardHeader>
-          <CardTitle className="text-lg">All users (mock)</CardTitle>
+          <CardTitle className="text-lg">All users</CardTitle>
         </CardHeader>
         <CardContent>
           <ListFiltersBar

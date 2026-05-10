@@ -17,7 +17,10 @@ export const adminEventRowSchema = z.object({
   category: z.string(),
   venueName: z.string(),
   city: z.string(),
-  coverImageUrl: z.string().url(),
+  /** API may return relative paths; avoid strict `.url()` for live reads. */
+  coverImageUrl: z.string().min(1),
+  /** Homepage / manual featuring (admin `POST …/feature` | `…/unfeature`). */
+  featured: z.boolean().default(false),
 });
 
 export type AdminEventRow = z.infer<typeof adminEventRowSchema>;
@@ -30,6 +33,9 @@ export const eventCategorySchema = z.object({
   iconKey: z.string(),
   colorToken: z.string(),
   active: z.boolean(),
+  /** Present when loaded from API; used for PATCH bodies when required. */
+  slug: z.string().optional(),
+  displayOrder: z.number().int().nonnegative().optional(),
 });
 
 export type EventCategory = z.infer<typeof eventCategorySchema>;

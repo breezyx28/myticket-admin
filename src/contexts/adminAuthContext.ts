@@ -7,11 +7,17 @@ export type SessionUser = {
   role: AdminRole;
 };
 
+export type SignInFailureReason =
+  | 'invalid'
+  | 'not_admin'
+  | 'network'
+  | 'credentials'
+  | 'session'
+  | 'server';
+
 export type AuthContextValue = {
   user: SessionUser | null;
-  signIn: (params: { email: string; password: string }) =>
-    | { ok: true }
-    | { ok: false; reason: 'invalid' | 'not_admin' };
+  signIn: (params: { email: string; password: string }) => Promise<{ ok: true } | { ok: false; reason: SignInFailureReason }>;
   signOut: () => void;
 };
 

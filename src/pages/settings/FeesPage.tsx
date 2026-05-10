@@ -26,7 +26,7 @@ export function FeesPage() {
         <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-ink-40">Platform</p>
         <h1 className="text-3xl font-extrabold text-ink">Fee configuration</h1>
         <p className="mt-2 max-w-2xl text-[14px] text-ink-60">
-          Percentage, flat, payer, auction commission, and third-party splits — all adjustable (mock persistence).
+          Percentage, flat, payer, auction commission, and third-party splits — persisted via admin finance API when signed in with a token.
         </p>
       </div>
 
@@ -40,7 +40,7 @@ export function FeesPage() {
             onSubmit={form.handleSubmit(async (values) => {
               try {
                 await save(values).unwrap();
-                notifySuccess('Fee configuration saved (mock).');
+                notifySuccess('Fee configuration saved.');
               } catch {
                 notifyError('Could not save fee configuration.');
               }
@@ -104,7 +104,7 @@ export function FeesPage() {
               />
             </label>
             <Button type="submit" variant="dark" loading={saveState.isLoading}>
-              Save (mock)
+              Save
             </Button>
           </form>
         </CardContent>

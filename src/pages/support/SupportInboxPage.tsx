@@ -25,7 +25,7 @@ export function SupportInboxPage() {
         <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-ink-40">Support</p>
         <h1 className="text-3xl font-extrabold text-ink">Inbox</h1>
         <p className="mt-2 max-w-2xl text-[14px] text-ink-60">
-          Centralized threads from the main website — chat and async messages (mock).
+          Centralized threads from the main website — chat and async messages (sample data until support-case GETs are wired).
         </p>
       </div>
       <Card className="rounded-3xl border-ink-10 shadow-card-sm">

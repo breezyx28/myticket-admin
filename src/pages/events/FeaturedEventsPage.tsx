@@ -73,11 +73,11 @@ export function FeaturedEventsPage() {
       <AdminSection
         eyebrow="Impact"
         title="Merchandising health"
-        description="Synthetic aggregates from the mock catalog — replace with live merchandising KPIs when analytics lands."
+        description="Synthetic aggregates from the current catalog sample — replace with live merchandising KPIs when analytics GETs are available."
       >
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <StatBubble
-            label="Catalog revenue (mock sum)"
+            label="Catalog revenue (sum)"
             value={stats ? formatSarCompact(stats.revenue) : '—'}
             color="bg-coral text-white"
           />
@@ -117,7 +117,7 @@ export function FeaturedEventsPage() {
                 <p className="text-lg font-extrabold text-ink">Algorithm (default)</p>
               </div>
               <p className="text-[14px] font-medium text-ink-60">
-                Uses conversion velocity, geo demand, and inventory risk to rotate features hourly (mock).
+                Uses conversion velocity, geo demand, and inventory risk to rotate features hourly (illustrative).
               </p>
               <Button
                 type="button"

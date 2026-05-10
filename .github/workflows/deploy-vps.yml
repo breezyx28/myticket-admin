@@ -1,0 +1,62 @@
+# Deploy built static site to VPS (document root).
+#
+# Required repository secrets:
+#   VPS_HOST          — hostname or IP (e.g. 203.0.113.10 or vps.example.com)
+#   VPS_USER          — SSH user (e.g. deploy or root)
+#   VPS_SSH_PRIVATE_KEY — full private key (PEM), including BEGIN/END lines
+#
+# Optional build secrets (Vite embeds VITE_* at build time):
+#   VITE_API_BASE_URL
+#   VITE_ADMIN_READS_SOURCE
+#   VITE_ALLOW_DEMO_AUTH
+#
+# On the server, ensure the user can write to /var/www/html/ (group/chown or sudo wrapper).
+# For React Router, configure the web server to fallback to index.html (try_files).
+
+name: Deploy to VPS
+
+on:
+  push:
+    branches: master
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-vps
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Start SSH agent
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.VPS_SSH_PRIVATE_KEY }}
+
+      - name: Add VPS to known_hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H "${{ secrets.VPS_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: Rsync dist to /var/www/html/myticket/admin
+        run: |
+          rsync -avz --delete \
+            -e "ssh -o StrictHostKeyChecking=yes" \
+            dist/ \
+            "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:/var/www/html/myticket/admin"

@@ -1,33 +1,56 @@
 import { Button } from '@/components/ui/Button';
+import { postAdminPasswordReset } from '@/lib/adminPasswordReset';
 import { resetPasswordSchema, type ResetPasswordValues } from '@/schemas/auth.schema';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { Link, useSearchParams } from 'react-router-dom';
 
 export function ResetPasswordPage() {
   const [params] = useSearchParams();
-  const token = params.get('token') ?? 'demo-token';
+  const tokenFromUrl = params.get('token') ?? '';
   const [done, setDone] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
   const form = useForm<ResetPasswordValues>({
     resolver: zodResolver(resetPasswordSchema),
-    defaultValues: { token, password: '', confirm: '' },
+    defaultValues: { token: tokenFromUrl, password: '', confirm: '' },
   });
+
+  const setToken = form.setValue;
+  useEffect(() => {
+    setToken('token', tokenFromUrl);
+  }, [tokenFromUrl, setToken]);
 
   return (
     <div className="min-h-dvh bg-surface-tint px-6 py-16">
       <div className="mx-auto max-w-md rounded-3xl border border-ink-10 bg-white p-8 shadow-card-lg">
         <h1 className="text-2xl font-extrabold text-ink">Choose a new password</h1>
+        {!tokenFromUrl && !done ? (
+          <p className="mt-4 rounded-xl border border-ink-10 bg-surface-tint px-4 py-3 text-[13px] text-ink-60">
+            Open this page from the link in your reset email so the <span className="font-mono text-ink">token</span>{' '}
+            query parameter is present.
+          </p>
+        ) : null}
         {done ? (
           <p className="mt-6 rounded-xl bg-mint/25 px-4 py-3 text-[14px] font-medium text-ink">
-            Password updated (demo). You can return to sign in.
+            Password updated. You can sign in with the new password.
           </p>
         ) : (
             <form
               className="mt-6 space-y-4"
-              onSubmit={form.handleSubmit(() => {
-                setDone(true);
+              onSubmit={form.handleSubmit(async (values) => {
+                setSubmitError(null);
+                setSubmitting(true);
+                try {
+                  await postAdminPasswordReset(values.token, values.password);
+                  setDone(true);
+                } catch (e) {
+                  setSubmitError(e instanceof Error ? e.message : 'Something went wrong');
+                } finally {
+                  setSubmitting(false);
+                }
               })}
             >
             <input type="hidden" {...form.register('token')} />
@@ -53,8 +76,12 @@ export function ResetPasswordPage() {
             {form.formState.errors.confirm ? (
               <p className="text-[12px] font-medium text-coral">{form.formState.errors.confirm.message}</p>
             ) : null}
-            <Button type="submit" variant="dark" className="w-full" size="lg">
-              Update password
+            {form.formState.errors.token ? (
+              <p className="text-[12px] font-medium text-coral">{form.formState.errors.token.message}</p>
+            ) : null}
+            {submitError ? <p className="text-[12px] font-medium text-coral">{submitError}</p> : null}
+            <Button type="submit" variant="dark" className="w-full" size="lg" disabled={submitting || !tokenFromUrl}>
+              {submitting ? 'Updating…' : 'Update password'}
             </Button>
           </form>
         )}

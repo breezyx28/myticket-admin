@@ -1,16 +1,20 @@
 import { describe, expect, it } from 'vitest';
 import { financialAnalyticsSchema } from '@/schemas/analytics.schema';
-import { dashboardSummarySchema } from '@/schemas/dashboard.schema';
+import { dashboardCountersSchema } from '@/schemas/dashboard.schema';
 
 describe('Zod fixtures', () => {
-  it('parses dashboard summary mock shape', () => {
-    const parsed = dashboardSummarySchema.parse({
-      totalUsers: 100,
-      totalEvents: 10,
-      totalTicketsSold: 1000,
-      totalRevenueSar: 50_000,
+  it('parses dashboard counters mock shape', () => {
+    const parsed = dashboardCountersSchema.parse({
+      usersTotal: 100,
+      usersSuspended: 2,
+      eventsPendingApproval: 3,
+      eventsPublished: 40,
+      supportCasesOpenPipeline: 5,
+      listingModerationQueuedOrInReview: 6,
+      roleApplicationsSubmitted: 7,
+      payoutsHeld: 1,
     });
-    expect(parsed.totalUsers).toBe(100);
+    expect(parsed.usersTotal).toBe(100);
   });
 
   it('parses financial analytics with breakdown', () => {

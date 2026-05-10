@@ -27,7 +27,7 @@ export function AdminProfilePage() {
       <Card className="rounded-3xl border-ink-10 shadow-card-md">
         <CardHeader>
           <CardTitle className="text-xl font-bold">Administrator</CardTitle>
-          <CardDescription>Signed-in session (mock). Email is read-only for audit trails.</CardDescription>
+          <CardDescription>Signed-in session. Email is read-only for audit trails.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="grid gap-6 md:grid-cols-2">
@@ -69,7 +69,7 @@ export function AdminProfilePage() {
               />
               <div>
                 <p className="text-[14px] font-bold text-ink">Daily operations digest</p>
-                <p className="text-[12px] text-ink-60">Morning summary of queues, payouts, and risk flags (mock).</p>
+                <p className="text-[12px] text-ink-60">Morning summary of queues, payouts, and risk flags (sample).</p>
               </div>
             </label>
           </div>
@@ -77,7 +77,7 @@ export function AdminProfilePage() {
             type="button"
             variant="dark"
             onClick={() => {
-              notifySuccess('Profile preferences saved (mock — not persisted).');
+              notifySuccess('Profile preferences saved locally (not wired to an API yet).');
             }}
           >
             Save preferences
