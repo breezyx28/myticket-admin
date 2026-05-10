@@ -57,9 +57,9 @@ jobs:
           mkdir -p ~/.ssh
           ssh-keyscan -H "${{ secrets.VPS_HOST }}" >> ~/.ssh/known_hosts
 
-      - name: Rsync dist to /var/www/html/myticket/admin
+      - name: Rsync dist to /var/www/html/myticket/myticket-admin
         run: |
           rsync -avz --delete \
             -e "ssh -o StrictHostKeyChecking=yes" \
             dist/ \
-            "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:/var/www/html/myticket/admin"
+            "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:/var/www/html/myticket/myticket-admin"
