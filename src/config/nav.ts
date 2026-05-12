@@ -11,7 +11,6 @@ import {
   ScanLine,
   Tags,
   Sparkles,
-  Ban,
   Percent,
   PieChart,
   Wallet,
@@ -55,7 +54,6 @@ export const NAV_OPERATIONS: NavItem[] = [
   { to: '/events', label: 'Events', icon: CalendarDays },
   { to: '/events/categories', label: 'Categories', icon: Tags },
   { to: '/events/featured', label: 'Featured', icon: Sparkles },
-  { to: '/events/cancellations', label: 'Cancellations', icon: Ban },
 ];
 
 export const NAV_SETTINGS: NavItem[] = [

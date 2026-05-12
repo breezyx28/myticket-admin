@@ -2,6 +2,7 @@ import { AdminEventCard } from '@/components/events/AdminEventCard';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { StatBubble } from '@/components/ui/StatBubble';
 import { AdminSection } from '@/components/layout/AdminSection';
+import { useCountUp } from '@/hooks/useCountUp';
 import {
   useGetDashboardCountersQuery,
   useGetEventsQuery,
@@ -20,6 +21,16 @@ export function DashboardHomePage() {
   const events = useGetEventsQuery();
 
   const c = counters.data;
+
+  const usersTotal = useCountUp(c?.usersTotal ?? null);
+  const usersSuspended = useCountUp(c?.usersSuspended ?? null);
+  const eventsPendingApproval = useCountUp(c?.eventsPendingApproval ?? null);
+  const eventsPublished = useCountUp(c?.eventsPublished ?? null);
+  const supportCasesOpenPipeline = useCountUp(c?.supportCasesOpenPipeline ?? null);
+  const listingModerationQueuedOrInReview = useCountUp(c?.listingModerationQueuedOrInReview ?? null);
+  const roleApplicationsSubmitted = useCountUp(c?.roleApplicationsSubmitted ?? null);
+  const payoutsHeld = useCountUp(c?.payoutsHeld ?? null);
+
   const spotlight = events.data?.slice(0, 3) ?? [];
 
   return (
@@ -39,30 +50,30 @@ export function DashboardHomePage() {
         description="Users, events, support, moderation, roles, and payouts — aligned to the admin API handoff."
       >
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <StatBubble label="Users (total)" value={c ? formatInt(c.usersTotal) : '—'} color="bg-ink text-white" />
-          <StatBubble label="Users suspended" value={c ? formatInt(c.usersSuspended) : '—'} color="bg-lemon text-ink" />
+          <StatBubble label="Users (total)" value={c ? formatInt(usersTotal) : '—'} color="bg-ink text-white" />
+          <StatBubble label="Users suspended" value={c ? formatInt(usersSuspended) : '—'} color="bg-lemon text-ink" />
           <StatBubble
             label="Events pending approval"
-            value={c ? formatInt(c.eventsPendingApproval) : '—'}
+            value={c ? formatInt(eventsPendingApproval) : '—'}
             color="bg-mint text-ink"
           />
-          <StatBubble label="Events published" value={c ? formatInt(c.eventsPublished) : '—'} color="bg-coral text-white" />
+          <StatBubble label="Events published" value={c ? formatInt(eventsPublished) : '—'} color="bg-coral text-white" />
           <StatBubble
             label="Support cases (open pipeline)"
-            value={c ? formatInt(c.supportCasesOpenPipeline) : '—'}
+            value={c ? formatInt(supportCasesOpenPipeline) : '—'}
             color="bg-ink text-white"
           />
           <StatBubble
             label="Listing moderation (queued / in review)"
-            value={c ? formatInt(c.listingModerationQueuedOrInReview) : '—'}
+            value={c ? formatInt(listingModerationQueuedOrInReview) : '—'}
             color="bg-lemon text-ink"
           />
           <StatBubble
             label="Role applications submitted"
-            value={c ? formatInt(c.roleApplicationsSubmitted) : '—'}
+            value={c ? formatInt(roleApplicationsSubmitted) : '—'}
             color="bg-mint text-ink"
           />
-          <StatBubble label="Payouts held" value={c ? formatInt(c.payoutsHeld) : '—'} color="bg-coral text-white" />
+          <StatBubble label="Payouts held" value={c ? formatInt(payoutsHeld) : '—'} color="bg-coral text-white" />
         </div>
       </AdminSection>
 
@@ -109,7 +120,7 @@ export function DashboardHomePage() {
             </CardHeader>
             <CardContent>
               <p className="font-mono text-3xl font-black text-amber">
-                {c ? formatInt(c.listingModerationQueuedOrInReview) : '—'}
+                {c ? formatInt(listingModerationQueuedOrInReview) : '—'}
               </p>
               <p className="mt-2 text-[13px] font-semibold text-ink-60">
                 <Link to="/moderation/listings" className="font-bold text-coral hover:underline">
@@ -125,7 +136,7 @@ export function DashboardHomePage() {
         divider
         eyebrow="Live catalog"
         title="Spotlight events"
-        description="Highest-signal events with imagery, fill rate, and satisfaction proxies — same card component used across cancellations and featured tooling."
+        description="Highest-signal events with imagery, fill rate, and satisfaction proxies — same card component used in featured tooling."
       >
         {events.isLoading ? <p className="text-sm text-ink-60">Loading…</p> : null}
         <div className="grid gap-6 lg:grid-cols-3">

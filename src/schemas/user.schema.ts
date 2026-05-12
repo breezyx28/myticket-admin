@@ -4,7 +4,7 @@ import { platformUserRoleSchema } from './shared';
 export const adminUserRowSchema = z.object({
   id: z.string(),
   displayName: z.string(),
-  email: z.string().email(),
+  email: z.string(),
   role: platformUserRoleSchema,
   suspended: z.boolean(),
   joinedAt: z.string(),
@@ -18,6 +18,12 @@ export const adminUserDetailSchema = adminUserRowSchema.extend({
   ticketsPurchased: z.number().int().nonnegative(),
   bookingsCount: z.number().int().nonnegative(),
   ratingGivenCount: z.number().int().nonnegative(),
+  phone: z.string().optional(),
+  isActive: z.boolean().optional(),
+  emailVerifiedAt: z.string().nullable().optional(),
+  phoneVerifiedAt: z.string().nullable().optional(),
+  suspensionReason: z.string().nullable().optional(),
+  lastLoginAt: z.string().nullable().optional(),
 });
 
 export type AdminUserDetail = z.infer<typeof adminUserDetailSchema>;

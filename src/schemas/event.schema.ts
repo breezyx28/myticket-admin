@@ -53,6 +53,8 @@ export type UpsertCategoryInput = z.infer<typeof upsertCategorySchema>;
 export const featuredEventsConfigSchema = z.object({
   mode: z.enum(['algorithm', 'manual_override']),
   manualEventIds: z.array(z.string()),
+  /** How often the storefront hero refreshes (API `refresh_minutes`, required on save). */
+  refreshMinutes: z.coerce.number().int().min(1).max(10080).default(60),
 });
 
 export type FeaturedEventsConfig = z.infer<typeof featuredEventsConfigSchema>;

@@ -1,5 +1,7 @@
 import { ListFiltersBar } from '@/components/admin/ListFiltersBar';
 import { filterSelectClassName } from '@/lib/adminFilters';
+import { supportPriorityBadgeClass, supportStatusBadgeClass } from '@/lib/supportStatusUi';
+import { cn } from '@/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { rowMatchesSearch } from '@/lib/listQuery';
 import type { SupportThread } from '@/schemas/support.schema';
@@ -15,7 +17,14 @@ export function SupportInboxPage() {
   const filtered = useMemo(() => {
     return (data ?? []).filter((t) => {
       if (status !== 'all' && t.status !== status) return false;
-      return rowMatchesSearch(search, [t.subject, t.userEmail, t.preview, t.id]);
+      return rowMatchesSearch(search, [
+        t.subject,
+        t.userEmail,
+        t.requesterDisplayName,
+        t.preview,
+        t.id,
+        t.code,
+      ]);
     });
   }, [data, search, status]);
 
@@ -25,7 +34,7 @@ export function SupportInboxPage() {
         <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-ink-40">Support</p>
         <h1 className="text-3xl font-extrabold text-ink">Inbox</h1>
         <p className="mt-2 max-w-2xl text-[14px] text-ink-60">
-          Centralized threads from the main website — chat and async messages (sample data until support-case GETs are wired).
+          Centralized support cases from the API — assign, resolve, and reply from this inbox.
         </p>
       </div>
       <Card className="rounded-3xl border-ink-10 shadow-card-sm">
@@ -36,7 +45,7 @@ export function SupportInboxPage() {
           <ListFiltersBar
             searchValue={search}
             onSearchChange={setSearch}
-            searchPlaceholder="Search subject, email, preview…"
+            searchPlaceholder="Search subject, code, requester, preview…"
             className="mb-4"
           >
             <select
@@ -62,12 +71,41 @@ export function SupportInboxPage() {
                 className="block rounded-2xl border border-ink-10 px-4 py-3 transition-colors hover:border-coral/40 hover:bg-surface-tint"
               >
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <p className="font-semibold text-ink">{t.subject}</p>
-                  <span className="rounded-full bg-ink-5 px-2 py-0.5 text-[11px] font-bold uppercase text-ink-60">
-                    {t.status.replace('_', ' ')}
-                  </span>
+                  <div className="min-w-0 space-y-0.5">
+                    <p className="font-semibold text-ink">{t.subject}</p>
+                    {t.code ? (
+                      <p className="text-[11px] font-mono font-semibold uppercase tracking-wide text-ink-40">
+                        {t.code}
+                      </p>
+                    ) : null}
+                  </div>
+                  <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
+                    <span
+                      className={cn(
+                        'rounded-full px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide',
+                        supportStatusBadgeClass(t.status),
+                      )}
+                    >
+                      {t.status.replace('_', ' ')}
+                    </span>
+                    {t.priority ? (
+                      <span
+                        className={cn(
+                          'rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide',
+                          supportPriorityBadgeClass(t.priority),
+                        )}
+                      >
+                        {t.priority}
+                      </span>
+                    ) : null}
+                  </div>
                 </div>
-                <p className="mt-1 text-[13px] text-ink-60">{t.userEmail}</p>
+                <div className="mt-1 space-y-0.5 text-[13px] text-ink-60">
+                  {t.requesterDisplayName ? (
+                    <p className="font-semibold text-ink">{t.requesterDisplayName}</p>
+                  ) : null}
+                  <p className={t.requesterDisplayName ? 'text-ink-50' : ''}>{t.userEmail}</p>
+                </div>
                 <p className="mt-1 line-clamp-2 text-[13px] text-ink-40">{t.preview}</p>
               </Link>
             ))}

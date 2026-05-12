@@ -93,3 +93,13 @@ export function updateSessionTokens(accessToken: string | null, refreshToken: st
     refreshToken: refreshToken ?? cur.refreshToken,
   });
 }
+
+/** Merge into persisted `user` (e.g. after profile PATCH). */
+export function patchPersistedSessionUser(patch: Partial<SessionUser>) {
+  const cur = loadPersistedSession();
+  if (!cur) return;
+  savePersistedSession({
+    ...cur,
+    user: { ...cur.user, ...patch },
+  });
+}

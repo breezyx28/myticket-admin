@@ -5,8 +5,11 @@ export const governmentIdStatusSchema = z.enum(['pending', 'verified', 'rejected
 
 export const talentProfileSchema = z.object({
   id: z.string(),
+  /** Public profile slug when API provides it (e.g. marketplace listing). */
+  slug: z.string().optional(),
   stageName: z.string(),
   legalName: z.string(),
+  /** Contact email when present; otherwise a stable synthetic address from `user_id` for UI/search. */
   email: z.string().email(),
   phone: z.string(),
   country: z.string(),

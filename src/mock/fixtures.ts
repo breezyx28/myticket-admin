@@ -381,6 +381,7 @@ export const MOCK_CATEGORIES = eventCategoryListSchema.parse([
 export const MOCK_FEATURED_CONFIG = featuredEventsConfigSchema.parse({
   mode: 'algorithm',
   manualEventIds: ['ev-1'],
+  refreshMinutes: 60,
 });
 
 export const MOCK_FEE_CONFIG = feeConfigurationSchema.parse({

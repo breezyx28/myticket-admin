@@ -148,7 +148,10 @@ export function ComplaintsPage() {
                               onClick={() => {
                                 const note = window.prompt('Optional resolution note for the API body') ?? '';
                                 void run(row.id, 'resolve', 'Complaint resolved.', () =>
-                                  resolve({ id: row.id, resolutionNote: note.trim() || undefined }).unwrap()
+                                  resolve({
+                                    id: row.id,
+                                    resolutionNote: note.trim() || 'Resolved via admin.',
+                                  }).unwrap()
                                 );
                               }}
                             >

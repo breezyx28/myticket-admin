@@ -48,31 +48,47 @@ export function UserDetailPage() {
         <p className="text-[14px] text-ink-60">{u.email}</p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2">
         <Card className="rounded-3xl border-ink-10 shadow-card-sm">
-          <CardHeader>
-            <CardTitle className="text-sm">Tickets purchased</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="font-mono text-3xl font-black text-ink">{u.ticketsPurchased}</p>
+          <CardHeader><CardTitle className="text-sm">Account info</CardTitle></CardHeader>
+          <CardContent className="space-y-2 text-[14px]">
+            {u.phone ? (
+              <p><span className="font-semibold text-ink-60">Phone: </span><span className="text-ink">{u.phone}</span></p>
+            ) : null}
+            <p><span className="font-semibold text-ink-60">Role: </span><span className="capitalize text-ink">{u.role}</span></p>
+            <p><span className="font-semibold text-ink-60">Status: </span>
+              <span className={u.suspended ? 'text-coral font-semibold' : 'text-ink'}>
+                {u.suspended ? 'Suspended' : u.isActive === false ? 'Inactive' : 'Active'}
+              </span>
+            </p>
+            {u.suspensionReason ? (
+              <p><span className="font-semibold text-ink-60">Suspension reason: </span><span className="text-ink">{u.suspensionReason}</span></p>
+            ) : null}
+            <p><span className="font-semibold text-ink-60">Email verified: </span>
+              <span className="text-ink">{u.emailVerifiedAt ? new Date(u.emailVerifiedAt).toLocaleDateString() : 'No'}</span>
+            </p>
+            <p><span className="font-semibold text-ink-60">Phone verified: </span>
+              <span className="text-ink">{u.phoneVerifiedAt ? new Date(u.phoneVerifiedAt).toLocaleDateString() : 'No'}</span>
+            </p>
+            {u.lastLoginAt ? (
+              <p><span className="font-semibold text-ink-60">Last login: </span><span className="text-ink">{new Date(u.lastLoginAt).toLocaleString()}</span></p>
+            ) : null}
+            <p><span className="font-semibold text-ink-60">Joined: </span><span className="text-ink">{u.joinedAt ? new Date(u.joinedAt).toLocaleDateString() : '—'}</span></p>
           </CardContent>
         </Card>
-        <Card className="rounded-3xl border-ink-10 shadow-card-sm">
-          <CardHeader>
-            <CardTitle className="text-sm">Bookings</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="font-mono text-3xl font-black text-ink">{u.bookingsCount}</p>
-          </CardContent>
-        </Card>
-        <Card className="rounded-3xl border-ink-10 shadow-card-sm">
-          <CardHeader>
-            <CardTitle className="text-sm">Ratings given</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="font-mono text-3xl font-black text-ink">{u.ratingGivenCount}</p>
-          </CardContent>
-        </Card>
+
+        {(u.ticketsPurchased > 0 || u.bookingsCount > 0 || u.ratingGivenCount > 0) ? (
+          <div className="grid gap-4">
+            <Card className="rounded-3xl border-ink-10 shadow-card-sm">
+              <CardHeader><CardTitle className="text-sm">Tickets purchased</CardTitle></CardHeader>
+              <CardContent><p className="font-mono text-3xl font-black text-ink">{u.ticketsPurchased}</p></CardContent>
+            </Card>
+            <Card className="rounded-3xl border-ink-10 shadow-card-sm">
+              <CardHeader><CardTitle className="text-sm">Bookings</CardTitle></CardHeader>
+              <CardContent><p className="font-mono text-3xl font-black text-ink">{u.bookingsCount}</p></CardContent>
+            </Card>
+          </div>
+        ) : null}
       </div>
 
       <Card className="rounded-3xl border-ink-10 shadow-card-sm">

@@ -4,6 +4,12 @@ export const adminComplaintStatusSchema = z.enum(['open', 'triaged', 'resolved',
 
 export type AdminComplaintStatus = z.infer<typeof adminComplaintStatusSchema>;
 
+export const resolveComplaintSchema = z.object({
+  resolutionNote: z.string().trim().min(3, 'Provide a resolution note'),
+});
+
+export type ResolveComplaintInput = z.infer<typeof resolveComplaintSchema>;
+
 export const adminComplaintRowSchema = z.object({
   id: z.string().min(1),
   title: z.string(),

@@ -4,7 +4,7 @@ import { filterSelectClassName } from '@/lib/adminFilters';
 import { rowMatchesSearch } from '@/lib/listQuery';
 import type { AdminRefundStatus } from '@/schemas/refund.schema';
 import { useGetRefundsQuery } from '@/services/adminApi';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useMemo, useState } from 'react';
 
 function statusLabel(s: AdminRefundStatus): string {
@@ -12,6 +12,7 @@ function statusLabel(s: AdminRefundStatus): string {
 }
 
 export function RefundsListPage() {
+  const navigate = useNavigate();
   const { data, isLoading } = useGetRefundsQuery();
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState<'all' | AdminRefundStatus>('all');
@@ -36,8 +37,8 @@ export function RefundsListPage() {
         <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-ink-40">Commerce</p>
         <h1 className="text-3xl font-extrabold text-ink">Refunds</h1>
         <p className="mt-2 max-w-2xl text-[14px] text-ink-60">
-          Refund requests and outcomes from <span className="font-mono text-ink">GET /api/v1/admin/refunds</span>. When an
-          order link exists, open the order for force-refund and related context.
+          Refund requests and outcomes. Click a row to open the refund detail. When an order link exists, use it to open
+          the order for force-refund and related context.
         </p>
       </div>
       <Card className="rounded-3xl border-ink-10 shadow-card-sm">
@@ -85,7 +86,11 @@ export function RefundsListPage() {
               </thead>
               <tbody>
                 {filtered.map((row) => (
-                  <tr key={row.id} className="border-t border-ink-10 hover:bg-surface-tint">
+                  <tr
+                    key={row.id}
+                    className="cursor-pointer border-t border-ink-10 hover:bg-surface-tint"
+                    onClick={() => navigate(`/refunds/${encodeURIComponent(row.id)}`)}
+                  >
                     <td className="px-4 py-3 font-mono text-[13px] font-semibold text-ink">{row.id}</td>
                     <td className="px-4 py-3 capitalize text-ink-60">{statusLabel(row.status)}</td>
                     <td className="px-4 py-3 font-mono text-ink">{row.amountSar.toLocaleString()}</td>
@@ -94,7 +99,11 @@ export function RefundsListPage() {
                     <td className="max-w-[220px] px-4 py-3 text-[13px] text-ink-60">{row.reason}</td>
                     <td className="px-4 py-3">
                       {row.orderId ? (
-                        <Link to={`/orders/${row.orderId}`} className="font-mono font-semibold text-coral hover:underline">
+                        <Link
+                          to={`/orders/${row.orderId}`}
+                          className="font-mono font-semibold text-coral hover:underline"
+                          onClick={(e) => e.stopPropagation()}
+                        >
                           {row.orderId}
                         </Link>
                       ) : (

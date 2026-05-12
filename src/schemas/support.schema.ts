@@ -1,11 +1,20 @@
 import { z } from 'zod';
 import { supportStatusSchema } from './shared';
 
+export const supportPrioritySchema = z.enum(['low', 'normal', 'high', 'urgent']);
+
 export const supportThreadSchema = z.object({
   id: z.string(),
-  userEmail: z.string().email(),
+  /** Case reference from API (e.g. SC-DEMO-0001). */
+  code: z.string().optional(),
+  /** Requester display name from nested `user` when present (e.g. full_name / display_name). */
+  requesterDisplayName: z.string().optional(),
+  /** Requester email when present; otherwise a short label such as "User #6". */
+  userEmail: z.string().min(1),
   subject: z.string(),
   status: supportStatusSchema,
+  /** API `priority` when present. */
+  priority: supportPrioritySchema.optional(),
   updatedAt: z.string(),
   preview: z.string(),
 });
@@ -23,6 +32,8 @@ export const supportMessageSchema = z.object({
 
 export const supportThreadDetailSchema = supportThreadSchema.extend({
   messages: z.array(supportMessageSchema),
+  /** From API `resolution_note` on case detail. */
+  resolutionNote: z.string().optional(),
 });
 
 export type SupportThreadDetail = z.infer<typeof supportThreadDetailSchema>;

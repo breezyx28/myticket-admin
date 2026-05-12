@@ -9,6 +9,7 @@ import {
 import {
   clearPersistedSession,
   loadPersistedSession,
+  patchPersistedSessionUser,
   savePersistedSession,
   type PersistedAdminSessionV2,
 } from '@/lib/authSession';
@@ -108,13 +109,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   }, []);
 
+  const updateUser = useCallback((patch: Partial<SessionUser>) => {
+    setUser((u) => (u ? { ...u, ...patch } : null));
+    patchPersistedSessionUser(patch);
+  }, []);
+
   const value = useMemo<AuthContextValue>(
     () => ({
       user,
       signIn,
       signOut,
+      updateUser,
     }),
-    [user, signIn, signOut]
+    [user, signIn, signOut, updateUser]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

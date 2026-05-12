@@ -12,9 +12,10 @@ import {
   useGetAuctionsQuery,
 } from '@/services/adminApi';
 import { useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 
 export function AuctionsListPage() {
+  const navigate = useNavigate();
   const { data, isLoading } = useGetAuctionsQuery();
   const [freeze] = useFreezeAuctionMutation();
   const [cancel] = useCancelAuctionMutation();
@@ -49,7 +50,14 @@ export function AuctionsListPage() {
   }
 
   function canCancel(s: AdminAuctionStatus): boolean {
-    return s !== 'cancelled' && s !== 'finalized' && s !== 'ended';
+    return (
+      s !== 'cancelled' &&
+      s !== 'finalized' &&
+      s !== 'ended' &&
+      s !== 'sold' &&
+      s !== 'expired' &&
+      s !== 'removed'
+    );
   }
 
   function canFinalize(s: AdminAuctionStatus): boolean {
@@ -119,10 +127,18 @@ export function AuctionsListPage() {
               </thead>
               <tbody>
                 {filtered.map((row) => (
-                  <tr key={row.id} className="border-t border-ink-10 hover:bg-surface-tint">
+                  <tr
+                    key={row.id}
+                    className="cursor-pointer border-t border-ink-10 hover:bg-surface-tint"
+                    onClick={() => navigate(`/auctions/${encodeURIComponent(row.id)}`)}
+                  >
                     <td className="px-4 py-3">
                       <p className="font-mono text-[12px] font-semibold text-ink-60">{row.id}</p>
-                      <Link to={`/auctions/${encodeURIComponent(row.id)}`} className="font-medium text-coral hover:underline">
+                      <Link
+                        to={`/auctions/${encodeURIComponent(row.id)}`}
+                        className="font-medium text-coral hover:underline"
+                        onClick={(e) => e.stopPropagation()}
+                      >
                         {row.title}
                       </Link>
                     </td>
@@ -132,7 +148,7 @@ export function AuctionsListPage() {
                     <td className="px-4 py-3 text-[13px] text-ink-60">
                       {new Date(row.endsAt).toLocaleString()}
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                       <div className="flex max-w-[280px] flex-wrap gap-1.5">
                         {canFreeze(row.status) ? (
                           <Button

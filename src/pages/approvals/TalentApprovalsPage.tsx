@@ -40,6 +40,7 @@ export function TalentApprovalsPage() {
         row.bio,
         row.genres.join(' '),
         row.id,
+        row.slug,
       ]);
     });
   }, [data, search, status, gov]);

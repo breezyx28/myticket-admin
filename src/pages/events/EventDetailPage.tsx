@@ -12,7 +12,7 @@ import {
   useUnfeatureEventMutation,
 } from '@/services/adminApi';
 import { Link, useParams } from 'react-router-dom';
-import { Ban, CalendarRange, MapPin, Sparkles, Ticket, TrendingUp } from 'lucide-react';
+import { CalendarRange, MapPin, Sparkles, Ticket, TrendingUp } from 'lucide-react';
 
 export function EventDetailPage() {
   const { id = '' } = useParams();
@@ -96,13 +96,6 @@ export function EventDetailPage() {
                 >
                   <Sparkles size={16} strokeWidth={2} className="text-coral" />
                   Featuring controls
-                </Link>
-                <Link
-                  to="/events/cancellations"
-                  className="inline-flex items-center gap-2 rounded-full border border-ink-10 bg-white px-4 py-2 text-[13px] font-bold text-ink hover:border-coral/40"
-                >
-                  <Ban size={16} strokeWidth={2} className="text-coral" />
-                  Cancellation desk
                 </Link>
               </div>
             </CardContent>

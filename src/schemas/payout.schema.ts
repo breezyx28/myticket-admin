@@ -25,3 +25,10 @@ export const adminPayoutRowSchema = z.object({
 export type AdminPayoutRow = z.infer<typeof adminPayoutRowSchema>;
 
 export const adminPayoutListSchema = z.array(adminPayoutRowSchema);
+
+export const rejectPayoutSchema = z.object({
+  /** Omitted or empty when the API should receive `{}`. */
+  reason: z.string().trim().max(500).optional(),
+});
+
+export type RejectPayoutInput = z.infer<typeof rejectPayoutSchema>;

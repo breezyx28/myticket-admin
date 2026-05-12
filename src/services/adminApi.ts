@@ -51,7 +51,8 @@ import {
 import { financialAnalyticsSchema, type FinancialAnalytics } from '@/schemas/analytics.schema';
 import type { CancelEventInput, FeaturedEventsConfig, UpsertCategoryInput } from '@/schemas/event.schema';
 import { adminEventRowSchema, featuredEventsConfigSchema } from '@/schemas/event.schema';
-import { adminAuctionRowSchema } from '@/schemas/auction.schema';
+import { adminAuctionDetailSchema, type AdminAuctionDetail } from '@/schemas/auction.schema';
+import { adminProfileUpdateSchema, type AdminProfileUpdate } from '@/schemas/adminSelf.schema';
 import type { FeeConfiguration, NotificationSettings } from '@/schemas/settings.schema';
 import {
   feeConfigurationSchema,
@@ -63,8 +64,12 @@ import type { RejectRoleApplicationInput } from '@/schemas/roleApplication.schem
 import { roleApplicationSchema } from '@/schemas/roleApplication.schema';
 import type { RejectTalentProfileInput } from '@/schemas/talentApproval.schema';
 import { talentProfileSchema } from '@/schemas/talentApproval.schema';
-import { adminOrderDetailSchema } from '@/schemas/order.schema';
-import { adminUserDetailSchema, type SuspendUserInput } from '@/schemas/user.schema';
+import { adminOrderDetailSchema, forceRefundOrderSchema } from '@/schemas/order.schema';
+import { adminRefundRowSchema } from '@/schemas/refund.schema';
+import { adminUserDetailSchema, suspendUserSchema, type SuspendUserInput } from '@/schemas/user.schema';
+import { rejectPayoutSchema } from '@/schemas/payout.schema';
+import { resolveComplaintSchema } from '@/schemas/complaint.schema';
+import { cancelEventSchema } from '@/schemas/event.schema';
 import type { RevenueChartRange } from '@/types/analytics';
 import { baseQueryWithReauth, sessionHasApiCredentials } from '@/services/adminFetchBaseQuery';
 import { shouldUseMockReads, warnReadFallback } from '@/services/adminReadMode';
@@ -82,6 +87,7 @@ import {
   mapLeaderboardsFromApi,
   mapAdminOrderDetailFromApi,
   mapAdminOrdersFromApi,
+  mapAdminRefundRowFromApi,
   mapAdminRefundsFromApi,
   mapAdminAuctionsFromApi,
   mapAdminPayoutsFromApi,
@@ -174,10 +180,12 @@ type LiveReadName =
   | 'getOrders'
   | 'getOrder'
   | 'getRefunds'
+  | 'getRefund'
   | 'getRefundBreakdowns'
   | 'getPayouts'
   | 'getAuctions'
   | 'getAuction'
+  | 'getOrganizerKyc'
   | 'getScanners'
   | 'getScanLogs'
   | 'getComplaints'
@@ -217,10 +225,12 @@ const LIVE_GET: Record<LiveReadName, string | null> = {
   getOrders: '/api/v1/admin/orders',
   getOrder: '/api/v1/admin/orders/:id',
   getRefunds: '/api/v1/admin/refunds',
+  getRefund: '/api/v1/admin/refunds/:id',
   getRefundBreakdowns: '/api/v1/admin/finance/refund-breakdowns',
   getPayouts: '/api/v1/admin/finance/payouts',
   getAuctions: '/api/v1/admin/auctions',
   getAuction: '/api/v1/admin/auctions/:id',
+  getOrganizerKyc: '/api/v1/admin/finance/organizers/:id/kyc',
   getScanners: '/api/v1/admin/scanners',
   getScanLogs: '/api/v1/admin/scan-logs',
   getComplaints: '/api/v1/admin/complaints',
@@ -266,7 +276,7 @@ async function tryLiveRead<T>(
 
 function financialAnalyticsForRange(range: RevenueChartRange): FinancialAnalytics {
   const n = range === '7d' ? 7 : range === '30d' ? 30 : 90;
-  const fullSeries = MOCK_FINANCIAL_ANALYTICS.revenueByDay;
+  const fullSeries = MOCK_FINANCIAL_ANALYTICS.revenueByDay ?? [];
   const slice = fullSeries.slice(-Math.min(n, fullSeries.length));
   return financialAnalyticsSchema.parse({
     ...MOCK_FINANCIAL_ANALYTICS,
@@ -646,8 +656,12 @@ export const adminApi = createApi({
           return resolveFromMock();
         }
 
+        // Use numericId from cached list row if available (API expects numeric id)
+        const listRow = ordersState.find((r) => r.id === id);
+        const apiId = listRow?.numericId ? String(listRow.numericId) : id;
+
         const res = await baseQueryWithReauth(
-          { url: orderPath.replace(':id', encodeURIComponent(id)), method: 'GET' },
+          { url: orderPath.replace(':id', encodeURIComponent(apiId)), method: 'GET' },
           api,
           extraOptions
         );
@@ -662,15 +676,22 @@ export const adminApi = createApi({
     forceRefundOrder: builder.mutation<{ ok: true }, string>({
       invalidatesTags: (_r, _e, id) => ['Orders', { type: 'Orders', id }, 'Refunds', 'RefundBreakdowns'],
       async queryFn(id, api, extraOptions) {
+        const parsed = forceRefundOrderSchema.safeParse({ orderId: id });
+        if (!parsed.success) return { error: { status: 400, data: parsed.error.flatten() } };
         if (!sessionHasApiCredentials()) {
           await delay(120);
           syncOrderRow(id, { status: 'refunded' });
           return { data: { ok: true } };
         }
+        // Prefer numeric primary key for URL (detail/list pass `numericId ?? id`).
+        const listRow = ordersState.find((r) => r.id === id);
+        const apiId =
+          /^\d+$/.test(id) ? id : listRow?.numericId ? String(listRow.numericId) : id;
         const res = await baseQueryWithReauth(
           {
-            url: `/api/v1/admin/orders/${encodeURIComponent(id)}/force-refund`,
+            url: `/api/v1/admin/orders/${encodeURIComponent(apiId)}/force-refund`,
             method: 'POST',
+            body: {},
           },
           api,
           extraOptions
@@ -687,6 +708,39 @@ export const adminApi = createApi({
         return tryLiveRead(api, extraOptions, 'getRefunds', 55, refundsState, {
           map: mapAdminRefundsFromApi,
         });
+      },
+    }),
+    getRefund: builder.query<NonNullable<(typeof refundsState)[number]>, string>({
+      providesTags: (_r, _e, id) => [{ type: 'Refunds', id }],
+      async queryFn(id, api, extraOptions) {
+        await delay(40);
+        const localRow = refundsState.find((r) => r.id === id);
+        const localParsed = localRow ? adminRefundRowSchema.safeParse(localRow) : null;
+
+        const resolveFromMock = (): { data: (typeof refundsState)[number] } | { error: { status: number; data: unknown } } => {
+          if (!localParsed?.success) return { error: { status: 404, data: 'Not found' } };
+          return { data: localParsed.data };
+        };
+
+        if (shouldUseMockReads()) return resolveFromMock();
+
+        const refundPath = LIVE_GET.getRefund;
+        if (!refundPath || !getAccessToken()) {
+          warnReadFallback('getRefund');
+          return resolveFromMock();
+        }
+
+        const res = await baseQueryWithReauth(
+          { url: refundPath.replace(':id', encodeURIComponent(id)), method: 'GET' },
+          api,
+          extraOptions
+        );
+        if (res.error) return { error: toFetchError(res.error) };
+        try {
+          return { data: mapAdminRefundRowFromApi(res.data) };
+        } catch (e) {
+          return mapLiveReadFailure(e);
+        }
       },
     }),
     getRefundBreakdowns: builder.query<typeof refundBreakdownsState, void>({
@@ -727,12 +781,15 @@ export const adminApi = createApi({
     rejectPayout: builder.mutation<{ ok: true }, { id: string; reason?: string }>({
       invalidatesTags: (_r, _e, arg) => ['Payouts', { type: 'Payouts', id: arg.id }],
       async queryFn({ id, reason }, api, extraOptions) {
+        const parsed = rejectPayoutSchema.safeParse({ reason });
+        if (!parsed.success) return { error: { status: 400, data: parsed.error.flatten() } };
         if (!sessionHasApiCredentials()) {
           await delay(100);
           syncPayoutRow(id, { status: 'rejected' });
           return { data: { ok: true } };
         }
-        const body = reason !== undefined && reason !== '' ? { reason } : {};
+        const trimmed = (parsed.data.reason ?? '').trim();
+        const body = trimmed.length > 0 ? { reason: trimmed } : {};
         const res = await baseQueryWithReauth(
           {
             url: `/api/v1/admin/finance/payouts/${encodeURIComponent(id)}/reject`,
@@ -813,14 +870,14 @@ export const adminApi = createApi({
         });
       },
     }),
-    getAuction: builder.query<NonNullable<(typeof auctionsState)[number]>, string>({
+    getAuction: builder.query<AdminAuctionDetail, string>({
       providesTags: (_r, _e, id) => [{ type: 'Auctions', id }],
       async queryFn(id, api, extraOptions) {
         await delay(40);
         const localRow = auctionsState.find((a) => a.id === id);
-        const localParsed = localRow ? adminAuctionRowSchema.safeParse(localRow) : null;
+        const localParsed = localRow ? adminAuctionDetailSchema.safeParse(localRow) : null;
 
-        const resolveFromMock = (): { data: (typeof auctionsState)[number] } | { error: { status: number; data: unknown } } => {
+        const resolveFromMock = (): { data: AdminAuctionDetail } | { error: { status: number; data: unknown } } => {
           if (!localParsed?.success) return { error: { status: 404, data: 'Not found' } };
           return { data: localParsed.data };
         };
@@ -929,79 +986,70 @@ export const adminApi = createApi({
     triageComplaint: builder.mutation<{ ok: true }, string>({
       invalidatesTags: (_r, _e, id) => ['Complaints', { type: 'Complaints', id }],
       async queryFn(id, api, extraOptions) {
+        if (!id || typeof id !== 'string') return { error: { status: 400, data: { message: 'Invalid complaint id' } } };
         if (!sessionHasApiCredentials()) {
           await delay(90);
-          syncComplaintRow(id, {
-            status: 'triaged',
-            updatedAt: new Date().toISOString(),
-          });
-          return { data: { ok: true } };
-        }
-        const res = await baseQueryWithReauth(
-          { url: `/api/v1/admin/complaints/${encodeURIComponent(id)}/triage`, method: 'POST' },
-          api,
-          extraOptions
-        );
-        if (res.error) return { error: toFetchError(res.error) };
-        if (shouldUseMockReads()) {
           syncComplaintRow(id, { status: 'triaged', updatedAt: new Date().toISOString() });
-        }
-        return { data: { ok: true } };
-      },
-    }),
-    resolveComplaint: builder.mutation<{ ok: true }, { id: string; resolutionNote?: string }>({
-      invalidatesTags: (_r, _e, arg) => ['Complaints', { type: 'Complaints', id: arg.id }],
-      async queryFn({ id, resolutionNote }, api, extraOptions) {
-        if (!sessionHasApiCredentials()) {
-          await delay(90);
-          syncComplaintRow(id, {
-            status: 'resolved',
-            updatedAt: new Date().toISOString(),
-          });
-          void resolutionNote;
           return { data: { ok: true } };
         }
-        const body =
-          resolutionNote !== undefined && resolutionNote !== ''
-            ? { resolution_note: resolutionNote }
-            : {};
         const res = await baseQueryWithReauth(
           {
-            url: `/api/v1/admin/complaints/${encodeURIComponent(id)}/resolve`,
+            url: `/api/v1/admin/complaints/${encodeURIComponent(id)}/triage`,
             method: 'POST',
-            body,
+            body: { action: 'triage' },
           },
           api,
           extraOptions
         );
         if (res.error) return { error: toFetchError(res.error) };
-        if (shouldUseMockReads()) {
+        if (shouldUseMockReads()) syncComplaintRow(id, { status: 'triaged', updatedAt: new Date().toISOString() });
+        return { data: { ok: true } };
+      },
+    }),
+    resolveComplaint: builder.mutation<{ ok: true }, { id: string; resolutionNote: string }>({
+      invalidatesTags: (_r, _e, arg) => ['Complaints', { type: 'Complaints', id: arg.id }],
+      async queryFn({ id, resolutionNote }, api, extraOptions) {
+        const parsed = resolveComplaintSchema.safeParse({ resolutionNote });
+        if (!parsed.success) return { error: { status: 400, data: parsed.error.flatten() } };
+        if (!sessionHasApiCredentials()) {
+          await delay(90);
           syncComplaintRow(id, { status: 'resolved', updatedAt: new Date().toISOString() });
+          return { data: { ok: true } };
         }
-        void resolutionNote;
+        const res = await baseQueryWithReauth(
+          {
+            url: `/api/v1/admin/complaints/${encodeURIComponent(id)}/resolve`,
+            method: 'POST',
+            body: { resolution_note: parsed.data.resolutionNote },
+          },
+          api,
+          extraOptions
+        );
+        if (res.error) return { error: toFetchError(res.error) };
+        if (shouldUseMockReads()) syncComplaintRow(id, { status: 'resolved', updatedAt: new Date().toISOString() });
         return { data: { ok: true } };
       },
     }),
     escalateComplaint: builder.mutation<{ ok: true }, string>({
       invalidatesTags: (_r, _e, id) => ['Complaints', { type: 'Complaints', id }],
       async queryFn(id, api, extraOptions) {
+        if (!id || typeof id !== 'string') return { error: { status: 400, data: { message: 'Invalid complaint id' } } };
         if (!sessionHasApiCredentials()) {
           await delay(90);
-          syncComplaintRow(id, {
-            status: 'escalated',
-            updatedAt: new Date().toISOString(),
-          });
+          syncComplaintRow(id, { status: 'escalated', updatedAt: new Date().toISOString() });
           return { data: { ok: true } };
         }
         const res = await baseQueryWithReauth(
-          { url: `/api/v1/admin/complaints/${encodeURIComponent(id)}/escalate`, method: 'POST' },
+          {
+            url: `/api/v1/admin/complaints/${encodeURIComponent(id)}/escalate`,
+            method: 'POST',
+            body: { action: 'escalate' },
+          },
           api,
           extraOptions
         );
         if (res.error) return { error: toFetchError(res.error) };
-        if (shouldUseMockReads()) {
-          syncComplaintRow(id, { status: 'escalated', updatedAt: new Date().toISOString() });
-        }
+        if (shouldUseMockReads()) syncComplaintRow(id, { status: 'escalated', updatedAt: new Date().toISOString() });
         return { data: { ok: true } };
       },
     }),
@@ -1147,8 +1195,8 @@ export const adminApi = createApi({
 
         if (shouldUseMockReads()) return resolveFromMock();
 
-        const kycPath = '/api/v1/admin/finance/organizers/:id/kyc';
-        if (!getAccessToken()) {
+        const kycPath = LIVE_GET.getOrganizerKyc;
+        if (!kycPath || !getAccessToken()) {
           warnReadFallback('getOrganizerKyc');
           return resolveFromMock();
         }
@@ -1285,6 +1333,8 @@ export const adminApi = createApi({
     suspendUser: builder.mutation<{ ok: true }, { id: string; body: SuspendUserInput }>({
       invalidatesTags: (_r, _e, arg) => ['Users', { type: 'Users', id: arg.id }],
       async queryFn({ id, body }, api, extraOptions) {
+        const parsed = suspendUserSchema.safeParse(body);
+        if (!parsed.success) return { error: { status: 400, data: parsed.error.flatten() } };
         if (!sessionHasApiCredentials()) {
           await delay(100);
           const r = usersState.find((x) => x.id === id);
@@ -1297,7 +1347,7 @@ export const adminApi = createApi({
           {
             url: `/api/v1/admin/users/${encodeURIComponent(id)}/suspend`,
             method: 'POST',
-            body: { reason: body.reason, permanent: body.permanent },
+            body: { reason: parsed.data.reason, permanent: parsed.data.permanent },
           },
           api,
           extraOptions
@@ -1398,13 +1448,14 @@ export const adminApi = createApi({
     }),
     cancelEvent: builder.mutation<{ ok: true }, CancelEventInput>({
       invalidatesTags: (_r, _e, arg) => ['Events', { type: 'Events', id: arg.eventId }, 'Dashboard'],
-      async queryFn(input, api, extraOptions) {
+      async queryFn(rawInput, api, extraOptions) {
+        const parsed = cancelEventSchema.safeParse(rawInput);
+        if (!parsed.success) return { error: { status: 400, data: parsed.error.flatten() } };
+        const input = parsed.data;
         if (!sessionHasApiCredentials()) {
           await delay(150);
           const r = eventsState.find((e) => e.id === input.eventId);
           if (r) r.status = 'cancelled';
-          void input.confirmTitle;
-          void input.acknowledgement;
           return { data: { ok: true } };
         }
         const res = await baseQueryWithReauth(
@@ -1420,8 +1471,6 @@ export const adminApi = createApi({
           const r = eventsState.find((e) => e.id === input.eventId);
           if (r) r.status = 'cancelled';
         }
-        void input.confirmTitle;
-        void input.acknowledgement;
         return { data: { ok: true } };
       },
     }),
@@ -1593,13 +1642,18 @@ export const adminApi = createApi({
           await delay(80);
           featuredConfigState.mode = parsed.data.mode;
           featuredConfigState.manualEventIds = parsed.data.manualEventIds;
+          featuredConfigState.refreshMinutes = parsed.data.refreshMinutes;
           return { data: { ok: true } };
         }
         const res = await baseQueryWithReauth(
           {
             url: '/api/v1/admin/featured-events/config',
             method: 'POST',
-            body: parsed.data,
+            body: {
+              mode: parsed.data.mode,
+              manual_event_ids: parsed.data.manualEventIds,
+              refresh_minutes: parsed.data.refreshMinutes,
+            },
           },
           api,
           extraOptions
@@ -1608,7 +1662,33 @@ export const adminApi = createApi({
         if (shouldUseMockReads()) {
           featuredConfigState.mode = parsed.data.mode;
           featuredConfigState.manualEventIds = parsed.data.manualEventIds;
+          featuredConfigState.refreshMinutes = parsed.data.refreshMinutes;
         }
+        return { data: { ok: true } };
+      },
+    }),
+    updateAdminProfile: builder.mutation<{ ok: true }, AdminProfileUpdate>({
+      async queryFn(body, api, extraOptions) {
+        const parsed = adminProfileUpdateSchema.safeParse(body);
+        if (!parsed.success) return { error: { status: 400, data: parsed.error.flatten() } };
+        if (!sessionHasApiCredentials()) {
+          await delay(80);
+          return { data: { ok: true } };
+        }
+        const res = await baseQueryWithReauth(
+          {
+            url: '/api/v1/admin/me',
+            method: 'PATCH',
+            body: {
+              name: parsed.data.name,
+              timezone: parsed.data.timezone,
+              digest_email: parsed.data.digestEmail,
+            },
+          },
+          api,
+          extraOptions
+        );
+        if (res.error) return { error: toFetchError(res.error) };
         return { data: { ok: true } };
       },
     }),
@@ -2195,6 +2275,7 @@ export const {
   useGetOrderQuery,
   useForceRefundOrderMutation,
   useGetRefundsQuery,
+  useGetRefundQuery,
   useGetRefundBreakdownsQuery,
   useGetPayoutsQuery,
   useApprovePayoutMutation,
@@ -2241,6 +2322,7 @@ export const {
   useDeleteEventCategoryMutation,
   useGetFeaturedConfigQuery,
   useSetFeaturedConfigMutation,
+  useUpdateAdminProfileMutation,
   useGetFeeConfigurationQuery,
   useUpdateFeeConfigurationMutation,
   useGetNotificationSettingsQuery,

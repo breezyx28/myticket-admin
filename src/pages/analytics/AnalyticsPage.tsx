@@ -53,12 +53,13 @@ export function AnalyticsPage() {
   if (fin.isLoading || counters.isLoading || boards.isLoading) return <p className="text-ink-60">Loading…</p>;
   if (!fin.data || !counters.data || !boards.data) return null;
 
-  const breakdownChart = fin.data.revenueBreakdownByCategory.map((row) => ({
+  const breakdownChart = (fin.data.revenueBreakdownByCategory ?? []).map((row) => ({
     key: row.categoryKey,
     label: row.label,
     revenueSar: row.revenueSar,
   }));
-  const hasTrend = fin.data.revenueByDay.length > 0;
+  const revenueByDay = fin.data.revenueByDay ?? [];
+  const hasTrend = revenueByDay.length > 0;
   const hasBreakdown = breakdownChart.length > 0;
 
   return (
@@ -147,7 +148,7 @@ export function AnalyticsPage() {
                 revenueSar: { label: 'Revenue SAR', color: 'var(--color-coral)' },
               }}
             >
-              <AreaChart data={fin.data.revenueByDay} margin={{ left: 12, right: 12 }}>
+              <AreaChart data={revenueByDay} margin={{ left: 12, right: 12 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} />
                 <XAxis dataKey="date" tickLine={false} axisLine={false} />
                 <YAxis
@@ -247,24 +248,34 @@ export function AnalyticsPage() {
             ) : null}
           </CardHeader>
           <CardContent className="admin-table-scroll">
-            <table className="w-full min-w-[400px] text-left text-[13px]">
-              <thead className="text-[11px] font-bold uppercase text-ink-40">
-                <tr>
-                  <th className="pb-2 pr-2">Title</th>
-                  <th className="pb-2 pr-2">Gross</th>
-                  <th className="pb-2">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {boards.data.events.map((row) => (
-                  <tr key={row.id} className="border-t border-ink-10">
-                    <td className="py-2 pr-2 font-semibold text-ink">{row.title}</td>
-                    <td className="py-2 pr-2 font-mono text-ink-60">{row.revenueGross}</td>
-                    <td className="py-2 text-ink-60">{row.status}</td>
+            {boards.data.events.length === 0 ? (
+              <p className="py-8 text-center text-[14px] text-ink-60">No events in this leaderboard response.</p>
+            ) : (
+              <table className="w-full min-w-[640px] text-left text-[13px]">
+                <thead className="text-[11px] font-bold uppercase text-ink-40">
+                  <tr>
+                    <th className="pb-2 pr-2">Code</th>
+                    <th className="pb-2 pr-2">Id</th>
+                    <th className="pb-2 pr-2">Title</th>
+                    <th className="pb-2 pr-2">Revenue gross</th>
+                    <th className="pb-2 pr-2">Status</th>
+                    <th className="pb-2">Organizer</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {boards.data.events.map((row) => (
+                    <tr key={row.id} className="border-t border-ink-10">
+                      <td className="py-2 pr-2 font-mono text-[12px] text-ink-60">{row.code || '—'}</td>
+                      <td className="py-2 pr-2 font-mono text-[12px] text-ink-60">{row.id}</td>
+                      <td className="py-2 pr-2 font-semibold text-ink">{row.title}</td>
+                      <td className="py-2 pr-2 font-mono text-ink-60">{row.revenueGross}</td>
+                      <td className="py-2 pr-2 capitalize text-ink-60">{row.status}</td>
+                      <td className="py-2 font-mono text-[12px] text-ink-60">{row.organizerId}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
           </CardContent>
         </Card>
         <Card className="rounded-3xl border-ink-10 shadow-card-sm">
@@ -272,22 +283,26 @@ export function AnalyticsPage() {
             <CardTitle className="text-lg">Top organizers (GMV)</CardTitle>
           </CardHeader>
           <CardContent className="admin-table-scroll">
-            <table className="w-full min-w-[400px] text-left text-[13px]">
-              <thead className="text-[11px] font-bold uppercase text-ink-40">
-                <tr>
-                  <th className="pb-2 pr-2">Name</th>
-                  <th className="pb-2">Revenue gross</th>
-                </tr>
-              </thead>
-              <tbody>
-                {boards.data.organizers.map((row) => (
-                  <tr key={row.organizerId} className="border-t border-ink-10">
-                    <td className="py-2 pr-2 font-semibold text-ink">{row.displayName}</td>
-                    <td className="py-2 font-mono text-ink-60">{formatSarCompact(row.totalRevenueGross)}</td>
+            {boards.data.organizers.length === 0 ? (
+              <p className="py-8 text-center text-[14px] text-ink-60">No organizer rows in this response.</p>
+            ) : (
+              <table className="w-full min-w-[400px] text-left text-[13px]">
+                <thead className="text-[11px] font-bold uppercase text-ink-40">
+                  <tr>
+                    <th className="pb-2 pr-2">Name</th>
+                    <th className="pb-2">Revenue gross</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {boards.data.organizers.map((row) => (
+                    <tr key={row.organizerId} className="border-t border-ink-10">
+                      <td className="py-2 pr-2 font-semibold text-ink">{row.displayName}</td>
+                      <td className="py-2 font-mono text-ink-60">{formatSarCompact(row.totalRevenueGross)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
           </CardContent>
         </Card>
       </div>

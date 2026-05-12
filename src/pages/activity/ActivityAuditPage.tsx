@@ -1,6 +1,7 @@
+import { ListFiltersBar } from '@/components/admin/ListFiltersBar';
+import { AdminActionsGuideDialog, DEFAULT_ADMIN_ACTION_POST_BODY } from '@/components/activity/AdminActionsGuideDialog';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ListFiltersBar } from '@/components/admin/ListFiltersBar';
 import { notifyError, notifySuccess } from '@/lib/notify';
 import { rowMatchesSearch } from '@/lib/listQuery';
 import {
@@ -9,16 +10,12 @@ import {
   useGetAuditLogQuery,
   useGetAuditLogsQuery,
 } from '@/services/adminApi';
+import { CircleHelp } from 'lucide-react';
 import { skipToken } from '@reduxjs/toolkit/query';
 import { useMemo, useState } from 'react';
 
 const inputClass =
   'mt-1.5 w-full rounded-xl border border-ink-10 px-4 py-3 font-mono text-[13px] outline-none focus:border-coral focus:ring-2 focus:ring-coral/30';
-
-const defaultActionBody = `{
-  "action_key": "rebuild_search_index",
-  "async": true
-}`;
 
 export function ActivityAuditPage() {
   const actionsQ = useGetAdminActionsQuery();
@@ -26,9 +23,10 @@ export function ActivityAuditPage() {
   const [searchActions, setSearchActions] = useState('');
   const [searchLogs, setSearchLogs] = useState('');
   const [selectedLogId, setSelectedLogId] = useState<string | null>(null);
+  const [guideOpen, setGuideOpen] = useState(false);
   const detailQ = useGetAuditLogQuery(selectedLogId ?? skipToken);
   const [execAction, execState] = useExecuteAdminActionMutation();
-  const [jsonBody, setJsonBody] = useState(defaultActionBody);
+  const [jsonBody, setJsonBody] = useState(DEFAULT_ADMIN_ACTION_POST_BODY);
 
   const filteredActions = useMemo(() => {
     return (actionsQ.data ?? []).filter((row) =>
@@ -54,11 +52,12 @@ export function ActivityAuditPage() {
         <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-ink-40">Insights</p>
         <h1 className="text-3xl font-extrabold text-ink">Activity & audit</h1>
         <p className="mt-2 max-w-2xl text-[14px] text-ink-60">
-          <span className="font-mono text-ink">GET /api/v1/admin/admin-actions</span> and{' '}
-          <span className="font-mono text-ink">POST …/admin-actions</span> with a JSON body;{' '}
+          <span className="font-mono text-ink">GET /api/v1/admin/admin-actions</span> lists the action catalog;{' '}
+          <span className="font-mono text-ink">POST /api/v1/admin/admin-actions</span> records a row (see guide — body
+          uses <span className="font-mono text-ink">action_kind</span>, not arbitrary keys).{' '}
           <span className="font-mono text-ink">GET …/audit-logs</span> and{' '}
-          <span className="font-mono text-ink">{`GET …/audit-logs/{id}`}</span> for detail (IP, user-agent, changes
-          when the API provides them).
+          <span className="font-mono text-ink">{`GET …/audit-logs/{id}`}</span> for detail (IP, user-agent, changes when
+          the API provides them).
         </p>
       </div>
 
@@ -98,11 +97,26 @@ export function ActivityAuditPage() {
           </div>
 
           <div className="mt-8 border-t border-ink-10 pt-6">
-            <h3 className="text-[15px] font-bold text-ink">Execute action (POST)</h3>
-            <p className="mt-1 text-[13px] text-ink-60">
-              Paste a JSON object. Keys and semantics must match your backend contract — the collection does not define
-              a request body.
-            </p>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div className="min-w-0">
+                <h3 className="text-[15px] font-bold text-ink">Record admin action (POST)</h3>
+                <p className="mt-1 text-[13px] text-ink-60">
+                  JSON body must match the server contract: required <span className="font-mono text-ink">action_kind</span>{' '}
+                  (enum), optional <span className="font-mono text-ink">target_type</span>,{' '}
+                  <span className="font-mono text-ink">target_id</span>, <span className="font-mono text-ink">summary</span>,{' '}
+                  <span className="font-mono text-ink">metadata</span>. Open the guide if you are unsure.
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                className="shrink-0 gap-2"
+                onClick={() => setGuideOpen(true)}
+              >
+                <CircleHelp className="h-4 w-4 shrink-0" aria-hidden />
+                How this works
+              </Button>
+            </div>
             <form
               className="mt-4 max-w-2xl space-y-3"
               onSubmit={async (e) => {
@@ -134,6 +148,8 @@ export function ActivityAuditPage() {
           </div>
         </CardContent>
       </Card>
+
+      <AdminActionsGuideDialog open={guideOpen} onClose={() => setGuideOpen(false)} />
 
       <Card className="rounded-3xl border-ink-10 shadow-card-sm">
         <CardHeader>

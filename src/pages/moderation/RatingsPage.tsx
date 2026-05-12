@@ -1,6 +1,6 @@
 import { ListFiltersBar } from '@/components/admin/ListFiltersBar';
+import { RowActionsMenu } from '@/components/admin/RowActionsMenu';
 import { filterSelectClassName } from '@/lib/adminFilters';
-import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { rowMatchesSearch } from '@/lib/listQuery';
 import { notifyError, notifySuccess } from '@/lib/notify';
@@ -11,7 +11,22 @@ import {
   useHideRatingModerationMutation,
   useRestoreRatingModerationMutation,
 } from '@/services/adminApi';
+import { Star } from 'lucide-react';
 import { useMemo, useState } from 'react';
+
+function StarRatingCell({ stars }: { stars: number }) {
+  const n = Math.min(5, Math.max(1, stars));
+  return (
+    <div className="flex items-center gap-1.5">
+      <span className="flex items-center gap-px" aria-hidden>
+        {Array.from({ length: n }, (_, i) => (
+          <Star key={i} className="h-4 w-4 fill-amber-400 text-amber-500" strokeWidth={1.5} />
+        ))}
+      </span>
+      <span className="font-mono text-[13px] font-semibold tabular-nums text-ink">{n}</span>
+    </div>
+  );
+}
 
 export function RatingsPage() {
   const { data, isLoading } = useGetRatingsModerationQuery();
@@ -33,7 +48,13 @@ export function RatingsPage() {
           return false;
         }
       }
-      return rowMatchesSearch(search, [row.targetLabel, row.authorEmail, row.comment, row.id]);
+      return rowMatchesSearch(search, [
+        row.targetLabel,
+        row.authorEmail,
+        row.comment,
+        row.id,
+        String(row.stars),
+      ]);
     });
   }, [data, search, minStars, mod]);
 
@@ -105,53 +126,57 @@ export function RatingsPage() {
                   <th className="px-4 py-3">Stars</th>
                   <th className="px-4 py-3">State</th>
                   <th className="px-4 py-3">Comment</th>
-                  <th className="px-4 py-3 text-right">Actions</th>
+                  <th className="w-14 px-2 py-3 text-right" aria-label="Actions column" />
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((row) => (
-                  <tr key={row.id} className="border-t border-ink-10 hover:bg-surface-tint">
-                    <td className="px-4 py-3 font-semibold text-ink">{row.targetLabel}</td>
-                    <td className="px-4 py-3 text-ink-60">{row.authorEmail}</td>
-                    <td className="px-4 py-3 font-mono text-ink">{row.stars}</td>
-                    <td className="px-4 py-3 text-[12px] font-bold uppercase text-ink-60">{row.moderationState}</td>
-                    <td className="max-w-[280px] px-4 py-3 text-ink-60">{row.comment}</td>
-                    <td className="px-4 py-3 text-right">
-                      <div className="flex flex-wrap justify-end gap-1.5">
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          disabled={row.moderationState !== 'visible' || mutBusy}
-                          loading={hideState.isLoading && hideState.originalArgs === row.id}
-                          onClick={() => run('Rating hidden.', () => hide(row.id).unwrap())}
-                        >
-                          Hide
-                        </Button>
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          disabled={row.moderationState !== 'hidden' || mutBusy}
-                          loading={restoreState.isLoading && restoreState.originalArgs === row.id}
-                          onClick={() => run('Rating restored.', () => restore(row.id).unwrap())}
-                        >
-                          Restore
-                        </Button>
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="danger"
-                          disabled={row.moderationState === 'deleted' || mutBusy}
-                          loading={delState.isLoading && delState.originalArgs === row.id}
-                          onClick={() => run('Rating marked deleted.', () => del(row.id).unwrap())}
-                        >
-                          Delete
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                {filtered.map((row) => {
+                  const rowBusy =
+                    (hideState.isLoading && hideState.originalArgs === row.id && 'hide') ||
+                    (restoreState.isLoading && restoreState.originalArgs === row.id && 'restore') ||
+                    (delState.isLoading && delState.originalArgs === row.id && 'delete') ||
+                    null;
+                  return (
+                    <tr key={row.id} className="border-t border-ink-10 hover:bg-surface-tint">
+                      <td className="px-4 py-3 font-semibold text-ink">{row.targetLabel}</td>
+                      <td className="px-4 py-3 text-ink-60">{row.authorEmail}</td>
+                      <td className="px-4 py-3">
+                        <StarRatingCell stars={row.stars} />
+                      </td>
+                      <td className="px-4 py-3 text-[12px] font-bold uppercase text-ink-60">{row.moderationState}</td>
+                      <td className="max-w-[280px] px-4 py-3 text-ink-60">{row.comment}</td>
+                      <td className="px-2 py-3 text-right align-middle">
+                        <RowActionsMenu
+                          ariaLabel={`Actions for rating ${row.id}`}
+                          actions={[
+                            {
+                              key: 'hide',
+                              label: 'Hide',
+                              disabled: row.moderationState !== 'visible' || mutBusy,
+                              loading: rowBusy === 'hide',
+                              onSelect: () => run('Rating hidden.', () => hide(row.id).unwrap()),
+                            },
+                            {
+                              key: 'restore',
+                              label: 'Restore',
+                              disabled: row.moderationState !== 'hidden' || mutBusy,
+                              loading: rowBusy === 'restore',
+                              onSelect: () => run('Rating restored.', () => restore(row.id).unwrap()),
+                            },
+                            {
+                              key: 'delete',
+                              label: 'Delete',
+                              danger: true,
+                              disabled: row.moderationState === 'deleted' || mutBusy,
+                              loading: rowBusy === 'delete',
+                              onSelect: () => run('Rating marked deleted.', () => del(row.id).unwrap()),
+                            },
+                          ]}
+                        />
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

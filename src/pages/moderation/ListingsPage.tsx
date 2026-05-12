@@ -1,6 +1,8 @@
 import { ListFiltersBar } from '@/components/admin/ListFiltersBar';
+import { RowActionsMenu } from '@/components/admin/RowActionsMenu';
 import { filterSelectClassName } from '@/lib/adminFilters';
-import { Button } from '@/components/ui/Button';
+import { listingModerationStatusBadgeClass } from '@/lib/listingModerationStatusUi';
+import { cn } from '@/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { rowMatchesSearch } from '@/lib/listQuery';
 import { notifyError, notifySuccess } from '@/lib/notify';
@@ -30,7 +32,13 @@ export function ListingsPage() {
     return (data ?? []).filter((row) => {
       if (kind !== 'all' && row.kind !== kind) return false;
       if (status !== 'all' && row.status !== status) return false;
-      return rowMatchesSearch(search, [row.title, row.ownerEmail, row.flagReason, row.id]);
+      return rowMatchesSearch(search, [
+        row.title,
+        row.ownerEmail,
+        row.flagReason,
+        row.description,
+        row.id,
+      ]);
     });
   }, [data, search, kind, status]);
 
@@ -103,79 +111,85 @@ export function ListingsPage() {
                   <th className="px-4 py-3">Owner</th>
                   <th className="px-4 py-3">Flag</th>
                   <th className="px-4 py-3">Status</th>
-                  <th className="px-4 py-3 text-right">Actions</th>
+                  <th className="w-14 px-2 py-3 text-right" aria-label="Actions column" />
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((row) => (
-                  <tr key={row.id} className="border-t border-ink-10 hover:bg-surface-tint">
-                    <td className="px-4 py-3 font-semibold text-ink">{row.title}</td>
-                    <td className="px-4 py-3 capitalize text-ink-60">{row.kind}</td>
-                    <td className="px-4 py-3 text-ink-60">{row.ownerEmail}</td>
-                    <td className="max-w-[200px] px-4 py-3 text-[13px] text-ink-60">{row.flagReason}</td>
-                    <td className="px-4 py-3">
-                      <span className="rounded-full bg-ink-5 px-2 py-0.5 text-[11px] font-bold uppercase text-ink-60">
-                        {row.status}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      <div className="flex flex-wrap justify-end gap-1.5">
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          disabled={row.status !== 'queued' || mutLoading}
-                          loading={claimState.isLoading && claimState.originalArgs === row.id}
-                          onClick={() => run('Claimed.', () => claim(row.id).unwrap())}
+                {filtered.map((row) => {
+                  const rowBusy =
+                    (claimState.isLoading && claimState.originalArgs === row.id && 'claim') ||
+                    (releaseState.isLoading && releaseState.originalArgs === row.id && 'release') ||
+                    (rejectState.isLoading && rejectState.originalArgs === row.id && 'reject') ||
+                    (escalateState.isLoading && escalateState.originalArgs === row.id && 'escalate') ||
+                    (markState.isLoading && markState.originalArgs === row.id && 'approve') ||
+                    null;
+                  const canClaimRelease = row.status === 'queued' || row.status === 'claimed';
+                  return (
+                    <tr key={row.id} className="border-t border-ink-10 hover:bg-surface-tint">
+                      <td className="px-4 py-3">
+                        <p className="font-semibold text-ink">{row.title}</p>
+                        {row.description ? (
+                          <p className="mt-1 line-clamp-2 max-w-md text-[12px] text-ink-50">{row.description}</p>
+                        ) : null}
+                      </td>
+                      <td className="px-4 py-3 capitalize text-ink-60">{row.kind}</td>
+                      <td className="px-4 py-3 text-ink-60">{row.ownerEmail}</td>
+                      <td className="max-w-[200px] px-4 py-3 text-[13px] text-ink-60">{row.flagReason}</td>
+                      <td className="px-4 py-3">
+                        <span
+                          className={cn(
+                            'inline-flex rounded-full px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide',
+                            listingModerationStatusBadgeClass(row.status),
+                          )}
                         >
-                          Claim
-                        </Button>
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          disabled={row.status !== 'claimed' || mutLoading}
-                          loading={releaseState.isLoading && releaseState.originalArgs === row.id}
-                          onClick={() => run('Released.', () => release(row.id).unwrap())}
-                        >
-                          Release
-                        </Button>
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          disabled={mutLoading || (row.status !== 'queued' && row.status !== 'claimed')}
-                          loading={rejectState.isLoading && rejectState.originalArgs === row.id}
-                          onClick={() => run('Rejected.', () => reject(row.id).unwrap())}
-                        >
-                          Reject
-                        </Button>
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          disabled={mutLoading || (row.status !== 'queued' && row.status !== 'claimed')}
-                          loading={escalateState.isLoading && escalateState.originalArgs === row.id}
-                          onClick={() => run('Escalated.', () => escalate(row.id).unwrap())}
-                        >
-                          Escalate
-                        </Button>
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="dark"
-                          disabled={
-                            (row.status !== 'queued' && row.status !== 'claimed') || mutLoading
-                          }
-                          loading={markState.isLoading && markState.originalArgs === row.id}
-                          onClick={() => run('Approved / reviewed.', () => markReviewed(row.id).unwrap())}
-                        >
-                          Approve
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                          {row.status}
+                        </span>
+                      </td>
+                      <td className="px-2 py-3 text-right align-middle">
+                        <RowActionsMenu
+                          ariaLabel={`Actions for listing case ${row.id}`}
+                          actions={[
+                            {
+                              key: 'claim',
+                              label: 'Claim',
+                              disabled: row.status !== 'queued' || mutLoading,
+                              loading: rowBusy === 'claim',
+                              onSelect: () => run('Claimed.', () => claim(row.id).unwrap()),
+                            },
+                            {
+                              key: 'release',
+                              label: 'Release',
+                              disabled: row.status !== 'claimed' || mutLoading,
+                              loading: rowBusy === 'release',
+                              onSelect: () => run('Released.', () => release(row.id).unwrap()),
+                            },
+                            {
+                              key: 'reject',
+                              label: 'Reject',
+                              disabled: mutLoading || !canClaimRelease,
+                              loading: rowBusy === 'reject',
+                              onSelect: () => run('Rejected.', () => reject(row.id).unwrap()),
+                            },
+                            {
+                              key: 'escalate',
+                              label: 'Escalate',
+                              disabled: mutLoading || !canClaimRelease,
+                              loading: rowBusy === 'escalate',
+                              onSelect: () => run('Escalated.', () => escalate(row.id).unwrap()),
+                            },
+                            {
+                              key: 'approve',
+                              label: 'Approve',
+                              disabled: !canClaimRelease || mutLoading,
+                              loading: rowBusy === 'approve',
+                              onSelect: () => run('Approved / reviewed.', () => markReviewed(row.id).unwrap()),
+                            },
+                          ]}
+                        />
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

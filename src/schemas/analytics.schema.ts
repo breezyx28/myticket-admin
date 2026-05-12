@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { z } from "zod";
 
 export const revenuePointSchema = z.object({
   date: z.string(),
@@ -16,8 +16,8 @@ export const financialAnalyticsSchema = z.object({
   platformFeesSar: z.number().nonnegative(),
   refundsSar: z.number().nonnegative(),
   payoutsPendingSar: z.number().nonnegative(),
-  revenueByDay: z.array(revenuePointSchema),
-  revenueBreakdownByCategory: z.array(revenueBreakdownRowSchema),
+  revenueByDay: z.array(revenuePointSchema).optional(),
+  revenueBreakdownByCategory: z.array(revenueBreakdownRowSchema).optional(),
   /** Handoff `GET /analytics/financial` — optional when API omits charts. */
   range: z.string().optional(),
   since: z.string().optional(),
