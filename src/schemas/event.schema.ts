@@ -28,27 +28,40 @@ export type AdminEventRow = z.infer<typeof adminEventRowSchema>;
 export const adminEventListSchema = z.array(adminEventRowSchema);
 
 export const eventCategorySchema = z.object({
-  id: z.string(),
-  name: z.string(),
-  iconKey: z.string(),
-  colorToken: z.string(),
+  id: z.string().min(1),
+  slug: z.string().min(1),
+  nameEn: z.string(),
+  nameAr: z.string(),
+  iconKey: z.string().optional().default(''),
+  colorToken: z.string().optional().default(''),
   active: z.boolean(),
-  /** Present when loaded from API; used for PATCH bodies when required. */
-  slug: z.string().optional(),
-  displayOrder: z.number().int().nonnegative().optional(),
+  displayOrder: z.number().int().min(0).max(65535).optional(),
+  createdAt: z.string().optional(),
+  updatedAt: z.string().optional(),
 });
 
 export type EventCategory = z.infer<typeof eventCategorySchema>;
 
 export const eventCategoryListSchema = z.array(eventCategorySchema);
 
-export const upsertCategorySchema = z.object({
-  name: z.string().trim().min(2),
-  iconKey: z.string().trim().min(1),
-  colorToken: z.string().trim().min(1),
+const slugPattern = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+
+/** Admin create / full-row edit form — maps to POST / PATCH event-categories. */
+export const eventCategoryUpsertFormSchema = z.object({
+  slug: z
+    .string()
+    .trim()
+    .min(1, 'Slug is required')
+    .max(80)
+    .regex(slugPattern, 'Use lowercase letters, numbers, and single hyphens only'),
+  nameEn: z.string().trim().min(1, 'English name is required').max(120),
+  nameAr: z.string().trim().min(1, 'Arabic name is required').max(120),
+  iconKey: z.string().max(80).optional(),
+  colorToken: z.string().max(40).optional(),
+  displayOrder: z.number().int().min(0).max(65535).optional(),
 });
 
-export type UpsertCategoryInput = z.infer<typeof upsertCategorySchema>;
+export type EventCategoryUpsertForm = z.infer<typeof eventCategoryUpsertFormSchema>;
 
 export const featuredEventsConfigSchema = z.object({
   mode: z.enum(['algorithm', 'manual_override']),

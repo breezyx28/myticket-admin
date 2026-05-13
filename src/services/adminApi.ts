@@ -49,7 +49,7 @@ import {
   usersState,
 } from '@/mock/runtimeState';
 import { financialAnalyticsSchema, type FinancialAnalytics } from '@/schemas/analytics.schema';
-import type { CancelEventInput, FeaturedEventsConfig, UpsertCategoryInput } from '@/schemas/event.schema';
+import type { CancelEventInput, FeaturedEventsConfig, EventCategoryUpsertForm } from '@/schemas/event.schema';
 import { adminEventRowSchema, featuredEventsConfigSchema } from '@/schemas/event.schema';
 import { adminAuctionDetailSchema, type AdminAuctionDetail } from '@/schemas/auction.schema';
 import { adminProfileUpdateSchema, type AdminProfileUpdate } from '@/schemas/adminSelf.schema';
@@ -115,7 +115,6 @@ import {
   mapTalentProfileDetailFromApi,
   mapTalentProfilesFromApi,
   mapAdminAuctionDetailFromApi,
-  slugifyCategoryBaseName,
 } from '@/schemas/api/adminMappers';
 import {
   adminOrganizerKycDetailSchema,
@@ -1536,51 +1535,64 @@ export const adminApi = createApi({
       providesTags: ['Categories'],
       async queryFn(_arg, api, extraOptions) {
         return tryLiveRead(api, extraOptions, 'getCategories', 45, categoriesState, {
+          params: { per_page: 500 },
           map: mapEventCategoriesFromApi,
         });
       },
     }),
-    upsertCategory: builder.mutation<{ ok: true }, { id?: string; body: UpsertCategoryInput }>({
+    upsertCategory: builder.mutation<{ ok: true }, { id?: string; body: EventCategoryUpsertForm }>({
       invalidatesTags: ['Categories'],
       async queryFn({ id, body }, api, extraOptions) {
-        await delay(90);
         if (!sessionHasApiCredentials()) {
+          await delay(90);
+          const iconKey = body.iconKey?.trim() ?? '';
+          const colorToken = body.colorToken?.trim() ?? '';
           if (id) {
             const row = categoriesState.find((c) => c.id === id);
             if (row) {
-              row.name = body.name;
-              row.iconKey = body.iconKey;
-              row.colorToken = body.colorToken;
+              row.slug = body.slug.trim();
+              row.nameEn = body.nameEn.trim();
+              row.nameAr = body.nameAr.trim();
+              row.iconKey = iconKey;
+              row.colorToken = colorToken;
+              if (body.displayOrder !== undefined) row.displayOrder = body.displayOrder;
             }
           } else {
             categoriesState.push({
               id: `cat-${Date.now()}`,
-              name: body.name,
-              iconKey: body.iconKey,
-              colorToken: body.colorToken,
+              slug: body.slug.trim(),
+              nameEn: body.nameEn.trim(),
+              nameAr: body.nameAr.trim(),
+              iconKey,
+              colorToken,
               active: true,
+              displayOrder: body.displayOrder ?? categoriesState.length,
             });
           }
           return { data: { ok: true } };
         }
-        const slugBase = slugifyCategoryBaseName(body.name);
-        const existing = id ? categoriesState.find((c) => c.id === id) : undefined;
-        const slug = existing?.slug ?? slugBase;
-        const apiBody = {
-          slug,
-          name_en: body.name,
-          name_ar: body.name,
-          icon_key: body.iconKey,
-          color_token: body.colorToken,
-          is_active: existing?.active ?? true,
-          display_order: existing?.displayOrder ?? categoriesState.length,
+
+        const iconKey = body.iconKey?.trim();
+        const colorToken = body.colorToken?.trim();
+        const baseFields = {
+          slug: body.slug.trim(),
+          name_en: body.nameEn.trim(),
+          name_ar: body.nameAr.trim(),
+          icon_key: iconKey ? iconKey : null,
+          color_token: colorToken ? colorToken : null,
         };
+
         const res = id
           ? await baseQueryWithReauth(
               {
                 url: `/api/v1/admin/event-categories/${encodeURIComponent(id)}`,
                 method: 'PATCH',
-                body: apiBody,
+                body: {
+                  ...baseFields,
+                  ...(body.displayOrder !== undefined
+                    ? { display_order: body.displayOrder }
+                    : {}),
+                },
               },
               api,
               extraOptions
@@ -1590,13 +1602,9 @@ export const adminApi = createApi({
                 url: '/api/v1/admin/event-categories',
                 method: 'POST',
                 body: {
-                  slug: slugBase,
-                  name_en: body.name,
-                  name_ar: body.name,
-                  icon_key: body.iconKey,
-                  color_token: body.colorToken,
+                  ...baseFields,
                   is_active: true,
-                  display_order: categoriesState.length,
+                  display_order: body.displayOrder ?? 0,
                 },
               },
               api,
@@ -1604,20 +1612,28 @@ export const adminApi = createApi({
             );
         if (res.error) return { error: toFetchError(res.error) };
         if (shouldUseMockReads()) {
+          const icon = body.iconKey?.trim() ?? '';
+          const color = body.colorToken?.trim() ?? '';
           if (id) {
             const row = categoriesState.find((c) => c.id === id);
             if (row) {
-              row.name = body.name;
-              row.iconKey = body.iconKey;
-              row.colorToken = body.colorToken;
+              row.slug = body.slug.trim();
+              row.nameEn = body.nameEn.trim();
+              row.nameAr = body.nameAr.trim();
+              row.iconKey = icon;
+              row.colorToken = color;
+              if (body.displayOrder !== undefined) row.displayOrder = body.displayOrder;
             }
           } else {
             categoriesState.push({
               id: `cat-${Date.now()}`,
-              name: body.name,
-              iconKey: body.iconKey,
-              colorToken: body.colorToken,
+              slug: body.slug.trim(),
+              nameEn: body.nameEn.trim(),
+              nameAr: body.nameAr.trim(),
+              iconKey: icon,
+              colorToken: color,
               active: true,
+              displayOrder: body.displayOrder ?? categoriesState.length,
             });
           }
         }

@@ -1043,7 +1043,7 @@ export function mapAdminEventsFromApi(raw: unknown): AdminEventRow[] {
   return adminEventListSchema.parse(mapped);
 }
 
-/** Stable slug for `POST /event-categories` when the API does not assign one client-side. */
+/** Stable slug for `POST /event-categories` when deriving from English name. */
 export function slugifyCategoryBaseName(name: string): string {
   const s = name
     .toLowerCase()
@@ -1051,6 +1051,25 @@ export function slugifyCategoryBaseName(name: string): string {
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
   return s || `cat-${Date.now()}`;
+}
+
+/** Picks a slug that is not in `existingSlugs` (case-insensitive). */
+export function suggestUniqueCategorySlug(
+  nameEn: string,
+  existingSlugs: Iterable<string>,
+): string {
+  const taken = new Set(
+    Array.from(existingSlugs, (s) => s.trim().toLowerCase()).filter(Boolean),
+  );
+  let base = slugifyCategoryBaseName(nameEn);
+  if (!base) base = "category";
+  let candidate = base;
+  let n = 2;
+  while (taken.has(candidate)) {
+    candidate = `${base}-${n}`;
+    n += 1;
+  }
+  return candidate;
 }
 
 function extractEventCategoriesPayload(raw: unknown): unknown[] {
@@ -1092,23 +1111,32 @@ function extractEventCategoriesPayload(raw: unknown): unknown[] {
 export function mapEventCategoryFromApi(raw: unknown): EventCategory {
   const inner = unwrapApiJson(raw);
   const o = asObject(inner);
-  let name = pickStr(o, "name", "name_en", "title", "label") ?? "";
-  if (!name && isRecord(o.name)) {
-    const nm = asObject(o.name);
-    name = pickStr(nm, "en", "name_en") ?? pickStr(nm, "ar", "name_ar") ?? "";
-  }
-  const displayOrder = pickNum(o, "displayOrder", "display_order");
-  const slugVal = pickStr(o, "slug");
+  const idNum = pickNum(o, "id");
+  const idStr =
+    pickStr(o, "id", "uuid") ??
+    (idNum !== undefined ? String(Math.trunc(idNum)) : "");
+  const slugVal = pickStr(o, "slug") ?? "";
+  const nameEn =
+    pickStr(o, "name_en", "nameEn", "name", "title", "label")?.trim() ?? "";
+  const nameAr = pickStr(o, "name_ar", "nameAr")?.trim() ?? "";
+  const displayOrderRaw = pickNum(o, "displayOrder", "display_order");
+  const createdAt = pickStr(o, "createdAt", "created_at");
+  const updatedAt = pickStr(o, "updatedAt", "updated_at");
+  const iconRaw = pickStr(o, "iconKey", "icon_key");
+  const colorRaw = pickStr(o, "colorToken", "color_token");
   const candidate = {
-    id: pickStr(o, "id", "uuid") ?? "",
-    name,
-    iconKey: pickStr(o, "iconKey", "icon_key") ?? "",
-    colorToken: pickStr(o, "colorToken", "color_token") ?? "",
+    id: idStr,
+    slug: slugVal || slugifyCategoryBaseName(nameEn || idStr || "category"),
+    nameEn: nameEn || nameAr || slugVal || idStr || "Unnamed",
+    nameAr: nameAr || nameEn || slugVal || "",
+    iconKey: iconRaw ?? "",
+    colorToken: colorRaw ?? "",
     active: pickBool(o, "active", "is_active") ?? false,
-    ...(slugVal ? { slug: slugVal } : {}),
-    ...(displayOrder !== undefined
-      ? { displayOrder: intNonNeg(displayOrder) }
+    ...(displayOrderRaw !== undefined
+      ? { displayOrder: Math.min(65535, intNonNeg(displayOrderRaw)) }
       : {}),
+    ...(createdAt ? { createdAt } : {}),
+    ...(updatedAt ? { updatedAt } : {}),
   };
   return eventCategorySchema.parse(candidate);
 }

@@ -44,6 +44,7 @@ import {
   mapAdminProfileDirectoryFromApi,
   mapAdminProfileDirectoryRowFromApi,
   slugifyCategoryBaseName,
+  suggestUniqueCategorySlug,
 } from "@/schemas/api/adminMappers";
 
 describe("mapDashboardCountersFromApi", () => {
@@ -418,6 +419,11 @@ describe("Phase 6 catalog / settings mappers", () => {
     expect(slugifyCategoryBaseName("Hello World!")).toBe("hello-world");
   });
 
+  it("suggestUniqueCategorySlug avoids collisions", () => {
+    expect(suggestUniqueCategorySlug("Music", ["music", "sports"])).toBe("music-2");
+    expect(suggestUniqueCategorySlug("Music", ["other"])).toBe("music");
+  });
+
   it("mapEventCategoriesFromApi", () => {
     const out = mapEventCategoriesFromApi({
       data: {
@@ -425,6 +431,7 @@ describe("Phase 6 catalog / settings mappers", () => {
           {
             id: "1",
             name_en: "Music",
+            name_ar: "موسيقى",
             icon_key: "Music2",
             color_token: "coral",
             is_active: true,
@@ -434,7 +441,8 @@ describe("Phase 6 catalog / settings mappers", () => {
         ],
       },
     });
-    expect(out[0].name).toBe("Music");
+    expect(out[0].nameEn).toBe("Music");
+    expect(out[0].nameAr).toBe("موسيقى");
     expect(out[0].slug).toBe("music");
   });
 
@@ -445,12 +453,19 @@ describe("Phase 6 catalog / settings mappers", () => {
         total: 1,
         per_page: 15,
         data: [
-          { id: "2", name_en: "Theatre", is_active: true, slug: "theatre" },
+          {
+            id: "2",
+            name_en: "Theatre",
+            name_ar: "مسرح",
+            is_active: true,
+            slug: "theatre",
+          },
         ],
       },
     });
     expect(out).toHaveLength(1);
-    expect(out[0].name).toBe("Theatre");
+    expect(out[0].nameEn).toBe("Theatre");
+    expect(out[0].nameAr).toBe("مسرح");
   });
 
   it("mapFeaturedConfigFromApi", () => {

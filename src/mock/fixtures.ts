@@ -373,9 +373,36 @@ export const MOCK_EVENTS = adminEventListSchema.parse([
 ]);
 
 export const MOCK_CATEGORIES = eventCategoryListSchema.parse([
-  { id: 'cat-music', name: 'Music', iconKey: 'Music2', colorToken: 'coral', active: true },
-  { id: 'cat-sports', name: 'Sports', iconKey: 'Trophy', colorToken: 'lime', active: true },
-  { id: 'cat-comedy', name: 'Comedy', iconKey: 'Laugh', colorToken: 'lemon', active: false },
+  {
+    id: '1',
+    slug: 'music',
+    nameEn: 'Music',
+    nameAr: 'موسيقى',
+    iconKey: 'MusicNotesIcon',
+    colorToken: 'coral',
+    active: true,
+    displayOrder: 0,
+  },
+  {
+    id: '2',
+    slug: 'sports',
+    nameEn: 'Sports',
+    nameAr: 'رياضة',
+    iconKey: 'TrophyIcon',
+    colorToken: 'lime',
+    active: true,
+    displayOrder: 1,
+  },
+  {
+    id: '3',
+    slug: 'comedy',
+    nameEn: 'Comedy',
+    nameAr: 'كوميديا',
+    iconKey: 'MaskHappyIcon',
+    colorToken: 'lemon',
+    active: false,
+    displayOrder: 2,
+  },
 ]);
 
 export const MOCK_FEATURED_CONFIG = featuredEventsConfigSchema.parse({
