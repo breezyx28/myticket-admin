@@ -1,0 +1,1 @@
+{"sessionId":"fb32e8","runId":"pre-fix","hypothesisId":"H-empty-base","location":"AuthContext.tsx:signIn:entry","message":"signIn entry","data":{"emailLen":19,"pwdLen":8,"allowDemoAuth":false,"demoEmailMatch":false,"apiBaseLen":31,"apiBaseIsEmpty":false},"timestamp":1778746675865}

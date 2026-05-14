@@ -26,6 +26,23 @@ export function LoginPage() {
 
   async function onSubmit(values: LoginFormValues) {
     const res = await signIn({ email: values.email, password: values.password });
+    // #region agent log
+    if (!res.ok) {
+      fetch('http://127.0.0.1:7432/ingest/9310ec5a-5875-4024-ad96-7ace7d477385', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': 'fb32e8' },
+        body: JSON.stringify({
+          sessionId: 'fb32e8',
+          runId: 'pre-fix',
+          hypothesisId: 'H-ui',
+          location: 'LoginPage.tsx:onSubmit',
+          message: 'signIn failed',
+          data: { reason: res.reason },
+          timestamp: Date.now(),
+        }),
+      }).catch(() => {});
+    }
+    // #endregion
     if (!res.ok) {
       if (res.reason === 'not_admin') {
         notifyError('Access denied — this dashboard is for administrator accounts only.');
