@@ -1405,6 +1405,36 @@ describe("mapAdminRecentNotificationsFromApi", () => {
       createdAt: "2026-03-03T00:00:00Z",
     });
   });
+
+  it("maps Laravel paginator with row-level data payload", () => {
+    const out = mapAdminRecentNotificationsFromApi({
+      current_page: 1,
+      data: [
+        {
+          id: 46,
+          kind: "event_review_required",
+          title: "Organizer event requires review",
+          body: "Event updated: test",
+          href: "/events/18",
+          data: { event_id: 18, event_code: "EVT-00000016" },
+          is_read: false,
+          read_at: null,
+          created_at: "2026-05-17T12:58:27.000000Z",
+        },
+      ],
+      total: 46,
+    });
+    expect(out).toHaveLength(1);
+    expect(out[0]).toMatchObject({
+      id: "46",
+      title: "Organizer event requires review",
+      body: "Event updated: test",
+      channel: "event_review_required",
+      href: "/events/18",
+      read: false,
+      createdAt: "2026-05-17T12:58:27.000000Z",
+    });
+  });
 });
 
 describe("mapAdminDeliveryLogsFromApi", () => {

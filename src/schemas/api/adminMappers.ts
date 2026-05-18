@@ -3373,10 +3373,18 @@ export function mapAdminAuditLogDetailFromApi(
   });
 }
 
+function isLaravelPaginator(o: Record<string, unknown>): boolean {
+  return Array.isArray(o.data) && ("current_page" in o || "per_page" in o || "total" in o);
+}
+
 function extractRecentNotificationsPayload(raw: unknown): unknown[] {
+  if (isRecord(raw) && isLaravelPaginator(raw)) {
+    return raw.data as unknown[];
+  }
   const inner = unwrapApiJson(raw);
   if (Array.isArray(inner)) return inner;
   if (isRecord(inner)) {
+    if (isLaravelPaginator(inner)) return inner.data as unknown[];
     const nested =
       inner.items ??
       inner.notifications ??
@@ -3393,11 +3401,33 @@ function extractRecentNotificationsPayload(raw: unknown): unknown[] {
   );
 }
 
+/** Rows include a `data` payload — do not unwrap via the generic `{ data }` envelope helper. */
+function asNotificationRowObject(raw: unknown): Record<string, unknown> {
+  if (isRecord(raw)) {
+    if (
+      "title" in raw ||
+      "is_read" in raw ||
+      "kind" in raw ||
+      pickNum(raw, "id", "notification_id") !== undefined
+    ) {
+      return asObject(raw);
+    }
+  }
+  return asObject(unwrapApiJson(raw));
+}
+
+function normalizeNotificationHref(raw: string | undefined): string | undefined {
+  if (!raw) return undefined;
+  const trimmed = raw.trim();
+  if (!trimmed || trimmed === "#") return undefined;
+  const path = trimmed.startsWith("/") ? trimmed : `/${trimmed}`;
+  return path.replace(/\/+/g, "/");
+}
+
 export function mapAdminRecentNotificationRowFromApi(
   raw: unknown,
 ): AdminRecentNotificationRow {
-  const inner = unwrapApiJson(raw);
-  const o = asObject(inner);
+  const o = asNotificationRowObject(raw);
   const idStr = pickStr(o, "id", "uuid", "notification_id");
   const idNum = pickNum(o, "id", "notification_id");
   const id = idStr ?? (idNum !== undefined ? String(idNum) : "");
@@ -3408,19 +3438,23 @@ export function mapAdminRecentNotificationRowFromApi(
       : "") ||
     "Notification";
   const body = pickStr(o, "body", "message", "content", "text");
-  const channel = pickStr(o, "channel", "via", "medium", "delivery_channel");
+  const channel =
+    pickStr(o, "channel", "via", "medium", "delivery_channel", "kind") ??
+    undefined;
   const read =
-    pickBool(o, "read", "is_read", "seen", "read_at") ??
+    pickBool(o, "read", "is_read", "seen") ??
     (pickStr(o, "read_at", "seen_at") ? true : undefined);
   const createdAt =
     pickStr(o, "createdAt", "created_at", "sent_at", "timestamp") ??
     new Date().toISOString();
+  const href = normalizeNotificationHref(pickStr(o, "href", "link", "url"));
   const candidate = {
     id,
     title: title.length > 200 ? `${title.slice(0, 197)}…` : title,
     createdAt,
     ...(body ? { body } : {}),
     ...(channel ? { channel } : {}),
+    ...(href ? { href } : {}),
     ...(read !== undefined ? { read } : {}),
   };
   return adminRecentNotificationRowSchema.parse(candidate);

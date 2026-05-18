@@ -49,18 +49,15 @@ type NotificationsPanelProps = {
   onClose: () => void;
 };
 
-function NotificationRow({ row }: { row: AdminRecentNotificationRow }) {
+function NotificationRow({ row, onNavigate }: { row: AdminRecentNotificationRow; onNavigate: () => void }) {
   const unread = row.read === false;
   const channel = channelLabel(row.channel);
-
-  return (
-    <div
-      role="menuitem"
-      className={cn(
-        'block w-full px-4 py-3 text-left transition-colors hover:bg-surface-tint',
-        unread && 'bg-coral/5',
-      )}
-    >
+  const className = cn(
+    'block w-full px-4 py-3 text-left transition-colors hover:bg-surface-tint',
+    unread && 'bg-coral/5',
+  );
+  const inner = (
+    <>
       <div className="flex items-start justify-between gap-2">
         <p className={cn('text-[13px] leading-snug text-ink', unread && 'font-bold')}>{row.title}</p>
         {unread ? (
@@ -77,6 +74,20 @@ function NotificationRow({ row }: { row: AdminRecentNotificationRow }) {
           </>
         ) : null}
       </div>
+    </>
+  );
+
+  if (row.href) {
+    return (
+      <Link to={row.href} role="menuitem" className={className} onClick={onNavigate}>
+        {inner}
+      </Link>
+    );
+  }
+
+  return (
+    <div role="menuitem" className={className}>
+      {inner}
     </div>
   );
 }
@@ -140,7 +151,7 @@ function NotificationsPanel({
           <ul className="m-0 list-none divide-y divide-ink-10 p-0">
             {items.map((row) => (
               <li key={row.id} role="none">
-                <NotificationRow row={row} />
+                <NotificationRow row={row} onNavigate={onClose} />
               </li>
             ))}
           </ul>

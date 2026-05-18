@@ -15,6 +15,7 @@ export const adminRecentNotificationRowSchema = z.object({
   title: z.string(),
   body: z.string().optional(),
   channel: z.string().optional(),
+  href: z.string().optional(),
   read: z.boolean().optional(),
   createdAt: z.string(),
 });
