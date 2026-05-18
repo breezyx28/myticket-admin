@@ -4,6 +4,7 @@ import { StatBubble } from '@/components/ui/StatBubble';
 import { AdminSection } from '@/components/layout/AdminSection';
 import { useCountUp } from '@/hooks/useCountUp';
 import {
+  useGetAdminHealthQuery,
   useGetDashboardCountersQuery,
   useGetEventsQuery,
   useGetPendingActionsQuery,
@@ -15,10 +16,18 @@ function formatInt(n: number) {
   return n.toLocaleString();
 }
 
+function healthStatusTone(status: string): string {
+  const s = status.toLowerCase();
+  if (s === 'ok' || s === 'healthy' || s === 'up') return 'text-mint';
+  if (s === 'degraded' || s === 'warning') return 'text-amber';
+  return 'text-coral';
+}
+
 export function DashboardHomePage() {
   const counters = useGetDashboardCountersQuery();
   const pending = useGetPendingActionsQuery();
   const events = useGetEventsQuery();
+  const health = useGetAdminHealthQuery();
 
   const c = counters.data;
 
@@ -42,6 +51,11 @@ export function DashboardHomePage() {
           Operational counters from <span className="font-mono text-ink">GET /api/v1/admin/dashboard/counters</span> —
           same underlying signals as summary, formatted for executive scanning.
         </p>
+        {counters.isError ? (
+          <p className="mt-3 rounded-xl bg-coral/15 px-4 py-3 text-[13px] font-semibold text-ink">
+            Could not load dashboard counters from the API.
+          </p>
+        ) : null}
       </div>
 
       <AdminSection
@@ -49,6 +63,7 @@ export function DashboardHomePage() {
         title="Dashboard counters"
         description="Users, events, support, moderation, roles, and payouts — aligned to the admin API handoff."
       >
+        {counters.isLoading ? <p className="text-sm text-ink-60">Loading counters…</p> : null}
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <StatBubble label="Users (total)" value={c ? formatInt(usersTotal) : '—'} color="bg-ink text-white" />
           <StatBubble label="Users suspended" value={c ? formatInt(usersSuspended) : '—'} color="bg-lemon text-ink" />
@@ -81,7 +96,7 @@ export function DashboardHomePage() {
         divider
         eyebrow="Reliability"
         title="Operational health"
-        description="Synthetic uptime and pipeline signals — swap for Datadog / CloudWatch cards when wired."
+        description="Live status from GET /api/v1/admin/health when API read mode is enabled."
       >
         <div className="grid gap-4 md:grid-cols-3">
           <Card className="rounded-3xl border-ink-10 shadow-card-sm">
@@ -90,24 +105,46 @@ export function DashboardHomePage() {
                 <Radio size={18} strokeWidth={2} />
                 <CardTitle className="text-base font-bold">API availability</CardTitle>
               </div>
-              <CardDescription>Last rolling 24h (placeholder)</CardDescription>
+              <CardDescription>
+                {health.data?.checkedAt
+                  ? `Checked ${new Date(health.data.checkedAt).toLocaleString()}`
+                  : 'Admin health endpoint'}
+              </CardDescription>
             </CardHeader>
             <CardContent>
-              <p className="font-mono text-3xl font-black text-mint">99.98%</p>
-              <p className="mt-2 text-[13px] font-semibold text-ink-60">0 incidents · checkout latency p95 412ms</p>
+              {health.isLoading ? <p className="text-sm text-ink-60">Loading…</p> : null}
+              {health.isError ? (
+                <p className="text-[13px] font-semibold text-coral">Health check unavailable.</p>
+              ) : null}
+              {health.data ? (
+                <>
+                  <p className={`font-mono text-3xl font-black capitalize ${healthStatusTone(health.data.status)}`}>
+                    {health.data.status}
+                  </p>
+                  {health.data.message ? (
+                    <p className="mt-2 text-[13px] font-semibold text-ink-60">{health.data.message}</p>
+                  ) : null}
+                </>
+              ) : null}
             </CardContent>
           </Card>
           <Card className="rounded-3xl border-ink-10 shadow-card-sm">
             <CardHeader className="pb-2">
               <div className="flex items-center gap-2 text-ink">
                 <Cpu size={18} strokeWidth={2} />
-                <CardTitle className="text-base font-bold">Webhooks</CardTitle>
+                <CardTitle className="text-base font-bold">Support pipeline</CardTitle>
               </div>
-              <CardDescription>Organizer + finance callbacks</CardDescription>
+              <CardDescription>Open cases from dashboard counters</CardDescription>
             </CardHeader>
             <CardContent>
-              <p className="font-mono text-3xl font-black text-ink">100%</p>
-              <p className="mt-2 text-[13px] font-semibold text-ink-60">12.4k delivered · 6 retries resolved</p>
+              <p className="font-mono text-3xl font-black text-ink">
+                {c ? formatInt(supportCasesOpenPipeline) : '—'}
+              </p>
+              <p className="mt-2 text-[13px] font-semibold text-ink-60">
+                <Link to="/support" className="font-bold text-coral hover:underline">
+                  Open support inbox →
+                </Link>
+              </p>
             </CardContent>
           </Card>
           <Card className="rounded-3xl border-ink-10 shadow-card-sm">
@@ -136,9 +173,15 @@ export function DashboardHomePage() {
         divider
         eyebrow="Live catalog"
         title="Spotlight events"
-        description="Highest-signal events with imagery, fill rate, and satisfaction proxies — same card component used in featured tooling."
+        description="Recent events from GET /api/v1/admin/events."
       >
         {events.isLoading ? <p className="text-sm text-ink-60">Loading…</p> : null}
+        {events.isError ? (
+          <p className="text-sm font-semibold text-coral">Could not load events from the API.</p>
+        ) : null}
+        {!events.isLoading && !events.isError && spotlight.length === 0 ? (
+          <p className="text-sm text-ink-60">No events returned.</p>
+        ) : null}
         <div className="grid gap-6 lg:grid-cols-3">
           {spotlight.map((ev) => (
             <AdminEventCard key={ev.id} event={ev} />
@@ -153,10 +196,16 @@ export function DashboardHomePage() {
         divider
         eyebrow="Queues"
         title="Pending actions"
-        description="Each card shows the owning surface, SLA hint, and a contextual visual so operators can triage faster."
+        description="Grouped buckets from GET /api/v1/admin/dashboard/pending-actions."
       >
+        {pending.isLoading ? <p className="text-sm text-ink-60">Loading…</p> : null}
+        {pending.isError ? (
+          <p className="text-sm font-semibold text-coral">Could not load pending actions from the API.</p>
+        ) : null}
+        {!pending.isLoading && !pending.isError && (pending.data?.length ?? 0) === 0 ? (
+          <p className="text-sm text-ink-60">No pending actions in the queue.</p>
+        ) : null}
         <div className="grid gap-4 md:grid-cols-1 xl:grid-cols-3">
-          {pending.isLoading ? <p className="text-sm text-ink-60">Loading…</p> : null}
           {pending.data?.map((item) => (
             <Link
               key={item.id}

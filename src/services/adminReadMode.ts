@@ -2,7 +2,7 @@ import { adminReadsSourceIsApi } from '@/config/env';
 
 const warned = new Set<string>();
 
-/** When false, all reads use the in-memory mock layer. */
+/** When true, reads use in-memory mock state (set `VITE_ADMIN_READS_SOURCE=mock`). */
 export function shouldUseMockReads(): boolean {
   return !adminReadsSourceIsApi();
 }

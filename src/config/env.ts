@@ -18,9 +18,10 @@ export function placeholderAssetUrl(path: string): string {
   return `${PRODUCTION_API_BASE_URL}/${segment}`;
 }
 
-/** When true, list/detail queries use Postman-documented GET paths once added; otherwise in-memory mock. */
+/** Live GETs unless explicitly set to `mock` (opt-out). */
 export function adminReadsSourceIsApi(): boolean {
-  return import.meta.env.VITE_ADMIN_READS_SOURCE === 'api';
+  const raw = String(import.meta.env.VITE_ADMIN_READS_SOURCE ?? 'api').trim().toLowerCase();
+  return raw !== 'mock';
 }
 
 /** Local UI sign-in without calling the API (email heuristic). */

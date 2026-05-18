@@ -214,8 +214,8 @@ export function AnalyticsPage() {
           <CardHeader>
             <CardTitle className="text-lg">Users by role</CardTitle>
             <CardDescription>
-              Sample breakdown for UX only — there is no matching admin GET yet. Use{' '}
-              <span className="font-mono">GET /dashboard/counters</span> on the home dashboard for live aggregates.
+              Derived from <span className="font-mono">GET /dashboard/counters</span> when the API returns only flat
+              totals (role split may be partial until the backend adds breakdown fields).
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-2 text-[14px] text-ink-60">

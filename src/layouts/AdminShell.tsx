@@ -4,7 +4,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { getAccessToken } from '@/lib/authSession';
 import { shouldUseMockReads } from '@/services/adminReadMode';
 import { cn } from '@/lib/utils';
-import { Bell, LayoutDashboard, LogOut, Menu, Ticket, UserCircle, X } from 'lucide-react';
+import { AdminNotificationsDropdown } from '@/components/layout/AdminNotificationsDropdown';
+import { LayoutDashboard, LogOut, Menu, Ticket, UserCircle, X } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
 
@@ -47,6 +48,7 @@ export function AdminShell({ children }: { children?: ReactNode }) {
               {dataSourceBadge()}
             </span>
           </div>
+          <AdminNotificationsDropdown className="md:hidden" />
           <div className="hidden items-center gap-2 md:flex">
             <NavLink
               to="/"
@@ -62,13 +64,7 @@ export function AdminShell({ children }: { children?: ReactNode }) {
               <UserCircle size={16} strokeWidth={2} />
               Profile
             </NavLink>
-            <button
-              type="button"
-              aria-label="Notifications"
-              className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-ink-10 bg-white text-ink-60 transition-colors hover:bg-ink-5 hover:text-ink"
-            >
-              <Bell size={16} strokeWidth={2} />
-            </button>
+            <AdminNotificationsDropdown />
             <div className="ml-1 rounded-2xl border border-ink-10 bg-white px-3 py-1.5">
               <p className="max-w-[220px] truncate text-[12px] font-semibold text-ink">{user?.email}</p>
               <p className="text-[10px] font-bold uppercase tracking-wide text-ink-40">Administrator</p>

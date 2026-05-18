@@ -71,9 +71,11 @@ import {
   leaderboardEventGmvRowSchema,
   leaderboardOrganizerGmvRowSchema,
   leaderboardsSchema,
+  platformCountersSchema,
   revenueBreakdownRowSchema,
   revenuePointSchema,
   type FinancialAnalytics,
+  type PlatformCounters,
   type Leaderboards,
 } from "@/schemas/analytics.schema";
 import {
@@ -183,20 +185,28 @@ function isRecord(v: unknown): v is Record<string, unknown> {
   return typeof v === "object" && v !== null && !Array.isArray(v);
 }
 
+function flattenPendingActionBuckets(container: Record<string, unknown>): unknown[] {
+  const buckets = [
+    container.events_pending_approval,
+    container.role_applications_submitted,
+    container.support_cases_open,
+    container.support_cases_open_pipeline,
+    container.listing_moderation_queue,
+    container.listing_moderation_queued_or_in_review,
+  ].filter(Array.isArray);
+  return buckets.flat();
+}
+
 function extractPendingActionsPayload(raw: unknown): unknown[] {
   const inner = unwrapApiJson(raw);
   if (Array.isArray(inner)) return inner;
   if (isRecord(inner)) {
-    // Handle grouped buckets from backend
+    const fromRoot = flattenPendingActionBuckets(inner);
+    if (fromRoot.length > 0) return fromRoot;
     const data = inner.data;
     if (isRecord(data)) {
-      const buckets = [
-        data.events_pending_approval,
-        data.role_applications_submitted,
-        data.support_cases_open,
-        data.listing_moderation_queue,
-      ].filter(Array.isArray);
-      return buckets.flat();
+      const fromData = flattenPendingActionBuckets(data);
+      if (fromData.length > 0) return fromData;
     }
     const nested = inner.items ?? inner.pending_actions ?? inner.pendingActions;
     if (Array.isArray(nested)) return nested;
@@ -243,6 +253,76 @@ export function mapDashboardCountersFromApi(raw: unknown): DashboardCounters {
     payoutsHeld: intNonNeg(pickNum(o, "payoutsHeld", "payouts_held")),
   };
   return dashboardCountersSchema.parse(candidate);
+}
+
+export function dashboardCountersFromSummary(
+  summary: DashboardSummaryNested,
+): DashboardCounters {
+  return dashboardCountersSchema.parse({
+    usersTotal: summary.users.total,
+    usersSuspended: summary.users.suspended,
+    eventsPendingApproval: summary.events.pendingApproval,
+    eventsPublished: summary.events.published,
+    supportCasesOpenPipeline: summary.supportCases.openPipeline,
+    listingModerationQueuedOrInReview: summary.listingModeration.queuedOrInReview,
+    roleApplicationsSubmitted: summary.roleApplications.submitted,
+    payoutsHeld: summary.payouts.held,
+  });
+}
+
+/** Maps `GET /dashboard/counters` (flat KPIs) into analytics platform counters UI shape. */
+export function mapPlatformCountersFromApi(raw: unknown): PlatformCounters {
+  const inner = unwrapApiJson(raw);
+  const o = asObject(inner);
+  const usersByRoleRaw = isRecord(o.users_by_role)
+    ? asObject(o.users_by_role)
+    : isRecord(o.usersByRole)
+      ? asObject(o.usersByRole)
+      : null;
+  const eventsByStatusRaw = isRecord(o.events_by_status)
+    ? asObject(o.events_by_status)
+    : isRecord(o.eventsByStatus)
+      ? asObject(o.eventsByStatus)
+      : null;
+
+  if (usersByRoleRaw && eventsByStatusRaw) {
+    return platformCountersSchema.parse({
+      usersByRole: {
+        guest: intNonNeg(pickNum(usersByRoleRaw, "guest")),
+        talent: intNonNeg(pickNum(usersByRoleRaw, "talent")),
+        vendor: intNonNeg(pickNum(usersByRoleRaw, "vendor")),
+        organizer: intNonNeg(pickNum(usersByRoleRaw, "organizer")),
+      },
+      eventsByStatus: {
+        active: intNonNeg(pickNum(eventsByStatusRaw, "active")),
+        ended: intNonNeg(pickNum(eventsByStatusRaw, "ended")),
+        cancelled: intNonNeg(pickNum(eventsByStatusRaw, "cancelled", "canceled")),
+        archived: intNonNeg(pickNum(eventsByStatusRaw, "archived")),
+      },
+      ticketsSold: intNonNeg(pickNum(o, "ticketsSold", "tickets_sold")),
+      bookings: intNonNeg(pickNum(o, "bookings")),
+      ratings: intNonNeg(pickNum(o, "ratings")),
+    });
+  }
+
+  const flat = mapDashboardCountersFromApi(raw);
+  return platformCountersSchema.parse({
+    usersByRole: {
+      guest: flat.usersTotal,
+      talent: 0,
+      vendor: 0,
+      organizer: 0,
+    },
+    eventsByStatus: {
+      active: flat.eventsPublished,
+      ended: 0,
+      cancelled: 0,
+      archived: 0,
+    },
+    ticketsSold: intNonNeg(pickNum(o, "ticketsSold", "tickets_sold")),
+    bookings: intNonNeg(pickNum(o, "bookings")),
+    ratings: intNonNeg(pickNum(o, "ratings")),
+  });
 }
 
 function pickNestedNum(
@@ -361,7 +441,7 @@ function mapPendingActionRow(row: unknown): PendingAction {
     kind = "event";
     title = pickStr(o, "title") ?? "";
     subtitle = pickStr(o, "code") ?? "";
-    href = `/admin/events/${id}`;
+    href = `/events/${id}`;
     priority = "high";
     dueLabel = pickStr(o, "submitted_at") ?? "";
   } else if (o.applicant && o.submitted_at) {
@@ -373,14 +453,14 @@ function mapPendingActionRow(row: unknown): PendingAction {
       pickStr(o, "applicant_name") ??
       "";
     subtitle = pickStr(applicant, "email") ?? pickStr(o, "email") ?? "";
-    href = `/admin/role-applications/${id}`;
+    href = `/approvals/roles/${id}`;
     dueLabel = pickStr(o, "submitted_at") ?? "";
   } else if (o.subject && o.created_at) {
     // Support case
     kind = "support";
     title = pickStr(o, "subject") ?? "";
     subtitle = pickStr(o, "code") ?? "";
-    href = `/admin/support/${id}`;
+    href = `/support/${id}`;
     priority = pickStr(o, "priority") === "high" ? "high" : "normal";
     dueLabel = pickStr(o, "created_at") ?? "";
   } else if (o.listing_kind && o.flag_reason) {
@@ -388,7 +468,7 @@ function mapPendingActionRow(row: unknown): PendingAction {
     kind = "moderation";
     title = pickStr(o, "listing_kind") ?? "";
     subtitle = pickStr(o, "flag_reason") ?? "";
-    href = `/admin/moderation/${id}`;
+    href = `/moderation/listings`;
     priority = "high";
     dueLabel = pickStr(o, "created_at") ?? "";
   }

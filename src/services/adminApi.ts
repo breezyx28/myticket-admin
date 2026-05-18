@@ -78,8 +78,10 @@ import {
   mapAdminEventsFromApi,
   mapAdminUserDetailFromApi,
   mapAdminUsersFromApi,
+  dashboardCountersFromSummary,
   mapDashboardCountersFromApi,
   mapDashboardSummaryFromApi,
+  mapPlatformCountersFromApi,
   mapEventCategoriesFromApi,
   mapFeaturedConfigFromApi,
   mapFeeConfigurationFromApi,
@@ -139,6 +141,10 @@ function toFetchError(err: unknown): { status: number; data: unknown } {
     return { status: o.status, data: o.data };
   }
   return { status: 500, data: err };
+}
+
+function unauthenticatedReadError(): { error: { status: number; data: { message: string } } } {
+  return { error: { status: 401, data: { message: 'Not authenticated' } } };
 }
 
 function mapLiveReadFailure(e: unknown): { error: { status: number; data: unknown } } {
@@ -215,7 +221,7 @@ const LIVE_GET: Record<LiveReadName, string | null> = {
   getNotificationsRecent: '/api/v1/admin/notifications/recent',
   getNotificationsDeliveryLog: '/api/v1/admin/notifications/delivery-log',
   getFinancialAnalytics: '/api/v1/admin/analytics/financial',
-  getPlatformCounters: null,
+  getPlatformCounters: '/api/v1/admin/dashboard/counters',
   getLeaderboards: '/api/v1/admin/analytics/leaderboards',
   getListingModeration: '/api/v1/admin/moderation-queue',
   getRatingsModeration: '/api/v1/admin/ratings',
@@ -252,10 +258,12 @@ async function tryLiveRead<T>(
   mockData: T,
   opts?: LiveReadOptions<T>
 ): Promise<{ data: T } | { error: { status: number; data: unknown } }> {
-  await delay(delayMs);
   const livePath = LIVE_GET[name];
-  if (shouldUseMockReads()) return { data: mockData };
-  if (!livePath || !getAccessToken()) {
+  if (shouldUseMockReads()) {
+    await delay(delayMs);
+    return { data: mockData };
+  }
+  if (!livePath) {
     warnReadFallback(name);
     return { data: mockData };
   }
@@ -389,9 +397,16 @@ export const adminApi = createApi({
     getDashboardCounters: builder.query<typeof MOCK_DASHBOARD_COUNTERS, void>({
       providesTags: ['Dashboard'],
       async queryFn(_arg, api, extraOptions) {
-        return tryLiveRead(api, extraOptions, 'getDashboardCounters', 55, MOCK_DASHBOARD_COUNTERS, {
+        const counters = await tryLiveRead(api, extraOptions, 'getDashboardCounters', 0, MOCK_DASHBOARD_COUNTERS, {
           map: mapDashboardCountersFromApi,
         });
+        if ('data' in counters) return counters;
+        if (counters.error.status === 404 || counters.error.status === 405) {
+          return tryLiveRead(api, extraOptions, 'getDashboardSummary', 0, MOCK_DASHBOARD_COUNTERS, {
+            map: (raw) => dashboardCountersFromSummary(mapDashboardSummaryFromApi(raw)),
+          });
+        }
+        return counters;
       },
     }),
     getPendingActions: builder.query<typeof MOCK_PENDING_ACTIONS, void>({
@@ -428,10 +443,11 @@ export const adminApi = createApi({
         if (shouldUseMockReads()) return resolveFromMock();
 
         const rolePath = LIVE_GET.getRoleApplication;
-        if (!rolePath || !getAccessToken()) {
+        if (!rolePath) {
           warnReadFallback('getRoleApplication');
           return resolveFromMock();
         }
+        if (!getAccessToken()) return unauthenticatedReadError();
 
         const res = await baseQueryWithReauth(
           { url: rolePath.replace(':id', encodeURIComponent(id)), method: 'GET' },
@@ -525,10 +541,11 @@ export const adminApi = createApi({
         if (shouldUseMockReads()) return resolveFromMock();
 
         const detailPath = LIVE_GET.getTalentProfile;
-        if (!detailPath || !getAccessToken()) {
+        if (!detailPath) {
           warnReadFallback('getTalentProfile');
           return resolveFromMock();
         }
+        if (!getAccessToken()) return unauthenticatedReadError();
 
         const res = await baseQueryWithReauth(
           { url: detailPath.replace(':id', encodeURIComponent(id)), method: 'GET' },
@@ -650,10 +667,11 @@ export const adminApi = createApi({
         if (shouldUseMockReads()) return resolveFromMock();
 
         const orderPath = LIVE_GET.getOrder;
-        if (!orderPath || !getAccessToken()) {
+        if (!orderPath) {
           warnReadFallback('getOrder');
           return resolveFromMock();
         }
+        if (!getAccessToken()) return unauthenticatedReadError();
 
         // Use numericId from cached list row if available (API expects numeric id)
         const listRow = ordersState.find((r) => r.id === id);
@@ -724,10 +742,11 @@ export const adminApi = createApi({
         if (shouldUseMockReads()) return resolveFromMock();
 
         const refundPath = LIVE_GET.getRefund;
-        if (!refundPath || !getAccessToken()) {
+        if (!refundPath) {
           warnReadFallback('getRefund');
           return resolveFromMock();
         }
+        if (!getAccessToken()) return unauthenticatedReadError();
 
         const res = await baseQueryWithReauth(
           { url: refundPath.replace(':id', encodeURIComponent(id)), method: 'GET' },
@@ -884,10 +903,11 @@ export const adminApi = createApi({
         if (shouldUseMockReads()) return resolveFromMock();
 
         const auctionPath = LIVE_GET.getAuction;
-        if (!auctionPath || !getAccessToken()) {
+        if (!auctionPath) {
           warnReadFallback('getAuction');
           return resolveFromMock();
         }
+        if (!getAccessToken()) return unauthenticatedReadError();
 
         const res = await baseQueryWithReauth(
           { url: auctionPath.replace(':id', encodeURIComponent(id)), method: 'GET' },
@@ -1106,10 +1126,7 @@ export const adminApi = createApi({
         if (shouldUseMockReads()) return resolveFromMock();
 
         const path = '/api/v1/admin/audit-logs/:id';
-        if (!getAccessToken()) {
-          warnReadFallback('getAuditLog');
-          return resolveFromMock();
-        }
+        if (!getAccessToken()) return unauthenticatedReadError();
 
         const res = await baseQueryWithReauth(
           { url: path.replace(':id', encodeURIComponent(id)), method: 'GET' },
@@ -1195,10 +1212,11 @@ export const adminApi = createApi({
         if (shouldUseMockReads()) return resolveFromMock();
 
         const kycPath = LIVE_GET.getOrganizerKyc;
-        if (!kycPath || !getAccessToken()) {
+        if (!kycPath) {
           warnReadFallback('getOrganizerKyc');
           return resolveFromMock();
         }
+        if (!getAccessToken()) return unauthenticatedReadError();
 
         const res = await baseQueryWithReauth(
           { url: kycPath.replace(':id', encodeURIComponent(organizerId)), method: 'GET' },
@@ -1311,10 +1329,11 @@ export const adminApi = createApi({
         if (shouldUseMockReads()) return resolveFromMock();
 
         const userPath = LIVE_GET.getUser;
-        if (!userPath || !getAccessToken()) {
+        if (!userPath) {
           warnReadFallback('getUser');
           return resolveFromMock();
         }
+        if (!getAccessToken()) return unauthenticatedReadError();
 
         const res = await baseQueryWithReauth(
           { url: userPath.replace(':id', encodeURIComponent(id)), method: 'GET' },
@@ -1427,10 +1446,11 @@ export const adminApi = createApi({
         if (shouldUseMockReads()) return resolveFromMock();
 
         const eventPath = LIVE_GET.getEvent;
-        if (!eventPath || !getAccessToken()) {
+        if (!eventPath) {
           warnReadFallback('getEvent');
           return resolveFromMock();
         }
+        if (!getAccessToken()) return unauthenticatedReadError();
 
         const res = await baseQueryWithReauth(
           { url: eventPath.replace(':id', encodeURIComponent(id)), method: 'GET' },
@@ -1832,7 +1852,9 @@ export const adminApi = createApi({
     getPlatformCounters: builder.query<typeof MOCK_PLATFORM_COUNTERS, void>({
       providesTags: ['Analytics'],
       async queryFn(_arg, api, extraOptions) {
-        return tryLiveRead(api, extraOptions, 'getPlatformCounters', 55, MOCK_PLATFORM_COUNTERS);
+        return tryLiveRead(api, extraOptions, 'getPlatformCounters', 0, MOCK_PLATFORM_COUNTERS, {
+          map: mapPlatformCountersFromApi,
+        });
       },
     }),
     getLeaderboards: builder.query<typeof MOCK_LEADERBOARDS, void>({
@@ -2142,10 +2164,11 @@ export const adminApi = createApi({
         if (shouldUseMockReads()) return resolveFromMock();
 
         const threadPath = LIVE_GET.getSupportThread;
-        if (!threadPath || !getAccessToken()) {
+        if (!threadPath) {
           warnReadFallback('getSupportThread');
           return resolveFromMock();
         }
+        if (!getAccessToken()) return unauthenticatedReadError();
 
         const res = await baseQueryWithReauth(
           { url: threadPath.replace(':id', encodeURIComponent(id)), method: 'GET' },

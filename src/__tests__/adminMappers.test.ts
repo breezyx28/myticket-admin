@@ -35,6 +35,7 @@ import {
   mapSupportThreadDetailFromApi,
   mapSupportThreadsFromApi,
   mapPendingActionsFromApi,
+  mapPlatformCountersFromApi,
   mapRoleApplicationFromApi,
   mapRoleApplicationsFromApi,
   mapTalentProfileDetailFromApi,
@@ -125,6 +126,50 @@ describe("mapPendingActionsFromApi", () => {
     });
     expect(out).toHaveLength(1);
     expect(out[0].kind).toBe("role_application");
+  });
+
+  it("flattens grouped pending-action buckets", () => {
+    const out = mapPendingActionsFromApi({
+      data: {
+        events_pending_approval: [
+          {
+            id: "7",
+            code: "EVT-1",
+            title: "Gala",
+            status: "pending_approval",
+            submitted_at: "2026-05-01T00:00:00Z",
+          },
+        ],
+        support_cases_open: [
+          {
+            id: "3",
+            code: "SUP-1",
+            subject: "Refund",
+            status: "open",
+            priority: "high",
+            created_at: "2026-05-02T00:00:00Z",
+          },
+        ],
+      },
+    });
+    expect(out).toHaveLength(2);
+    expect(out[0]).toMatchObject({ kind: "event", href: "/events/7", title: "Gala" });
+    expect(out[1]).toMatchObject({ kind: "support", href: "/support/3", title: "Refund" });
+  });
+});
+
+describe("mapPlatformCountersFromApi", () => {
+  it("maps flat dashboard counters into platform counter shape", () => {
+    const out = mapPlatformCountersFromApi({
+      data: {
+        users_total: 100,
+        events_published: 12,
+        tickets_sold: 50,
+      },
+    });
+    expect(out.usersByRole.guest).toBe(100);
+    expect(out.eventsByStatus.active).toBe(12);
+    expect(out.ticketsSold).toBe(50);
   });
 });
 

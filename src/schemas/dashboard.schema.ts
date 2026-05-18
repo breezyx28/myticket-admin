@@ -42,7 +42,7 @@ export type DashboardSummaryNested = z.infer<typeof dashboardSummaryNestedSchema
 
 export const pendingActionSchema = z.object({
   id: z.string(),
-  kind: z.enum(['role_application', 'talent_profile', 'support']),
+  kind: z.enum(['role_application', 'talent_profile', 'support', 'event', 'moderation']),
   title: z.string(),
   subtitle: z.string(),
   href: z.string(),
