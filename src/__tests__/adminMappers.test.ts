@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  mapAdminEventDetailFromApi,
   mapAdminEventRowFromApi,
   mapAdminEventsFromApi,
   mapAdminUserDetailFromApi,
@@ -433,6 +434,45 @@ describe("mapAdminEventsFromApi / mapAdminEventRowFromApi", () => {
     expect(out).toHaveLength(1);
     expect(out[0].organizerName).toBe("Org");
     expect(out[0].ticketsSold).toBe(10);
+  });
+
+  it("mapAdminEventDetailFromApi maps nested organizer and API status", () => {
+    const out = mapAdminEventDetailFromApi({
+      data: {
+        id: 18,
+        code: "EVT-00000016",
+        title: "test",
+        description: "test",
+        status: "pending_approval",
+        cover_image_url: "https://example.com/c.png",
+        starts_at: "2026-05-27T11:43:00.000000Z",
+        ends_at: "2026-05-31T14:48:00.000000Z",
+        timezone: "Asia/Riyadh",
+        city: "Madinah",
+        tickets_sold: 0,
+        capacity: null,
+        revenue_gross: "0.00",
+        rating_average: null,
+        rating_count: 0,
+        is_featured: false,
+        organizer: {
+          id: 1,
+          display_name: "Demo Events Co.",
+          contact_email: "organizer@example.com",
+        },
+        category: {
+          id: 7,
+          slug: "workshops",
+          name_en: "Workshops",
+          name_ar: "ورش عمل",
+        },
+      },
+    });
+    expect(out.apiStatus).toBe("pending_approval");
+    expect(out.code).toBe("EVT-00000016");
+    expect(out.organizer?.displayName).toBe("Demo Events Co.");
+    expect(out.categoryDetail?.nameEn).toBe("Workshops");
+    expect(out.capacity).toBeNull();
   });
 
   it("mapAdminEventRowFromApi clamps rating and success rate", () => {

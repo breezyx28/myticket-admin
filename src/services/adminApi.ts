@@ -49,8 +49,14 @@ import {
   usersState,
 } from '@/mock/runtimeState';
 import { financialAnalyticsSchema, type FinancialAnalytics } from '@/schemas/analytics.schema';
-import type { CancelEventInput, FeaturedEventsConfig, EventCategoryUpsertForm } from '@/schemas/event.schema';
-import { adminEventRowSchema, featuredEventsConfigSchema } from '@/schemas/event.schema';
+import type {
+  AdminEventDetail,
+  CancelEventInput,
+  FeaturedEventsConfig,
+  EventCategoryUpsertForm,
+  RejectEventInput,
+} from '@/schemas/event.schema';
+import { featuredEventsConfigSchema, rejectEventSchema } from '@/schemas/event.schema';
 import { adminAuctionDetailSchema, type AdminAuctionDetail } from '@/schemas/auction.schema';
 import { adminProfileUpdateSchema, type AdminProfileUpdate } from '@/schemas/adminSelf.schema';
 import type { FeeConfiguration, NotificationSettings } from '@/schemas/settings.schema';
@@ -74,7 +80,7 @@ import type { RevenueChartRange } from '@/types/analytics';
 import { baseQueryWithReauth, sessionHasApiCredentials } from '@/services/adminFetchBaseQuery';
 import { shouldUseMockReads, warnReadFallback } from '@/services/adminReadMode';
 import {
-  mapAdminEventRowFromApi,
+  mapAdminEventDetailFromApi,
   mapAdminEventsFromApi,
   mapAdminUserDetailFromApi,
   mapAdminUsersFromApi,
@@ -1431,19 +1437,31 @@ export const adminApi = createApi({
         });
       },
     }),
-    getEvent: builder.query<NonNullable<(typeof eventsState)[number]>, string>({
+    getEvent: builder.query<AdminEventDetail, string>({
       providesTags: (_r, _e, id) => [{ type: 'Events', id }],
       async queryFn(id, api, extraOptions) {
-        await delay(40);
         const localRow = eventsState.find((e) => e.id === id);
-        const localParsed = localRow ? adminEventRowSchema.safeParse(localRow) : null;
 
-        const resolveFromMock = (): { data: (typeof eventsState)[number] } | { error: { status: number; data: unknown } } => {
-          if (!localParsed?.success) return { error: { status: 404, data: 'Not found' } };
-          return { data: localParsed.data };
+        const resolveFromMock = (): { data: AdminEventDetail } | { error: { status: number; data: unknown } } => {
+          if (!localRow) return { error: { status: 404, data: 'Not found' } };
+          try {
+            return {
+              data: mapAdminEventDetailFromApi({
+                ...localRow,
+                code: `MOCK-${localRow.id}`,
+                status: localRow.status === 'cancelled' ? 'cancelled' : 'published',
+                capacity: localRow.capacity,
+              }),
+            };
+          } catch (e) {
+            return mapLiveReadFailure(e);
+          }
         };
 
-        if (shouldUseMockReads()) return resolveFromMock();
+        if (shouldUseMockReads()) {
+          await delay(40);
+          return resolveFromMock();
+        }
 
         const eventPath = LIVE_GET.getEvent;
         if (!eventPath) {
@@ -1459,7 +1477,7 @@ export const adminApi = createApi({
         );
         if (res.error) return { error: toFetchError(res.error) };
         try {
-          return { data: mapAdminEventRowFromApi(res.data) };
+          return { data: mapAdminEventDetailFromApi(res.data) };
         } catch (e) {
           return mapLiveReadFailure(e);
         }
@@ -1494,24 +1512,44 @@ export const adminApi = createApi({
       },
     }),
     approveEvent: builder.mutation<{ ok: true }, string>({
-      invalidatesTags: (_r, _e, id) => ['Events', { type: 'Events', id }, 'Dashboard'],
+      invalidatesTags: (_r, _e, id) => ['Events', { type: 'Events', id }, 'Dashboard', 'NotificationFeed'],
       async queryFn(id, api, extraOptions) {
         if (!sessionHasApiCredentials()) {
           await delay(120);
-          const r = eventsState.find((e) => e.id === id);
-          if (r && r.status === 'archived') syncEventRow(id, { status: 'active' });
+          syncEventRow(id, { status: 'active' });
           return { data: { ok: true } };
         }
         const res = await baseQueryWithReauth(
-          { url: `/api/v1/admin/events/${encodeURIComponent(id)}/approve`, method: 'POST' },
+          { url: `/api/v1/admin/events/${encodeURIComponent(id)}/approve`, method: 'POST', body: {} },
           api,
           extraOptions
         );
         if (res.error) return { error: toFetchError(res.error) };
-        if (shouldUseMockReads()) {
-          const r = eventsState.find((e) => e.id === id);
-          if (r && r.status === 'archived') syncEventRow(id, { status: 'active' });
+        if (shouldUseMockReads()) syncEventRow(id, { status: 'active' });
+        return { data: { ok: true } };
+      },
+    }),
+    rejectEvent: builder.mutation<{ ok: true }, { id: string; body: RejectEventInput }>({
+      invalidatesTags: (_r, _e, arg) => ['Events', { type: 'Events', id: arg.id }, 'Dashboard', 'NotificationFeed'],
+      async queryFn({ id, body }, api, extraOptions) {
+        const parsed = rejectEventSchema.safeParse(body);
+        if (!parsed.success) return { error: { status: 400, data: parsed.error.flatten() } };
+        if (!sessionHasApiCredentials()) {
+          await delay(120);
+          syncEventRow(id, { status: 'cancelled' });
+          return { data: { ok: true } };
         }
+        const res = await baseQueryWithReauth(
+          {
+            url: `/api/v1/admin/events/${encodeURIComponent(id)}/reject`,
+            method: 'POST',
+            body: { reason: parsed.data.reason },
+          },
+          api,
+          extraOptions
+        );
+        if (res.error) return { error: toFetchError(res.error) };
+        if (shouldUseMockReads()) syncEventRow(id, { status: 'cancelled' });
         return { data: { ok: true } };
       },
     }),
@@ -2354,6 +2392,7 @@ export const {
   useGetEventQuery,
   useCancelEventMutation,
   useApproveEventMutation,
+  useRejectEventMutation,
   useFeatureEventMutation,
   useUnfeatureEventMutation,
   useGetCategoriesQuery,

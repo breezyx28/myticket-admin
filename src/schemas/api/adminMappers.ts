@@ -62,6 +62,8 @@ import {
   eventCategoryListSchema,
   eventCategorySchema,
   featuredEventsConfigSchema,
+  adminEventDetailSchema,
+  type AdminEventDetail,
   type AdminEventRow,
   type EventCategory,
   type FeaturedEventsConfig,
@@ -1116,6 +1118,119 @@ export function mapAdminEventRowFromApi(raw: unknown): AdminEventRow {
     featured,
   };
   return adminEventRowSchema.parse(candidate);
+}
+
+function parseMoneyAmount(raw: unknown): number {
+  if (typeof raw === "number" && Number.isFinite(raw)) return Math.max(0, raw);
+  if (typeof raw === "string" && raw.trim() !== "") {
+    const n = Number(raw);
+    if (Number.isFinite(n)) return Math.max(0, n);
+  }
+  return 0;
+}
+
+function mapEventOrganizerFromApi(raw: unknown) {
+  if (!isRecord(raw)) return undefined;
+  const o = asObject(raw);
+  const idNum = pickNum(o, "id");
+  const id = pickStr(o, "id") ?? (idNum !== undefined ? String(idNum) : "");
+  if (!id) return undefined;
+  return {
+    id,
+    ...(pickStr(o, "code") ? { code: pickStr(o, "code") } : {}),
+    displayName:
+      pickStr(o, "display_name", "displayName", "name", "company_name") ?? "Organizer",
+    ...(pickStr(o, "contact_email", "contactEmail", "email")
+      ? { contactEmail: pickStr(o, "contact_email", "contactEmail", "email") }
+      : {}),
+    ...(pickStr(o, "contact_phone", "contactPhone", "phone")
+      ? { contactPhone: pickStr(o, "contact_phone", "contactPhone", "phone") }
+      : {}),
+    ...(pickStr(o, "logo_url", "logoUrl") ? { logoUrl: pickStr(o, "logo_url", "logoUrl") } : {}),
+    ...(pickStr(o, "slug") ? { slug: pickStr(o, "slug") } : {}),
+  };
+}
+
+function mapEventCategorySummaryFromApi(raw: unknown) {
+  if (!isRecord(raw)) return undefined;
+  const o = asObject(raw);
+  const idNum = pickNum(o, "id");
+  const id = pickStr(o, "id") ?? (idNum !== undefined ? String(idNum) : "");
+  if (!id) return undefined;
+  return {
+    id,
+    slug: pickStr(o, "slug") ?? "",
+    nameEn: pickStr(o, "name_en", "nameEn", "name") ?? "",
+    nameAr: pickStr(o, "name_ar", "nameAr") ?? "",
+    ...(pickStr(o, "icon_key", "iconKey") ? { iconKey: pickStr(o, "icon_key", "iconKey") } : {}),
+  };
+}
+
+export function mapAdminEventDetailFromApi(raw: unknown): AdminEventDetail {
+  const inner = unwrapApiJson(raw);
+  const o = asObject(inner);
+  const row = mapAdminEventRowFromApi(inner);
+  const apiStatus = pickStr(o, "status", "lifecycle", "state") ?? row.status;
+  const capacityRaw = pickNum(o, "capacity", "max_capacity", "ticket_capacity");
+  const organizerNested = o.organizer;
+  const categoryNested = o.category;
+  const organizerFromNested = mapEventOrganizerFromApi(organizerNested);
+  const categoryFromNested = mapEventCategorySummaryFromApi(categoryNested);
+
+  const candidate = {
+    ...row,
+    code: pickStr(o, "code") ?? "",
+    apiStatus,
+    capacity: capacityRaw !== undefined ? intNonNeg(capacityRaw) : null,
+    organizerName:
+      organizerFromNested?.displayName ??
+      pickStr(o, "organizer_name", "organizerName") ??
+      row.organizerName,
+    category:
+      categoryFromNested?.nameEn ??
+      pickStr(o, "category", "category_name") ??
+      row.category,
+    revenueSar:
+      parseMoneyAmount(
+        pickNum(o, "revenueSar", "revenue_sar") ?? o.revenue_gross ?? row.revenueSar,
+      ),
+    avgRating: Math.min(
+      5,
+      Math.max(
+        0,
+        pickNum(o, "avgRating", "avg_rating", "rating_average") ?? row.avgRating,
+      ),
+    ),
+    description: pickStr(o, "description", "body") ?? undefined,
+    excerpt: pickStr(o, "excerpt") ?? undefined,
+    timezone: pickStr(o, "timezone") ?? undefined,
+    layoutType: pickStr(o, "layout_type", "layoutType") ?? undefined,
+    entryMode: pickStr(o, "entry_mode", "entryMode") ?? undefined,
+    rejectionReason: pickStr(o, "rejection_reason", "rejectionReason") ?? undefined,
+    submittedAt: pickStr(o, "submitted_at", "submittedAt") ?? undefined,
+    publishedAt: pickStr(o, "published_at", "publishedAt") ?? undefined,
+    cancelledAt: pickStr(o, "cancelled_at", "cancelledAt") ?? undefined,
+    createdAt: pickStr(o, "created_at", "createdAt") ?? undefined,
+    updatedAt: pickStr(o, "updated_at", "updatedAt") ?? undefined,
+    venueName: pickStr(o, "venue_name", "venueName", "venue") ?? row.venueName,
+    venueAddress: pickStr(o, "venue_address", "venueAddress") ?? undefined,
+    city: pickStr(o, "city", "venue_city") ?? row.city,
+    videoUrl: pickStr(o, "video_url", "videoUrl") ?? undefined,
+    priceMin: pickNum(o, "price_min", "priceMin") ?? null,
+    priceMax: pickNum(o, "price_max", "priceMax") ?? null,
+    ticketsLeft: pickNum(o, "tickets_left", "ticketsLeft") ?? null,
+    ratingCount: intNonNeg(pickNum(o, "rating_count", "ratingCount")),
+    attendingCount: intNonNeg(pickNum(o, "attending_count", "attendingCount")),
+    waitlistCount: intNonNeg(pickNum(o, "waitlist_count", "waitlistCount")),
+    showTalents: pickBool(o, "show_talents", "showTalents"),
+    showVendors: pickBool(o, "show_vendors", "showVendors"),
+    isMultiDay: pickBool(o, "is_multi_day", "isMultiDay"),
+    isFeatured: pickBool(o, "is_featured", "isFeatured") ?? row.featured,
+    featured: pickBool(o, "is_featured", "isFeatured", "featured") ?? row.featured,
+    ...(organizerFromNested ? { organizer: organizerFromNested } : {}),
+    ...(categoryFromNested ? { categoryDetail: categoryFromNested } : {}),
+  };
+  return adminEventDetailSchema.parse(candidate);
 }
 
 export function mapAdminEventsFromApi(raw: unknown): AdminEventRow[] {

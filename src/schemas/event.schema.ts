@@ -81,3 +81,67 @@ export const cancelEventSchema = z.object({
 });
 
 export type CancelEventInput = z.infer<typeof cancelEventSchema>;
+
+export const rejectEventSchema = z.object({
+  reason: z.string().trim().min(1, 'Rejection reason is required'),
+});
+
+export type RejectEventInput = z.infer<typeof rejectEventSchema>;
+
+export const eventOrganizerSummarySchema = z.object({
+  id: z.string(),
+  code: z.string().optional(),
+  displayName: z.string(),
+  contactEmail: z.string().optional(),
+  contactPhone: z.string().optional(),
+  logoUrl: z.string().optional(),
+  slug: z.string().optional(),
+});
+
+export type EventOrganizerSummary = z.infer<typeof eventOrganizerSummarySchema>;
+
+export const eventCategorySummarySchema = z.object({
+  id: z.string(),
+  slug: z.string(),
+  nameEn: z.string(),
+  nameAr: z.string(),
+  iconKey: z.string().optional(),
+});
+
+export type EventCategorySummary = z.infer<typeof eventCategorySummarySchema>;
+
+/** Full event record from `GET /api/v1/admin/events/{id}`. */
+export const adminEventDetailSchema = adminEventRowSchema
+  .omit({ capacity: true })
+  .extend({
+    capacity: z.number().int().nonnegative().nullable(),
+    code: z.string(),
+    apiStatus: z.string(),
+    description: z.string().optional(),
+    excerpt: z.string().optional(),
+    timezone: z.string().optional(),
+    layoutType: z.string().optional(),
+    entryMode: z.string().optional(),
+    rejectionReason: z.string().optional(),
+    submittedAt: z.string().optional(),
+    publishedAt: z.string().optional(),
+    cancelledAt: z.string().optional(),
+    createdAt: z.string().optional(),
+    updatedAt: z.string().optional(),
+    venueAddress: z.string().optional(),
+    videoUrl: z.string().optional(),
+    priceMin: z.number().nullable().optional(),
+    priceMax: z.number().nullable().optional(),
+    ticketsLeft: z.number().int().nonnegative().nullable().optional(),
+    ratingCount: z.number().int().nonnegative().optional(),
+    attendingCount: z.number().int().nonnegative().optional(),
+    waitlistCount: z.number().int().nonnegative().optional(),
+    showTalents: z.boolean().optional(),
+    showVendors: z.boolean().optional(),
+    isMultiDay: z.boolean().optional(),
+    isFeatured: z.boolean().optional(),
+    organizer: eventOrganizerSummarySchema.optional(),
+    categoryDetail: eventCategorySummarySchema.optional(),
+  });
+
+export type AdminEventDetail = z.infer<typeof adminEventDetailSchema>;
