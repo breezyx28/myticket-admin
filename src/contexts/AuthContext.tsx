@@ -30,32 +30,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const email = params.email.trim();
     if (!email || params.password.length < 4) return { ok: false as const, reason: 'invalid' as const };
 
-    // #region agent log
-    {
-      const baseProbe = getApiBaseUrl();
-      fetch('http://127.0.0.1:7432/ingest/9310ec5a-5875-4024-ad96-7ace7d477385', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': 'fb32e8' },
-        body: JSON.stringify({
-          sessionId: 'fb32e8',
-          runId: 'pre-fix',
-          hypothesisId: 'H-empty-base',
-          location: 'AuthContext.tsx:signIn:entry',
-          message: 'signIn entry',
-          data: {
-            emailLen: email.length,
-            pwdLen: params.password.length,
-            allowDemoAuth: allowDemoAuth(),
-            demoEmailMatch: resolveDemoAdmin(email),
-            apiBaseLen: baseProbe.length,
-            apiBaseIsEmpty: baseProbe.length === 0,
-          },
-          timestamp: Date.now(),
-        }),
-      }).catch(() => {});
-    }
-    // #endregion
-
     if (allowDemoAuth() && resolveDemoAdmin(email)) {
       const nextUser: SessionUser = {
         email,
@@ -75,21 +49,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const base = getApiBaseUrl();
     if (!base) {
-      // #region agent log
-      fetch('http://127.0.0.1:7432/ingest/9310ec5a-5875-4024-ad96-7ace7d477385', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': 'fb32e8' },
-        body: JSON.stringify({
-          sessionId: 'fb32e8',
-          runId: 'pre-fix',
-          hypothesisId: 'H-empty-base',
-          location: 'AuthContext.tsx:signIn:noBase',
-          message: 'empty API base — returning server reason without fetch',
-          data: { willFetch: false },
-          timestamp: Date.now(),
-        }),
-      }).catch(() => {});
-      // #endregion
       return { ok: false as const, reason: 'server' as const };
     }
 
@@ -115,21 +74,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         body: JSON.stringify(body),
       });
     } catch {
-      // #region agent log
-      fetch('http://127.0.0.1:7432/ingest/9310ec5a-5875-4024-ad96-7ace7d477385', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': 'fb32e8' },
-        body: JSON.stringify({
-          sessionId: 'fb32e8',
-          runId: 'pre-fix',
-          hypothesisId: 'H-network',
-          location: 'AuthContext.tsx:signIn:fetchThrow',
-          message: 'fetch threw',
-          data: {},
-          timestamp: Date.now(),
-        }),
-      }).catch(() => {});
-      // #endregion
       return { ok: false as const, reason: 'network' as const };
     }
 
@@ -142,21 +86,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     if (!res.ok) {
       const reason: SignInFailureReason = res.status >= 500 ? 'server' : 'credentials';
-      // #region agent log
-      fetch('http://127.0.0.1:7432/ingest/9310ec5a-5875-4024-ad96-7ace7d477385', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': 'fb32e8' },
-        body: JSON.stringify({
-          sessionId: 'fb32e8',
-          runId: 'pre-fix',
-          hypothesisId: 'H-http-5xx',
-          location: 'AuthContext.tsx:signIn:httpNotOk',
-          message: 'login HTTP not ok',
-          data: { status: res.status, reason },
-          timestamp: Date.now(),
-        }),
-      }).catch(() => {});
-      // #endregion
       return { ok: false as const, reason };
     }
 

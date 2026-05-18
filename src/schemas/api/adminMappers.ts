@@ -1,3 +1,4 @@
+import { placeholderAssetUrl } from "@/config/env";
 import {
   ApiJsonError,
   asObject,
@@ -338,7 +339,7 @@ function mapPendingActionRow(row: unknown): PendingAction {
       priority,
       imageUrl:
         pickStr(o, "imageUrl", "image_url") ??
-        "https://localhost/placeholder-image",
+        placeholderAssetUrl("placeholder-image"),
       dueLabel: pickStr(o, "dueLabel", "due_label") ?? "",
     };
     return pendingActionSchema.parse(candidate);
@@ -399,7 +400,7 @@ function mapPendingActionRow(row: unknown): PendingAction {
     subtitle,
     href,
     priority,
-    imageUrl: "https://localhost/placeholder-image",
+    imageUrl: placeholderAssetUrl("placeholder-image"),
     dueLabel,
   };
   return pendingActionSchema.parse(candidate);
@@ -657,7 +658,7 @@ export function mapTalentProfileFromApi(raw: unknown): TalentProfile {
       "",
     introVideoUrl:
       pickStr(o, "introVideoUrl", "intro_video_url", "video_url") ??
-      "https://localhost/placeholder-video",
+      placeholderAssetUrl("placeholder-video"),
     headshotUrl:
       pickStr(
         o,
@@ -674,7 +675,7 @@ export function mapTalentProfileFromApi(raw: unknown): TalentProfile {
         "avatar_url",
         "photo_url",
       ) ??
-      "https://localhost/placeholder-headshot",
+      placeholderAssetUrl("placeholder-headshot"),
     portfolioPdfUrl:
       pickStr(o, "portfolioPdfUrl", "portfolio_pdf_url", "portfolio_url") ??
       pickStr(
@@ -683,7 +684,7 @@ export function mapTalentProfileFromApi(raw: unknown): TalentProfile {
         "portfolio_pdf_url",
         "portfolio_url",
       ) ??
-      "https://localhost/placeholder-portfolio",
+      placeholderAssetUrl("placeholder-portfolio"),
     governmentIdStatus:
       gov === "verified" || gov === "rejected" || gov === "pending"
         ? gov
@@ -994,7 +995,7 @@ export function mapAdminEventRowFromApi(raw: unknown): AdminEventRow {
       "cover_url",
       "image_url",
       "thumbnail_url",
-    ) ?? "https://localhost/placeholder-cover";
+    ) ?? placeholderAssetUrl("placeholder-cover");
   const idNum = pickNum(o, "id", "event_id");
   const idStr =
     pickStr(o, "id", "event_id", "uuid") ??
