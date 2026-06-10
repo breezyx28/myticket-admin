@@ -203,6 +203,27 @@ describe("mapRoleApplicationsFromApi / mapRoleApplicationFromApi", () => {
     });
   });
 
+  it("stringifies numeric role application ids from Laravel list rows", () => {
+    const out = mapRoleApplicationsFromApi({
+      data: {
+        current_page: 1,
+        data: [
+          {
+            id: 1,
+            applicant_name: "KAT",
+            email: "beeestore.center@gmail.com",
+            role: "talent",
+            status: "pending",
+            created_at: "2026-06-10T09:41:25.000000Z",
+            documents_summary: "Certificate uploaded",
+          },
+        ],
+      },
+    });
+    expect(out[0].id).toBe("1");
+    expect(out[0].type).toBe("talent");
+  });
+
   it("maps single detail row with rejection_reason", () => {
     const one = mapRoleApplicationFromApi({
       data: {
@@ -331,6 +352,76 @@ describe("mapTalentProfilesFromApi / mapTalentProfileFromApi", () => {
     expect(one.id).toBe("42");
     expect(one.email).toBe("fan@example.com");
     expect(one.legalName).toBe("Legal");
+  });
+
+  it("mapTalentProfileDetailFromApi maps gallery, application fields, and region/city ids", () => {
+    const one = mapTalentProfileDetailFromApi({
+      data: {
+        id: 3,
+        user_id: 25,
+        application_id: 1,
+        slug: "kat-25",
+        stage_name: "KAT",
+        bio: "Performer bio",
+        region_id: 5,
+        city_id: 36,
+        profile_image_url:
+          "https://myticket-api.kat-jr.com/storage/marketplace/talent-media/head.png",
+        intro_video_url: null,
+        instagram_handle: null,
+        website_url: null,
+        travel_ready: 1,
+        location_public: 1,
+        availability_status: "available",
+        rating_average: "0.00",
+        rating_count: 0,
+        completed_bookings: 0,
+        is_active: 1,
+        created_at: "2026-06-10T12:12:06.000000Z",
+        user: {
+          id: 25,
+          email: "beeestore.center@gmail.com",
+          phone: "+9665971455621",
+          full_name: "Talent User",
+        },
+        application: {
+          id: 1,
+          contact_email: "beeestore.center@gmail.com",
+          contact_phone: "05897468879",
+          certificate_name: "Test Certificate",
+          government_id_status: "pending",
+          bank_verified: 0,
+          accepted_quality_disclaimer: 1,
+          created_at: "2026-06-10T09:41:25.000000Z",
+        },
+        categories: [],
+        gallery: [
+          {
+            id: 2,
+            image_url:
+              "https://myticket-api.kat-jr.com/storage/marketplace/talent-media/gallery.png",
+            caption: null,
+            position: 0,
+          },
+        ],
+      },
+    });
+    expect(one.id).toBe("3");
+    expect(one.slug).toBe("kat-25");
+    expect(one.userId).toBe("25");
+    expect(one.applicationId).toBe("1");
+    expect(one.email).toBe("beeestore.center@gmail.com");
+    expect(one.contactPhone).toBe("05897468879");
+    expect(one.city).toBe("City #36");
+    expect(one.country).toBe("Region #5");
+    expect(one.certificatesSummary).toBe("Test Certificate");
+    expect(one.acceptedQualityDisclaimer).toBe(true);
+    expect(one.travelReady).toBe(true);
+    expect(one.availabilityStatus).toBe("available");
+    expect(one.gallery).toHaveLength(1);
+    expect(one.gallery[0].imageUrl).toContain("gallery.png");
+    expect(one.introVideoUrl).toBe("");
+    expect(one.portfolioPdfUrl).toBe("");
   });
 
   it("mapTalentProfileFromApi clamps rating and defaults invalid status", () => {

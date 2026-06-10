@@ -3,17 +3,33 @@ import { reviewStatusSchema } from './shared';
 
 export const governmentIdStatusSchema = z.enum(['pending', 'verified', 'rejected']);
 
+export const talentGalleryItemSchema = z.object({
+  id: z.string(),
+  imageUrl: z.string().min(1),
+  caption: z.string().optional(),
+  position: z.number().int().nonnegative(),
+});
+
+export type TalentGalleryItem = z.infer<typeof talentGalleryItemSchema>;
+
 export const talentProfileSchema = z.object({
   id: z.string(),
   /** Public profile slug when API provides it (e.g. marketplace listing). */
   slug: z.string().optional(),
+  userId: z.string().optional(),
+  applicationId: z.string().optional(),
   stageName: z.string(),
   legalName: z.string(),
-  /** Contact email when present; otherwise a stable synthetic address from `user_id` for UI/search. */
+  /** Account email when present; otherwise a stable synthetic address from `user_id` for UI/search. */
   email: z.string().email(),
   phone: z.string(),
+  /** Application contact fields when they differ from the linked user account. */
+  contactEmail: z.string().optional(),
+  contactPhone: z.string().optional(),
   country: z.string(),
   city: z.string(),
+  regionId: z.number().int().positive().optional(),
+  cityId: z.number().int().positive().optional(),
   genres: z.array(z.string()),
   yearsExperience: z.number().int().nonnegative(),
   bio: z.string(),
@@ -23,14 +39,23 @@ export const talentProfileSchema = z.object({
   mediaQualityNote: z.string(),
   certificatesSummary: z.string(),
   submittedAt: z.string(),
-  /** API may return relative paths; avoid strict `.url()` for live reads. */
-  introVideoUrl: z.string().min(1),
-  headshotUrl: z.string().min(1),
-  portfolioPdfUrl: z.string().min(1),
+  /** Empty when the talent has not uploaded intro media yet. */
+  introVideoUrl: z.string(),
+  headshotUrl: z.string(),
+  portfolioPdfUrl: z.string(),
   governmentIdStatus: governmentIdStatusSchema,
   bankVerified: z.boolean(),
   completedBookings: z.number().int().nonnegative(),
   averageRating: z.number().min(0).max(5),
+  ratingCount: z.number().int().nonnegative().optional(),
+  travelReady: z.boolean().optional(),
+  locationPublic: z.boolean().optional(),
+  availabilityStatus: z.string().optional(),
+  acceptedQualityDisclaimer: z.boolean().optional(),
+  emailVerified: z.boolean().optional(),
+  phoneVerified: z.boolean().optional(),
+  isActive: z.boolean().optional(),
+  gallery: z.array(talentGalleryItemSchema).default([]),
   rejectReason: z.string().optional(),
 });
 

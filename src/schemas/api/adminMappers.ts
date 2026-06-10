@@ -498,6 +498,7 @@ function extractRoleApplicationsPayload(raw: unknown): unknown[] {
   const inner = unwrapApiJson(raw);
   if (Array.isArray(inner)) return inner;
   if (isRecord(inner)) {
+    if (Array.isArray(inner.data)) return inner.data;
     // Handle nested pagination: { data: { current_page, data: [...], ... } }
     const dataObj = inner.data;
     if (isRecord(dataObj)) {
@@ -523,14 +524,21 @@ function extractRoleApplicationsPayload(raw: unknown): unknown[] {
 export function mapRoleApplicationFromApi(raw: unknown): RoleApplication {
   const inner = unwrapApiJson(raw);
   const o = asObject(inner);
+  const user = isRecord(o.user) ? asObject(o.user) : undefined;
+  const applicant = isRecord(o.applicant) ? asObject(o.applicant) : undefined;
   const rejectReason = pickStr(
     o,
     "rejectReason",
     "reject_reason",
     "rejection_reason",
   );
+  const idNum = pickNum(o, "id");
+  const idStr =
+    pickStr(o, "id") ?? (idNum !== undefined ? String(Math.trunc(idNum)) : "");
+  const roleType =
+    pickStr(o, "type", "role_type", "requested_role", "role") ?? "talent";
   const candidate = {
-    id: pickStr(o, "id") ?? "",
+    id: idStr,
     applicantName:
       pickStr(
         o,
@@ -539,10 +547,18 @@ export function mapRoleApplicationFromApi(raw: unknown): RoleApplication {
         "name",
         "full_name",
         "display_name",
-      ) ?? "",
-    email: pickStr(o, "email", "applicant_email") ?? "",
-    type: pickStr(o, "type", "role_type", "requested_role"),
-    status: pickStr(o, "status", "review_status"),
+        "stage_name",
+      ) ??
+      pickStr(user, "full_name", "name", "display_name") ??
+      pickStr(applicant, "full_name", "name", "display_name") ??
+      "",
+    email:
+      pickStr(o, "email", "applicant_email", "contact_email") ??
+      pickStr(user, "email", "email_address") ??
+      pickStr(applicant, "email", "email_address") ??
+      "",
+    type: roleType,
+    status: pickStr(o, "status", "review_status") ?? "pending",
     submittedAt: pickStr(o, "submittedAt", "submitted_at", "created_at") ?? "",
     documentsSummary:
       pickStr(o, "documentsSummary", "documents_summary", "documents") ?? "",
@@ -598,11 +614,73 @@ function parseGenres(o: Record<string, unknown>): string[] {
   return [];
 }
 
+function parseTalentCategoryLabels(o: Record<string, unknown>): string[] {
+  const fromGenres = parseGenres(o);
+  if (fromGenres.length) return fromGenres;
+  const cats = o.categories;
+  if (!Array.isArray(cats)) return [];
+  return cats
+    .map((cat) => {
+      if (typeof cat === "string" && cat.trim()) return cat.trim();
+      if (!isRecord(cat)) return "";
+      return (
+        pickStr(
+          cat,
+          "name_en",
+          "nameEn",
+          "name_ar",
+          "nameAr",
+          "name",
+          "label",
+          "title",
+          "slug",
+        ) ?? ""
+      );
+    })
+    .filter(Boolean);
+}
+
+function parseTalentGallery(o: Record<string, unknown>) {
+  const gallery = o.gallery;
+  if (!Array.isArray(gallery)) return [];
+  return gallery
+    .map((item, idx) => {
+      const g = asObject(unwrapApiJson(item));
+      const idNum = pickNum(g, "id");
+      const idStr =
+        pickStr(g, "id") ??
+        (idNum !== undefined ? String(Math.trunc(idNum)) : String(idx));
+      const imageUrl = pickStr(g, "image_url", "imageUrl", "url") ?? "";
+      if (!imageUrl) return null;
+      const caption = pickStr(g, "caption") ?? undefined;
+      const position = intNonNeg(
+        pickNum(g, "position", "sort_order", "sortOrder") ?? idx,
+      );
+      return { id: idStr, imageUrl, caption, position };
+    })
+    .filter((x): x is NonNullable<typeof x> => x !== null)
+    .sort((a, b) => a.position - b.position);
+}
+
+function formatTalentLocation(
+  city: string,
+  country: string,
+  regionId?: number,
+  cityId?: number,
+): { city: string; country: string } {
+  let nextCity = city.trim();
+  let nextCountry = country.trim();
+  if (!nextCity && cityId !== undefined) nextCity = `City #${cityId}`;
+  if (!nextCountry && regionId !== undefined) nextCountry = `Region #${regionId}`;
+  return { city: nextCity, country: nextCountry };
+}
+
 /** Talent detail `GET /profiles/talents/{id}` — unwraps `data` and merges nested `user` for list-matching `TalentProfile`. */
 export function mapTalentProfileDetailFromApi(raw: unknown): TalentProfile {
   const inner = unwrapApiJson(raw);
   const o = asObject(inner);
   const user = isRecord(o.user) ? asObject(o.user) : undefined;
+  const application = isRecord(o.application) ? asObject(o.application) : undefined;
   const idStr = o.id !== undefined && o.id !== null ? String(o.id) : "";
   const merged: Record<string, unknown> = { ...o, id: idStr };
   if (user) {
@@ -619,6 +697,32 @@ export function mapTalentProfileDetailFromApi(raw: unknown): TalentProfile {
       pickStr(merged, "legalName", "legal_name", "full_name", "name") ??
       pickStr(user, "full_name", "name", "legal_name");
     if (legal) merged.legalName = legal;
+    const emailVerifiedAt = pickStr(
+      user,
+      "email_verified_at",
+      "emailVerifiedAt",
+    );
+    if (emailVerifiedAt) merged.email_verified_at = emailVerifiedAt;
+    const phoneVerifiedAt = pickStr(
+      user,
+      "phone_verified_at",
+      "phoneVerifiedAt",
+    );
+    if (phoneVerifiedAt) merged.phone_verified_at = phoneVerifiedAt;
+  }
+  if (application) {
+    const contactEmail = pickStr(
+      application,
+      "contact_email",
+      "contactEmail",
+    );
+    const contactPhone = pickStr(
+      application,
+      "contact_phone",
+      "contactPhone",
+    );
+    if (contactEmail) merged.contact_email = contactEmail;
+    if (contactPhone) merged.contact_phone = contactPhone;
   }
   return mapTalentProfileFromApi(merged);
 }
@@ -658,11 +762,18 @@ export function mapTalentProfileFromApi(raw: unknown): TalentProfile {
       "rating",
     ) ?? 0;
   const averageRating = Math.min(5, Math.max(0, ratingRaw));
+  const ratingCountNum = pickNum(
+    o,
+    "ratingCount",
+    "rating_count",
+    "reviews_count",
+  );
   const idNum = pickNum(o, "id");
   const idStr =
     pickStr(o, "id") ?? (idNum !== undefined ? String(Math.trunc(idNum)) : "");
   const slug = pickStr(o, "slug", "profile_slug");
   const userId = pickNum(o, "user_id", "userId");
+  const applicationId = pickNum(o, "application_id", "applicationId");
   const emailFromRow = pickStr(o, "email", "user_email");
   const email =
     emailFromRow ??
@@ -671,11 +782,38 @@ export function mapTalentProfileFromApi(raw: unknown): TalentProfile {
       : idStr
         ? `talent-profile-${idStr}@example.com`
         : "talent-unknown@example.com");
+  const regionId =
+    pickNum(o, "region_id", "regionId", "saudi_region_id") ??
+    pickNum(application, "region_id", "regionId", "saudi_region_id");
+  const cityId =
+    pickNum(o, "city_id", "cityId") ??
+    pickNum(application, "city_id", "cityId");
+  const location = formatTalentLocation(
+    pickStr(o, "city") ?? pickStr(application, "city") ?? "",
+    pickStr(o, "country") ?? pickStr(application, "country") ?? "",
+    regionId,
+    cityId,
+  );
+  const contactEmail = pickStr(
+    o,
+    "contact_email",
+    "contactEmail",
+  ) ?? pickStr(application, "contact_email", "contactEmail");
+  const contactPhone = pickStr(
+    o,
+    "contact_phone",
+    "contactPhone",
+  ) ?? pickStr(application, "contact_phone", "contactPhone");
   const candidate = {
     id: idStr,
     ...(slug ? { slug } : {}),
+    ...(userId !== undefined ? { userId: String(Math.trunc(userId)) } : {}),
+    ...(applicationId !== undefined
+      ? { applicationId: String(Math.trunc(applicationId)) }
+      : {}),
     stageName:
       pickStr(o, "stageName", "stage_name", "artist_name", "display_name") ??
+      pickStr(application, "stageName", "stage_name") ??
       "",
     legalName:
       pickStr(o, "legalName", "legal_name", "full_name", "name") ??
@@ -683,10 +821,17 @@ export function mapTalentProfileFromApi(raw: unknown): TalentProfile {
       pickStr(o, "stageName", "stage_name") ?? // Fallback to stage name
       "",
     email,
-    phone: pickStr(o, "phone", "phone_number", "mobile", "contact_phone") ?? "",
-    country: pickStr(o, "country") ?? "",
-    city: pickStr(o, "city") ?? "",
-    genres: parseGenres(o),
+    phone:
+      pickStr(o, "phone", "phone_number", "mobile") ??
+      pickStr(application, "contact_phone", "contactPhone") ??
+      "",
+    ...(contactEmail ? { contactEmail } : {}),
+    ...(contactPhone ? { contactPhone } : {}),
+    country: location.country,
+    city: location.city,
+    ...(regionId !== undefined ? { regionId: Math.trunc(regionId) } : {}),
+    ...(cityId !== undefined ? { cityId: Math.trunc(cityId) } : {}),
+    genres: parseTalentCategoryLabels(o),
     yearsExperience: intNonNeg(
       pickNum(o, "yearsExperience", "years_experience", "experience_years") ??
         pickNum(
@@ -697,10 +842,18 @@ export function mapTalentProfileFromApi(raw: unknown): TalentProfile {
         ) ??
         0, // Default to 0 if not provided
     ),
-    bio: pickStr(o, "bio", "biography", "description") ?? "",
-    websiteUrl: pickStr(o, "websiteUrl", "website_url", "website") ?? "",
+    bio:
+      pickStr(o, "bio", "biography", "description") ??
+      pickStr(application, "bio", "biography", "description") ??
+      "",
+    websiteUrl:
+      pickStr(o, "websiteUrl", "website_url", "website") ??
+      pickStr(application, "websiteUrl", "website_url", "website") ??
+      "",
     instagramHandle:
-      pickStr(o, "instagramHandle", "instagram_handle", "instagram") ?? "",
+      pickStr(o, "instagramHandle", "instagram_handle", "instagram") ??
+      pickStr(application, "instagramHandle", "instagram_handle", "instagram") ??
+      "",
     status,
     mediaQualityNote:
       pickStr(o, "mediaQualityNote", "media_quality_note", "media_note") ??
@@ -740,7 +893,8 @@ export function mapTalentProfileFromApi(raw: unknown): TalentProfile {
       "",
     introVideoUrl:
       pickStr(o, "introVideoUrl", "intro_video_url", "video_url") ??
-      placeholderAssetUrl("placeholder-video"),
+      pickStr(application, "introVideoUrl", "intro_video_url", "video_url") ??
+      "",
     headshotUrl:
       pickStr(
         o,
@@ -756,8 +910,9 @@ export function mapTalentProfileFromApi(raw: unknown): TalentProfile {
         "headshot_url",
         "avatar_url",
         "photo_url",
+        "profile_image_url",
       ) ??
-      placeholderAssetUrl("placeholder-headshot"),
+      "",
     portfolioPdfUrl:
       pickStr(o, "portfolioPdfUrl", "portfolio_pdf_url", "portfolio_url") ??
       pickStr(
@@ -766,7 +921,7 @@ export function mapTalentProfileFromApi(raw: unknown): TalentProfile {
         "portfolio_pdf_url",
         "portfolio_url",
       ) ??
-      placeholderAssetUrl("placeholder-portfolio"),
+      "",
     governmentIdStatus:
       gov === "verified" || gov === "rejected" || gov === "pending"
         ? gov
@@ -780,6 +935,82 @@ export function mapTalentProfileFromApi(raw: unknown): TalentProfile {
         0,
     ),
     averageRating,
+    ...(ratingCountNum !== undefined
+      ? { ratingCount: intNonNeg(ratingCountNum) }
+      : {}),
+    ...(pickBool(o, "travel_ready", "travelReady") !== undefined
+      ? {
+          travelReady: pickBool(o, "travel_ready", "travelReady") ?? false,
+        }
+      : pickBool(application, "travel_ready", "travelReady") !== undefined
+        ? {
+            travelReady:
+              pickBool(application, "travel_ready", "travelReady") ?? false,
+          }
+        : {}),
+    ...(pickBool(o, "location_public", "locationPublic") !== undefined
+      ? {
+          locationPublic:
+            pickBool(o, "location_public", "locationPublic") ?? false,
+        }
+      : pickBool(application, "location_public", "locationPublic") !==
+          undefined
+        ? {
+            locationPublic:
+              pickBool(application, "location_public", "locationPublic") ??
+              false,
+          }
+        : {}),
+    ...(pickStr(o, "availability_status", "availabilityStatus") ??
+    pickStr(application, "availability_status", "availabilityStatus")
+      ? {
+          availabilityStatus:
+            pickStr(o, "availability_status", "availabilityStatus") ??
+            pickStr(application, "availability_status", "availabilityStatus") ??
+            "",
+        }
+      : {}),
+    ...(pickBool(
+      o,
+      "accepted_quality_disclaimer",
+      "acceptedQualityDisclaimer",
+    ) !== undefined
+      ? {
+          acceptedQualityDisclaimer:
+            pickBool(
+              o,
+              "accepted_quality_disclaimer",
+              "acceptedQualityDisclaimer",
+            ) ?? false,
+        }
+      : pickBool(
+            application,
+            "accepted_quality_disclaimer",
+            "acceptedQualityDisclaimer",
+          ) !== undefined
+        ? {
+            acceptedQualityDisclaimer:
+              pickBool(
+                application,
+                "accepted_quality_disclaimer",
+                "acceptedQualityDisclaimer",
+              ) ?? false,
+          }
+        : {}),
+    ...(pickStr(o, "email_verified_at", "emailVerifiedAt")
+      ? {
+          emailVerified: true,
+        }
+      : {}),
+    ...(pickStr(o, "phone_verified_at", "phoneVerifiedAt")
+      ? {
+          phoneVerified: true,
+        }
+      : {}),
+    ...(pickBool(o, "is_active", "isActive") !== undefined
+      ? { isActive: pickBool(o, "is_active", "isActive") ?? false }
+      : {}),
+    gallery: parseTalentGallery(o),
     ...(rejectReason ? { rejectReason } : {}),
   };
   return talentProfileSchema.parse(candidate);

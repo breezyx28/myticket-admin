@@ -598,46 +598,64 @@ export const adminApi = createApi({
         );
       },
     }),
-    approveTalentProfile: builder.mutation<{ ok: true }, string>({
-      invalidatesTags: (_r, _e, id) => [
+    approveTalentProfile: builder.mutation<
+      { ok: true },
+      { profileId: string; applicationId: string }
+    >({
+      invalidatesTags: (_r, _e, arg) => [
         'TalentProfiles',
-        { type: 'TalentProfiles', id },
+        { type: 'TalentProfiles', id: arg.profileId },
+        'RoleApplications',
+        { type: 'RoleApplications', id: arg.applicationId },
         'Dashboard',
       ],
-      async queryFn(id, api, extraOptions) {
+      async queryFn({ profileId, applicationId }, api, extraOptions) {
         if (!sessionHasApiCredentials()) {
           await delay(120);
-          syncTalentRow(id, { status: 'approved', rejectReason: undefined });
+          syncTalentRow(profileId, { status: 'approved', rejectReason: undefined });
+          syncRoleApplicationRow(applicationId, { status: 'approved', rejectReason: undefined });
           return { data: { ok: true } };
         }
         const res = await baseQueryWithReauth(
           {
-            url: `/api/v1/admin/role-applications/${encodeURIComponent(id)}/approve`,
+            url: `/api/v1/admin/role-applications/${encodeURIComponent(applicationId)}/approve`,
             method: 'POST',
           },
           api,
           extraOptions
         );
         if (res.error) return { error: toFetchError(res.error) };
-        if (shouldUseMockReads()) syncTalentRow(id, { status: 'approved', rejectReason: undefined });
+        if (shouldUseMockReads()) {
+          syncTalentRow(profileId, { status: 'approved', rejectReason: undefined });
+          syncRoleApplicationRow(applicationId, { status: 'approved', rejectReason: undefined });
+        }
         return { data: { ok: true } };
       },
     }),
-    rejectTalentProfile: builder.mutation<{ ok: true }, { id: string; body: RejectTalentProfileInput }>({
+    rejectTalentProfile: builder.mutation<
+      { ok: true },
+      { profileId: string; applicationId: string; body: RejectTalentProfileInput }
+    >({
       invalidatesTags: (_r, _e, arg) => [
         'TalentProfiles',
-        { type: 'TalentProfiles', id: arg.id },
+        { type: 'TalentProfiles', id: arg.profileId },
+        'RoleApplications',
+        { type: 'RoleApplications', id: arg.applicationId },
         'Dashboard',
       ],
-      async queryFn({ id, body }, api, extraOptions) {
+      async queryFn({ profileId, applicationId, body }, api, extraOptions) {
         if (!sessionHasApiCredentials()) {
           await delay(120);
-          syncTalentRow(id, { status: 'rejected', rejectReason: body.reason });
+          syncTalentRow(profileId, { status: 'rejected', rejectReason: body.reason });
+          syncRoleApplicationRow(applicationId, {
+            status: 'rejected',
+            rejectReason: body.reason,
+          });
           return { data: { ok: true } };
         }
         const res = await baseQueryWithReauth(
           {
-            url: `/api/v1/admin/role-applications/${encodeURIComponent(id)}/reject`,
+            url: `/api/v1/admin/role-applications/${encodeURIComponent(applicationId)}/reject`,
             method: 'POST',
             body: { rejection_reason: body.reason },
           },
@@ -645,7 +663,13 @@ export const adminApi = createApi({
           extraOptions
         );
         if (res.error) return { error: toFetchError(res.error) };
-        if (shouldUseMockReads()) syncTalentRow(id, { status: 'rejected', rejectReason: body.reason });
+        if (shouldUseMockReads()) {
+          syncTalentRow(profileId, { status: 'rejected', rejectReason: body.reason });
+          syncRoleApplicationRow(applicationId, {
+            status: 'rejected',
+            rejectReason: body.reason,
+          });
+        }
         return { data: { ok: true } };
       },
     }),
@@ -1880,9 +1904,9 @@ export const adminApi = createApi({
       providesTags: ['Analytics'],
       async queryFn(rangeArg, api, extraOptions) {
         const range = rangeArg ?? '7d';
-        const mock = financialAnalyticsForRange(range);
+        const mock = financialAnalyticsForRange(range as any);
         return tryLiveRead(api, extraOptions, 'getFinancialAnalytics', 55, mock, {
-          params: { range },
+          params: { range: range as any },
           map: mapFinancialAnalyticsFromApi,
         });
       },

@@ -15,6 +15,15 @@ function statusTone(status: TalentProfile['status']) {
   return 'text-amber font-extrabold';
 }
 
+const HEADSHOT_FALLBACK =
+  'https://images.unsplash.com/photo-1516280440614-37939bbacd81?w=400&q=80&auto=format&fit=crop';
+
+function locationLabel(row: TalentProfile) {
+  const parts = [row.city, row.country].filter(Boolean);
+  if (parts.length) return parts.join(', ');
+  return 'Location not set';
+}
+
 function govTone(status: TalentProfile['governmentIdStatus']) {
   if (status === 'verified') return 'border-mint/50 bg-mint/15 text-ink';
   if (status === 'rejected') return 'border-coral/50 bg-coral/10 text-coral';
@@ -85,7 +94,7 @@ export function TalentApprovalsPage() {
             <Card className="h-full overflow-hidden rounded-3xl border-ink-10 shadow-card-sm transition-all hover:-translate-y-0.5 hover:border-coral/35 hover:shadow-card-md">
               <div className="relative h-40 bg-ink-5">
                 <img
-                  src={row.headshotUrl}
+                  src={row.headshotUrl.trim() || HEADSHOT_FALLBACK}
                   alt=""
                   className="h-full w-full object-cover transition-transform group-hover:scale-[1.02]"
                 />
@@ -118,7 +127,7 @@ export function TalentApprovalsPage() {
                 <div className="flex flex-wrap gap-3 text-[12px] font-semibold text-ink-60">
                   <span className="inline-flex items-center gap-1">
                     <MapPin size={14} className="text-coral" />
-                    {row.city}, {row.country}
+                    {locationLabel(row)}
                   </span>
                   <span className="inline-flex items-center gap-1">
                     <Mic2 size={14} className="text-coral" />

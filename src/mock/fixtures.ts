@@ -134,6 +134,7 @@ export const MOCK_ROLE_APPLICATIONS = roleApplicationsListSchema.parse([
 export const MOCK_TALENT_PROFILES = talentProfilesListSchema.parse([
   {
     id: 'tp-1',
+    applicationId: 'ra-1',
     stageName: 'Nour Khalil',
     legalName: 'Nour Khalil Al-Mutairi',
     email: 'nour+talent@example.com',
