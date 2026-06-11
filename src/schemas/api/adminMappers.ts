@@ -549,13 +549,13 @@ export function mapRoleApplicationFromApi(raw: unknown): RoleApplication {
         "display_name",
         "stage_name",
       ) ??
-      pickStr(user, "full_name", "name", "display_name") ??
-      pickStr(applicant, "full_name", "name", "display_name") ??
+      (user ? pickStr(user, "full_name", "name", "display_name") : undefined) ??
+      (applicant ? pickStr(applicant, "full_name", "name", "display_name") : undefined) ??
       "",
     email:
       pickStr(o, "email", "applicant_email", "contact_email") ??
-      pickStr(user, "email", "email_address") ??
-      pickStr(applicant, "email", "email_address") ??
+      (user ? pickStr(user, "email", "email_address") : undefined) ??
+      (applicant ? pickStr(applicant, "email", "email_address") : undefined) ??
       "",
     type: roleType,
     status: pickStr(o, "status", "review_status") ?? "pending",

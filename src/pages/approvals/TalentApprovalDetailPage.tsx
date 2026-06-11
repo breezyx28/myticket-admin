@@ -23,7 +23,7 @@ import {
   ImageIcon,
   Instagram,
   MapPin,
-  Mic2,
+  Music2,
   Plane,
   ShieldCheck,
   User,
