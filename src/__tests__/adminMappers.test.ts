@@ -354,6 +354,53 @@ describe("mapTalentProfilesFromApi / mapTalentProfileFromApi", () => {
     expect(one.legalName).toBe("Legal");
   });
 
+  it("mapTalentProfilesFromApi unwraps directory rows with profile + role_application_id", () => {
+    const out = mapTalentProfilesFromApi({
+      data: [
+        {
+          id: 99,
+          approval_status: "pending",
+          role_application_id: 7,
+          government_id_status: "pending",
+          profile: {
+            id: 3,
+            stage_name: "KAT",
+            bio: "Bio",
+            application_id: 7,
+          },
+        },
+      ],
+    });
+    expect(out).toHaveLength(1);
+    expect(out[0].id).toBe("3");
+    expect(out[0].applicationId).toBe("7");
+    expect(out[0].status).toBe("pending");
+    expect(out[0].governmentIdStatus).toBe("pending");
+  });
+
+  it("mapTalentProfileDetailFromApi maps government_id_verification images", () => {
+    const one = mapTalentProfileDetailFromApi({
+      data: {
+        id: 3,
+        stage_name: "KAT",
+        government_id_status: "pending",
+        government_id_verification: {
+          id: 10,
+          document_type: "national_id",
+          document_number: "ABC123",
+          front_image_url: "https://cdn.example/front.jpg",
+          back_image_url: "https://cdn.example/back.jpg",
+          selfie_url: "https://cdn.example/selfie.jpg",
+          status: "pending",
+        },
+        application: { government_id_status: "pending" },
+      },
+    });
+    expect(one.governmentIdVerification?.documentType).toBe("national_id");
+    expect(one.governmentIdVerification?.frontImageUrl).toContain("front.jpg");
+    expect(one.governmentIdVerification?.selfieUrl).toContain("selfie.jpg");
+  });
+
   it("mapTalentProfileDetailFromApi maps gallery, application fields, and region/city ids", () => {
     const one = mapTalentProfileDetailFromApi({
       data: {

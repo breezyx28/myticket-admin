@@ -675,6 +675,99 @@ function formatTalentLocation(
   return { city: nextCity, country: nextCountry };
 }
 
+/** Unwrap admin talent directory rows: `{ approval_status, role_application_id, profile }`. */
+function normalizeTalentDirectoryRow(raw: unknown): Record<string, unknown> {
+  const o = asObject(unwrapApiJson(raw));
+  const profile = isRecord(o.profile) ? asObject(o.profile) : null;
+  if (!profile) return o;
+
+  const merged: Record<string, unknown> = { ...profile };
+  const profileId = pickNum(profile, "id");
+  if (profileId !== undefined) merged.id = Math.trunc(profileId);
+
+  const roleApplicationId =
+    pickNum(o, "role_application_id", "roleApplicationId") ??
+    pickNum(profile, "application_id", "applicationId");
+  if (roleApplicationId !== undefined) {
+    merged.application_id = Math.trunc(roleApplicationId);
+    merged.role_application_id = Math.trunc(roleApplicationId);
+  }
+
+  const approvalStatus = pickStr(o, "approval_status", "approvalStatus");
+  if (approvalStatus) merged.approval_status = approvalStatus;
+
+  const govStatus = pickStr(
+    o,
+    "government_id_status",
+    "governmentIdStatus",
+    "government_id_verification_status",
+  );
+  if (govStatus) merged.government_id_status = govStatus;
+
+  const govVerification =
+    o.government_id_verification ?? o.governmentIdVerification;
+  if (govVerification !== undefined) {
+    merged.government_id_verification = govVerification;
+  }
+
+  const isActive = pickBool(o, "is_active", "isActive");
+  if (isActive !== undefined) merged.is_active = isActive;
+
+  return merged;
+}
+
+function parseGovernmentIdVerification(o: Record<string, unknown>) {
+  const raw = o.government_id_verification ?? o.governmentIdVerification;
+  if (!isRecord(raw)) return undefined;
+  const g = asObject(raw);
+  const idNum = pickNum(g, "id");
+  const idStr =
+    pickStr(g, "id") ?? (idNum !== undefined ? String(Math.trunc(idNum)) : undefined);
+  const statusRaw = pickStr(g, "status", "government_id_status");
+  const status =
+    statusRaw === "verified" || statusRaw === "rejected" || statusRaw === "pending"
+      ? statusRaw
+      : undefined;
+  const rejectionReason = pickStr(
+    g,
+    "rejection_reason",
+    "rejectionReason",
+    "reject_reason",
+  );
+  const candidate = {
+    ...(idStr ? { id: idStr } : {}),
+    ...(pickStr(g, "document_type", "documentType")
+      ? { documentType: pickStr(g, "document_type", "documentType") }
+      : {}),
+    ...(pickStr(g, "document_number", "documentNumber")
+      ? { documentNumber: pickStr(g, "document_number", "documentNumber") }
+      : {}),
+    ...(pickStr(g, "front_image_url", "frontImageUrl")
+      ? { frontImageUrl: pickStr(g, "front_image_url", "frontImageUrl") }
+      : {}),
+    ...(pickStr(g, "back_image_url", "backImageUrl")
+      ? { backImageUrl: pickStr(g, "back_image_url", "backImageUrl") }
+      : {}),
+    ...(pickStr(g, "selfie_url", "selfieUrl")
+      ? { selfieUrl: pickStr(g, "selfie_url", "selfieUrl") }
+      : {}),
+    ...(status ? { status } : {}),
+    ...(rejectionReason ? { rejectionReason } : {}),
+    ...(pickStr(g, "issue_date", "issueDate")
+      ? { issueDate: pickStr(g, "issue_date", "issueDate") }
+      : {}),
+    ...(pickStr(g, "expiry_date", "expiryDate")
+      ? { expiryDate: pickStr(g, "expiry_date", "expiryDate") }
+      : {}),
+    ...(pickStr(g, "submitted_at", "submittedAt", "created_at")
+      ? {
+          submittedAt: pickStr(g, "submitted_at", "submittedAt", "created_at"),
+        }
+      : {}),
+  };
+  return Object.keys(candidate).length ? candidate : undefined;
+}
+
 /** Talent detail `GET /profiles/talents/{id}` — unwraps `data` and merges nested `user` for list-matching `TalentProfile`. */
 export function mapTalentProfileDetailFromApi(raw: unknown): TalentProfile {
   const inner = unwrapApiJson(raw);
@@ -729,7 +822,7 @@ export function mapTalentProfileDetailFromApi(raw: unknown): TalentProfile {
 
 export function mapTalentProfileFromApi(raw: unknown): TalentProfile {
   const inner = unwrapApiJson(raw);
-  const o = asObject(inner);
+  const o = normalizeTalentDirectoryRow(inner);
   const application = isRecord(o.application) ? asObject(o.application) : {};
   const rejectReason =
     pickStr(o, "rejectReason", "reject_reason", "rejection_reason") ??
@@ -773,7 +866,9 @@ export function mapTalentProfileFromApi(raw: unknown): TalentProfile {
     pickStr(o, "id") ?? (idNum !== undefined ? String(Math.trunc(idNum)) : "");
   const slug = pickStr(o, "slug", "profile_slug");
   const userId = pickNum(o, "user_id", "userId");
-  const applicationId = pickNum(o, "application_id", "applicationId");
+  const applicationId =
+    pickNum(o, "application_id", "applicationId") ??
+    pickNum(o, "role_application_id", "roleApplicationId");
   const emailFromRow = pickStr(o, "email", "user_email");
   const email =
     emailFromRow ??
@@ -804,6 +899,7 @@ export function mapTalentProfileFromApi(raw: unknown): TalentProfile {
     "contact_phone",
     "contactPhone",
   ) ?? pickStr(application, "contact_phone", "contactPhone");
+  const governmentIdVerification = parseGovernmentIdVerification(o);
   const candidate = {
     id: idStr,
     ...(slug ? { slug } : {}),
@@ -926,6 +1022,7 @@ export function mapTalentProfileFromApi(raw: unknown): TalentProfile {
       gov === "verified" || gov === "rejected" || gov === "pending"
         ? gov
         : "pending",
+    ...(governmentIdVerification ? { governmentIdVerification } : {}),
     bankVerified:
       pickBool(o, "bankVerified", "bank_verified") ??
       pickBool(application, "bankVerified", "bank_verified") ??
@@ -1018,7 +1115,7 @@ export function mapTalentProfileFromApi(raw: unknown): TalentProfile {
 
 export function mapTalentProfilesFromApi(raw: unknown): TalentProfile[] {
   const rows = extractTalentProfilesPayload(raw);
-  const mapped = rows.map(mapTalentProfileFromApi);
+  const mapped = rows.map((row) => mapTalentProfileFromApi(normalizeTalentDirectoryRow(row)));
   return talentProfilesListSchema.parse(mapped);
 }
 

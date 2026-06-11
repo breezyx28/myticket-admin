@@ -154,6 +154,17 @@ export const MOCK_TALENT_PROFILES = talentProfilesListSchema.parse([
     headshotUrl: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&q=80&auto=format&fit=crop',
     portfolioPdfUrl: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
     governmentIdStatus: 'pending',
+    governmentIdVerification: {
+      documentType: 'national_id',
+      documentNumber: '1234567890',
+      frontImageUrl:
+        'https://images.unsplash.com/photo-1554224311-beee415c201f?w=600&q=80&auto=format&fit=crop',
+      backImageUrl:
+        'https://images.unsplash.com/photo-1586281380349-632531db7ed4?w=600&q=80&auto=format&fit=crop',
+      selfieUrl:
+        'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=600&q=80&auto=format&fit=crop',
+      status: 'pending',
+    },
     bankVerified: false,
     completedBookings: 12,
     averageRating: 4.7,

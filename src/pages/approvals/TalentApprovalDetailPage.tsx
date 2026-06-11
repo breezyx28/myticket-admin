@@ -2,16 +2,24 @@ import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { notifyError, notifySuccess } from '@/lib/notify';
 import { cn } from '@/lib/utils';
-import { rejectTalentProfileSchema } from '@/schemas/talentApproval.schema';
+import {
+  rejectGovernmentIdSchema,
+  rejectTalentProfileSchema,
+} from '@/schemas/talentApproval.schema';
 import type { TalentProfile } from '@/schemas/talentApproval.schema';
 import {
   useApproveTalentProfileMutation,
   useGetTalentProfileQuery,
+  useRejectTalentGovernmentIdMutation,
   useRejectTalentProfileMutation,
+  useVerifyTalentGovernmentIdMutation,
 } from '@/services/adminApi';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
-import type { RejectTalentProfileInput } from '@/schemas/talentApproval.schema';
+import type {
+  RejectGovernmentIdInput,
+  RejectTalentProfileInput,
+} from '@/schemas/talentApproval.schema';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import {
   Building2,
@@ -32,6 +40,7 @@ import {
 } from 'lucide-react';
 
 type RejectForm = RejectTalentProfileInput;
+type RejectGovIdForm = RejectGovernmentIdInput;
 
 const HEADSHOT_FALLBACK =
   'https://images.unsplash.com/photo-1516280440614-37939bbacd81?w=400&q=80&auto=format&fit=crop';
@@ -90,6 +99,27 @@ function websiteHref(url: string) {
   return `https://${t}`;
 }
 
+function IdImage({ label, url }: { label: string; url?: string }) {
+  if (!url?.trim()) {
+    return (
+      <div className="rounded-2xl border border-dashed border-ink-10 bg-surface-tint p-4 text-center">
+        <p className="text-[12px] font-bold text-ink-60">{label}</p>
+        <p className="mt-1 text-[11px] font-semibold text-ink-40">Not provided</p>
+      </div>
+    );
+  }
+  return (
+    <a href={url} target="_blank" rel="noreferrer" className="group block">
+      <p className="mb-2 text-[11px] font-extrabold uppercase tracking-wide text-ink-40">{label}</p>
+      <img
+        src={url}
+        alt={label}
+        className="aspect-[3/2] w-full rounded-2xl border border-ink-10 object-cover transition-transform group-hover:scale-[1.01]"
+      />
+    </a>
+  );
+}
+
 function EmptyMedia({ label }: { label: string }) {
   return (
     <div className="flex aspect-video w-full flex-col items-center justify-center rounded-2xl border border-dashed border-ink-10 bg-surface-tint px-4 text-center">
@@ -106,8 +136,14 @@ export function TalentApprovalDetailPage() {
   const q = useGetTalentProfileQuery(id, { skip: !id });
   const [approve, approveState] = useApproveTalentProfileMutation();
   const [reject, rejectState] = useRejectTalentProfileMutation();
+  const [verifyGovId, verifyGovIdState] = useVerifyTalentGovernmentIdMutation();
+  const [rejectGovId, rejectGovIdState] = useRejectTalentGovernmentIdMutation();
   const form = useForm<RejectForm>({
     resolver: zodResolver(rejectTalentProfileSchema),
+    defaultValues: { reason: '' },
+  });
+  const govIdForm = useForm<RejectGovIdForm>({
+    resolver: zodResolver(rejectGovernmentIdSchema),
     defaultValues: { reason: '' },
   });
 
@@ -441,6 +477,104 @@ export function TalentApprovalDetailPage() {
           </Button>
         </div>
       </div>
+
+      <Card className="rounded-3xl border-ink-10 shadow-card-sm">
+        <CardHeader>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <ShieldCheck className="text-coral" size={20} />
+              <CardTitle className="text-lg font-extrabold">Government ID verification</CardTitle>
+            </div>
+            {govBadge(row.governmentIdStatus)}
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {row.governmentIdVerification ? (
+            <>
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {row.governmentIdVerification.documentType ? (
+                  <p className="text-[13px] text-ink-60 sm:col-span-2 lg:col-span-3">
+                    <span className="font-bold text-ink">Document type:</span>{' '}
+                    {row.governmentIdVerification.documentType.replace(/_/g, ' ')}
+                  </p>
+                ) : null}
+                {row.governmentIdVerification.documentNumber ? (
+                  <p className="text-[13px] text-ink-60 sm:col-span-2 lg:col-span-3">
+                    <span className="font-bold text-ink">Document number:</span>{' '}
+                    {row.governmentIdVerification.documentNumber}
+                  </p>
+                ) : null}
+                <IdImage label="Front" url={row.governmentIdVerification.frontImageUrl} />
+                <IdImage label="Back" url={row.governmentIdVerification.backImageUrl} />
+                <IdImage label="Selfie" url={row.governmentIdVerification.selfieUrl} />
+              </div>
+              {row.governmentIdVerification.rejectionReason ? (
+                <p className="rounded-2xl bg-coral/10 px-4 py-3 text-[13px] text-ink">
+                  <span className="font-bold">Last rejection:</span>{' '}
+                  {row.governmentIdVerification.rejectionReason}
+                </p>
+              ) : null}
+            </>
+          ) : (
+            <EmptyMedia label="No government ID submission on file" />
+          )}
+          {row.governmentIdStatus === 'pending' ? (
+            <div className="flex flex-wrap gap-2 border-t border-ink-10 pt-4">
+              <Button
+                type="button"
+                variant="primary"
+                disabled={verifyGovIdState.isLoading}
+                loading={verifyGovIdState.isLoading}
+                onClick={async () => {
+                  try {
+                    await verifyGovId(row.id).unwrap();
+                    notifySuccess('Government ID verified.');
+                  } catch {
+                    notifyError('Could not verify government ID.');
+                  }
+                }}
+              >
+                Verify ID
+              </Button>
+            </div>
+          ) : null}
+          {row.governmentIdStatus !== 'verified' ? (
+            <form
+              className="space-y-3 border-t border-ink-10 pt-4"
+              onSubmit={govIdForm.handleSubmit(async (values) => {
+                try {
+                  await rejectGovId({ profileId: row.id, body: values }).unwrap();
+                  notifySuccess('Government ID rejected.');
+                  govIdForm.reset();
+                } catch {
+                  notifyError('Could not reject government ID.');
+                }
+              })}
+            >
+              <label className="block">
+                <span className="text-[12px] font-bold text-ink-60">Reject ID reason</span>
+                <textarea
+                  className="mt-1.5 min-h-[72px] w-full rounded-xl border border-ink-10 px-4 py-3 text-[14px] outline-none focus:border-coral focus:ring-2 focus:ring-coral/30"
+                  {...govIdForm.register('reason')}
+                />
+              </label>
+              {govIdForm.formState.errors.reason ? (
+                <p className="text-[12px] font-bold text-coral">
+                  {govIdForm.formState.errors.reason.message}
+                </p>
+              ) : null}
+              <Button
+                type="submit"
+                variant="danger"
+                disabled={rejectGovIdState.isLoading}
+                loading={rejectGovIdState.isLoading}
+              >
+                Reject ID
+              </Button>
+            </form>
+          ) : null}
+        </CardContent>
+      </Card>
 
       <Card className="rounded-3xl border-ink-10 shadow-card-sm">
         <CardHeader>

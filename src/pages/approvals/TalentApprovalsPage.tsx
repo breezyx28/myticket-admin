@@ -31,15 +31,28 @@ function govTone(status: TalentProfile['governmentIdStatus']) {
 }
 
 export function TalentApprovalsPage() {
-  const { data, isLoading } = useGetTalentProfilesQuery();
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState<'all' | TalentProfile['status']>('all');
   const [gov, setGov] = useState<'all' | TalentProfile['governmentIdStatus']>('all');
+  const [active, setActive] = useState<'all' | 'active' | 'inactive'>('all');
+
+  const listParams = useMemo(
+    () => ({
+      ...(status !== 'all' ? { status } : {}),
+      ...(gov !== 'all' ? { governmentIdStatus: gov } : {}),
+      ...(active === 'active' ? { isActive: true } : active === 'inactive' ? { isActive: false } : {}),
+    }),
+    [status, gov, active]
+  );
+
+  const { data, isLoading } = useGetTalentProfilesQuery(listParams);
 
   const filtered = useMemo(() => {
     return (data ?? []).filter((row) => {
       if (status !== 'all' && row.status !== status) return false;
       if (gov !== 'all' && row.governmentIdStatus !== gov) return false;
+      if (active === 'active' && row.isActive === false) return false;
+      if (active === 'inactive' && row.isActive !== false) return false;
       return rowMatchesSearch(search, [
         row.stageName,
         row.legalName,
@@ -50,9 +63,10 @@ export function TalentApprovalsPage() {
         row.genres.join(' '),
         row.id,
         row.slug,
+        row.applicationId,
       ]);
     });
-  }, [data, search, status, gov]);
+  }, [data, search, status, gov, active]);
 
   return (
     <div className="space-y-8">
@@ -60,8 +74,8 @@ export function TalentApprovalsPage() {
         <p className="text-[11px] font-extrabold uppercase tracking-[0.16em] text-ink-40">Approvals</p>
         <h1 className="text-3xl font-extrabold tracking-tight text-ink">Talent profile verification</h1>
         <p className="mt-2 max-w-2xl text-[14px] leading-relaxed text-ink-60">
-          Realistic fields mirror what production sends: identity, portfolio assets, banking readiness, and media QA
-          notes. Open a card for the full dossier.
+          Review identity, portfolio assets, government ID submissions, and banking readiness. Approve uses the linked
+          role application id, not the talent profile id.
         </p>
       </div>
 
@@ -81,6 +95,15 @@ export function TalentApprovalsPage() {
           <option value="pending">ID: pending</option>
           <option value="verified">ID: verified</option>
           <option value="rejected">ID: rejected</option>
+        </select>
+        <select
+          className={filterSelectClassName()}
+          value={active}
+          onChange={(e) => setActive(e.target.value as typeof active)}
+        >
+          <option value="all">Profile: any</option>
+          <option value="active">Profile: active</option>
+          <option value="inactive">Profile: inactive</option>
         </select>
       </ListFiltersBar>
 
@@ -147,7 +170,12 @@ export function TalentApprovalsPage() {
                     {row.governmentIdStatus}
                   </span>
                 </div>
-                <p className="text-[12px] font-semibold text-ink-40">Media QA · {row.mediaQualityNote}</p>
+                {row.applicationId ? (
+                  <p className="text-[11px] font-semibold text-ink-40">
+                    Role application · <span className="font-mono">{row.applicationId}</span>
+                  </p>
+                ) : null}
+                <p className="text-[12px] font-semibold text-ink-40">Media QA · {row.mediaQualityNote || '—'}</p>
               </CardContent>
             </Card>
           </Link>

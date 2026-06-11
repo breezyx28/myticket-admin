@@ -68,7 +68,11 @@ import { supportReplySchema, supportThreadDetailSchema } from '@/schemas/support
 import type { UpdateSupportStatusInput } from '@/schemas/support.schema';
 import type { RejectRoleApplicationInput } from '@/schemas/roleApplication.schema';
 import { roleApplicationSchema } from '@/schemas/roleApplication.schema';
-import type { RejectTalentProfileInput } from '@/schemas/talentApproval.schema';
+import type {
+  RejectGovernmentIdInput,
+  RejectTalentProfileInput,
+  TalentProfilesListParams,
+} from '@/schemas/talentApproval.schema';
 import { talentProfileSchema } from '@/schemas/talentApproval.schema';
 import { adminOrderDetailSchema, forceRefundOrderSchema } from '@/schemas/order.schema';
 import { adminRefundRowSchema } from '@/schemas/refund.schema';
@@ -521,13 +525,20 @@ export const adminApi = createApi({
         return { data: { ok: true } };
       },
     }),
-    getTalentProfiles: builder.query<typeof talentProfilesState, void>({
+    getTalentProfiles: builder.query<typeof talentProfilesState, TalentProfilesListParams | void>({
       providesTags: (r) =>
         r
           ? [...r.map((row) => ({ type: 'TalentProfiles' as const, id: row.id })), 'TalentProfiles']
           : ['TalentProfiles'],
-      async queryFn(_arg, api, extraOptions) {
+      async queryFn(filters, api, extraOptions) {
+        const params: Record<string, string | number | boolean | undefined> = {};
+        if (filters?.status) params.status = filters.status;
+        if (filters?.governmentIdStatus) {
+          params.government_id_status = filters.governmentIdStatus;
+        }
+        if (filters?.isActive !== undefined) params.is_active = filters.isActive ? 1 : 0;
         return tryLiveRead(api, extraOptions, 'getTalentProfiles', 65, talentProfilesState, {
+          params: Object.keys(params).length ? params : undefined,
           map: mapTalentProfilesFromApi,
         });
       },
@@ -628,6 +639,74 @@ export const adminApi = createApi({
         if (shouldUseMockReads()) {
           syncTalentRow(profileId, { status: 'approved', rejectReason: undefined });
           syncRoleApplicationRow(applicationId, { status: 'approved', rejectReason: undefined });
+        }
+        return { data: { ok: true } };
+      },
+    }),
+    verifyTalentGovernmentId: builder.mutation<{ ok: true }, string>({
+      invalidatesTags: (_r, _e, profileId) => [
+        'TalentProfiles',
+        { type: 'TalentProfiles', id: profileId },
+      ],
+      async queryFn(profileId, api, extraOptions) {
+        if (!sessionHasApiCredentials()) {
+          await delay(120);
+          syncTalentRow(profileId, { governmentIdStatus: 'verified' });
+          return { data: { ok: true } };
+        }
+        const res = await baseQueryWithReauth(
+          {
+            url: `/api/v1/admin/profiles/talents/${encodeURIComponent(profileId)}/verify-government-id`,
+            method: 'POST',
+          },
+          api,
+          extraOptions
+        );
+        if (res.error) return { error: toFetchError(res.error) };
+        if (shouldUseMockReads()) {
+          syncTalentRow(profileId, { governmentIdStatus: 'verified' });
+        }
+        return { data: { ok: true } };
+      },
+    }),
+    rejectTalentGovernmentId: builder.mutation<
+      { ok: true },
+      { profileId: string; body: RejectGovernmentIdInput }
+    >({
+      invalidatesTags: (_r, _e, arg) => [
+        'TalentProfiles',
+        { type: 'TalentProfiles', id: arg.profileId },
+      ],
+      async queryFn({ profileId, body }, api, extraOptions) {
+        if (!sessionHasApiCredentials()) {
+          await delay(120);
+          syncTalentRow(profileId, {
+            governmentIdStatus: 'rejected',
+            governmentIdVerification: {
+              status: 'rejected',
+              rejectionReason: body.reason,
+            },
+          });
+          return { data: { ok: true } };
+        }
+        const res = await baseQueryWithReauth(
+          {
+            url: `/api/v1/admin/profiles/talents/${encodeURIComponent(profileId)}/reject-government-id`,
+            method: 'POST',
+            body: { reason: body.reason },
+          },
+          api,
+          extraOptions
+        );
+        if (res.error) return { error: toFetchError(res.error) };
+        if (shouldUseMockReads()) {
+          syncTalentRow(profileId, {
+            governmentIdStatus: 'rejected',
+            governmentIdVerification: {
+              status: 'rejected',
+              rejectionReason: body.reason,
+            },
+          });
         }
         return { data: { ok: true } };
       },
@@ -2372,6 +2451,8 @@ export const {
   useGetOrganizerProfilesQuery,
   useApproveTalentProfileMutation,
   useRejectTalentProfileMutation,
+  useVerifyTalentGovernmentIdMutation,
+  useRejectTalentGovernmentIdMutation,
   useGetOrdersQuery,
   useGetOrderQuery,
   useForceRefundOrderMutation,

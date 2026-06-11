@@ -3,6 +3,22 @@ import { reviewStatusSchema } from './shared';
 
 export const governmentIdStatusSchema = z.enum(['pending', 'verified', 'rejected']);
 
+export const governmentIdVerificationSchema = z.object({
+  id: z.string().optional(),
+  documentType: z.string().optional(),
+  documentNumber: z.string().optional(),
+  frontImageUrl: z.string().optional(),
+  backImageUrl: z.string().optional(),
+  selfieUrl: z.string().optional(),
+  status: governmentIdStatusSchema.optional(),
+  rejectionReason: z.string().optional(),
+  issueDate: z.string().optional(),
+  expiryDate: z.string().optional(),
+  submittedAt: z.string().optional(),
+});
+
+export type GovernmentIdVerification = z.infer<typeof governmentIdVerificationSchema>;
+
 export const talentGalleryItemSchema = z.object({
   id: z.string(),
   imageUrl: z.string().min(1),
@@ -44,6 +60,7 @@ export const talentProfileSchema = z.object({
   headshotUrl: z.string(),
   portfolioPdfUrl: z.string(),
   governmentIdStatus: governmentIdStatusSchema,
+  governmentIdVerification: governmentIdVerificationSchema.optional(),
   bankVerified: z.boolean(),
   completedBookings: z.number().int().nonnegative(),
   averageRating: z.number().min(0).max(5),
@@ -68,3 +85,16 @@ export const rejectTalentProfileSchema = z.object({
 });
 
 export type RejectTalentProfileInput = z.infer<typeof rejectTalentProfileSchema>;
+
+export const rejectGovernmentIdSchema = z.object({
+  reason: z.string().trim().min(3, 'Explain why the ID was rejected'),
+});
+
+export type RejectGovernmentIdInput = z.infer<typeof rejectGovernmentIdSchema>;
+
+/** Server-side filters for `GET /profiles/talents`. */
+export type TalentProfilesListParams = {
+  status?: 'pending' | 'approved' | 'rejected';
+  governmentIdStatus?: 'pending' | 'verified' | 'rejected';
+  isActive?: boolean;
+};
