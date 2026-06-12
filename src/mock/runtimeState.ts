@@ -9,6 +9,7 @@ import type { AdminAuctionRow } from '@/schemas/auction.schema';
 import type { AdminActionRow, AdminAuditLogDetail, AdminAuditLogRow } from '@/schemas/adminActivity.schema';
 import type { AdminDeliveryLogRow, AdminRecentNotificationRow } from '@/schemas/adminNotifications.schema';
 import type { AdminComplaintRow } from '@/schemas/complaint.schema';
+import type { TourismAd } from '@/schemas/tourismAd.schema';
 import type { AdminScanLogRow, AdminScannerRow } from '@/schemas/scanner.schema';
 import type { AdminOrganizerKycDetail } from '@/schemas/financeCompliance.schema';
 import type { AdminPayoutRow } from '@/schemas/payout.schema';
@@ -46,6 +47,7 @@ import {
   MOCK_SCAN_LOGS,
   MOCK_SCANNERS,
   MOCK_ORGANIZER_KYC_BY_ORG,
+  MOCK_TOURISM_ADS,
   MOCK_REFUNDS,
   MOCK_USER_DETAILS,
   MOCK_USERS,
@@ -91,3 +93,4 @@ export const auditLogDetailsState: Record<string, AdminAuditLogDetail> = clone(M
 export const organizerKycByOrganizerId: Record<string, AdminOrganizerKycDetail> = clone(
   MOCK_ORGANIZER_KYC_BY_ORG
 );
+export const tourismAdsState: TourismAd[] = clone(MOCK_TOURISM_ADS);

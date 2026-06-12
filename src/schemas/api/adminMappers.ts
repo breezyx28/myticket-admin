@@ -182,6 +182,15 @@ import {
   type AdminComplaintRow,
   type AdminComplaintStatus,
 } from "@/schemas/complaint.schema";
+import {
+  tourismAdSchema,
+  tourismAdsListResultSchema,
+  tourismAdsListSchema,
+  type TourismAd,
+  type TourismAdsListResult,
+  type WeekdayKey,
+  WEEKDAY_KEYS,
+} from "@/schemas/tourismAd.schema";
 
 function isRecord(v: unknown): v is Record<string, unknown> {
   return typeof v === "object" && v !== null && !Array.isArray(v);
@@ -195,6 +204,7 @@ function flattenPendingActionBuckets(container: Record<string, unknown>): unknow
     container.support_cases_open_pipeline,
     container.listing_moderation_queue,
     container.listing_moderation_queued_or_in_review,
+    container.tourism_ads_pending_review,
   ].filter(Array.isArray);
   return buckets.flat();
 }
@@ -253,6 +263,9 @@ export function mapDashboardCountersFromApi(raw: unknown): DashboardCounters {
       pickNum(o, "roleApplicationsSubmitted", "role_applications_submitted"),
     ),
     payoutsHeld: intNonNeg(pickNum(o, "payoutsHeld", "payouts_held")),
+    tourismAdsPendingReview: intNonNeg(
+      pickNum(o, "tourismAdsPendingReview", "tourism_ads_pending_review"),
+    ),
   };
   return dashboardCountersSchema.parse(candidate);
 }
@@ -269,6 +282,7 @@ export function dashboardCountersFromSummary(
     listingModerationQueuedOrInReview: summary.listingModeration.queuedOrInReview,
     roleApplicationsSubmitted: summary.roleApplications.submitted,
     payoutsHeld: summary.payouts.held,
+    tourismAdsPendingReview: summary.tourismAds?.pendingReview ?? 0,
   });
 }
 
@@ -358,6 +372,11 @@ export function mapDashboardSummaryFromApi(
       ? asObject(o.roleApplications)
       : {};
   const payouts = isRecord(o.payouts) ? asObject(o.payouts) : {};
+  const tourismAds = isRecord(o.tourism_ads)
+    ? asObject(o.tourism_ads)
+    : isRecord(o.tourismAds)
+      ? asObject(o.tourismAds)
+      : {};
   const candidate = {
     users: {
       total: pickNestedNum(users, "total", "total"),
@@ -391,6 +410,13 @@ export function mapDashboardSummaryFromApi(
     payouts: {
       held: pickNestedNum(payouts, "held", "held"),
     },
+    tourismAds: {
+      pendingReview: pickNestedNum(
+        tourismAds,
+        "pendingReview",
+        "pending_review",
+      ),
+    },
   };
   return dashboardSummaryNestedSchema.parse(candidate);
 }
@@ -402,19 +428,27 @@ function mapPendingActionRow(row: unknown): PendingAction {
   const existingKind = pickStr(o, "kind");
   if (
     existingKind &&
-    ["role_application", "event", "support", "moderation"].includes(
-      existingKind,
-    )
+    [
+      "role_application",
+      "event",
+      "support",
+      "moderation",
+      "tourism_ad",
+    ].includes(existingKind)
   ) {
     const priorityRaw = pickStr(o, "priority");
     const priority = priorityRaw === "high" ? "high" : "normal";
+    const existingIdNum = pickNum(o, "id");
     const candidate = {
-      id: pickStr(o, "id") ?? "",
+      id:
+        pickStr(o, "id") ??
+        (existingIdNum !== undefined ? String(Math.trunc(existingIdNum)) : ""),
       kind: existingKind as
         | "role_application"
         | "event"
         | "support"
-        | "moderation",
+        | "moderation"
+        | "tourism_ad",
       title: pickStr(o, "title") ?? "",
       subtitle: pickStr(o, "subtitle", "sub_title") ?? "",
       href: pickStr(o, "href") ?? "#",
@@ -428,15 +462,21 @@ function mapPendingActionRow(row: unknown): PendingAction {
   }
 
   // Detect type based on fields (for grouped buckets)
-  let kind: "role_application" | "event" | "support" | "moderation" =
-    "role_application";
+  let kind:
+    | "role_application"
+    | "event"
+    | "support"
+    | "moderation"
+    | "tourism_ad" = "role_application";
   let title = "";
   let subtitle = "";
   let href = "#";
   let priority: "high" | "normal" = "normal";
   let dueLabel = "";
 
-  const id = pickStr(o, "id") ?? "";
+  const idNum = pickNum(o, "id");
+  const id =
+    pickStr(o, "id") ?? (idNum !== undefined ? String(Math.trunc(idNum)) : "");
 
   if (o.title && o.code && o.submitted_at) {
     // Event
@@ -473,6 +513,17 @@ function mapPendingActionRow(row: unknown): PendingAction {
     href = `/moderation/listings`;
     priority = "high";
     dueLabel = pickStr(o, "created_at") ?? "";
+  } else if (o.location_name && (o.submitted_at || o.status === "pending_review")) {
+    kind = "tourism_ad";
+    title = pickStr(o, "location_name") ?? "Tourism ad";
+    const user = isRecord(o.user) ? asObject(o.user) : {};
+    subtitle =
+      pickStr(user, "full_name", "email") ??
+      pickStr(o, "source") ??
+      "Guest submission";
+    href = `/tourism-ads/${id}`;
+    priority = "high";
+    dueLabel = pickStr(o, "submitted_at", "created_at") ?? "";
   }
 
   const candidate = {
@@ -4101,4 +4152,211 @@ export function mapAdminVersionFromApi(raw: unknown): AdminVersionView {
     ...(Object.keys(extras).length > 0 ? { extras } : {}),
   };
   return adminVersionViewSchema.parse(candidate);
+}
+
+function parseOpeningHoursFromApi(raw: unknown) {
+  const defaults = {
+    mon: { closed: false, opens: "09:00", closes: "18:00" },
+    tue: { closed: false, opens: "09:00", closes: "18:00" },
+    wed: { closed: false, opens: "09:00", closes: "18:00" },
+    thu: { closed: false, opens: "09:00", closes: "18:00" },
+    fri: { closed: false, opens: "14:00", closes: "22:00" },
+    sat: { closed: false, opens: "09:00", closes: "22:00" },
+    sun: { closed: true },
+  };
+  if (!isRecord(raw)) return defaults;
+  const o = asObject(raw);
+  const out: Record<WeekdayKey, { closed: boolean; opens?: string; closes?: string }> =
+    { ...defaults };
+  for (const day of WEEKDAY_KEYS) {
+    const block = o[day];
+    if (!isRecord(block)) continue;
+    const b = asObject(block);
+    const closed = pickBool(b, "closed") ?? false;
+    out[day] = {
+      closed,
+      ...(closed
+        ? {}
+        : {
+            opens: pickStr(b, "opens", "open"),
+            closes: pickStr(b, "closes", "close"),
+          }),
+    };
+  }
+  return out;
+}
+
+function mapTourismAdUserSummaryFromApi(raw: unknown) {
+  if (!isRecord(raw)) return null;
+  const o = asObject(raw);
+  const idNum = pickNum(o, "id");
+  const id =
+    pickStr(o, "id") ?? (idNum !== undefined ? String(Math.trunc(idNum)) : "");
+  if (!id) return null;
+  return {
+    id,
+    ...(pickStr(o, "full_name", "fullName", "name")
+      ? { fullName: pickStr(o, "full_name", "fullName", "name") }
+      : {}),
+    ...(pickStr(o, "email") ? { email: pickStr(o, "email") } : {}),
+  };
+}
+
+function parseTourismAdStatus(raw: string | undefined) {
+  const s = (raw ?? "draft").toLowerCase();
+  if (
+    s === "draft" ||
+    s === "pending_review" ||
+    s === "published" ||
+    s === "rejected" ||
+    s === "withdrawn" ||
+    s === "archived"
+  ) {
+    return s;
+  }
+  return "pending_review" as const;
+}
+
+function parseTourismAdSource(raw: string | undefined) {
+  const s = (raw ?? "guest").toLowerCase();
+  return s === "admin" ? "admin" : "guest";
+}
+
+export function mapTourismAdFromApi(raw: unknown): TourismAd {
+  const inner = unwrapApiJson(raw);
+  const o = asObject(inner);
+  const idNum = pickNum(o, "id");
+  const id =
+    pickStr(o, "id") ?? (idNum !== undefined ? String(Math.trunc(idNum)) : "");
+  const userIdNum = pickNum(o, "user_id", "userId");
+  const createdByNum = pickNum(o, "created_by_user_id", "createdByUserId");
+  const reviewedByNum = pickNum(o, "reviewed_by_user_id", "reviewedByUserId");
+  const servicesRaw = o.services;
+  const services = Array.isArray(servicesRaw)
+    ? servicesRaw.filter((x): x is string => typeof x === "string" && x.length > 0)
+    : [];
+  const mediaRaw = o.media_links ?? o.mediaLinks;
+  const mediaLinks = Array.isArray(mediaRaw)
+    ? mediaRaw
+        .map((item) => {
+          if (!isRecord(item)) return null;
+          const m = asObject(item);
+          const platform = pickStr(m, "platform") ?? "";
+          const url = pickStr(m, "url") ?? "";
+          if (!platform || !url) return null;
+          return { platform, url };
+        })
+        .filter((x): x is NonNullable<typeof x> => x !== null)
+    : [];
+  const galleryRaw = o.gallery_urls ?? o.galleryUrls;
+  const galleryUrls = Array.isArray(galleryRaw)
+    ? galleryRaw.filter((x): x is string => typeof x === "string" && x.length > 0)
+    : [];
+  const contactRaw = isRecord(o.contact) ? asObject(o.contact) : {};
+  const carouselPos = pickNum(o, "carousel_position", "carouselPosition");
+  const user = mapTourismAdUserSummaryFromApi(o.user);
+  const createdBy = mapTourismAdUserSummaryFromApi(o.created_by ?? o.createdBy);
+  const reviewedBy = mapTourismAdUserSummaryFromApi(o.reviewed_by ?? o.reviewedBy);
+  const candidate = {
+    id,
+    ...(userIdNum !== undefined ? { userId: String(Math.trunc(userIdNum)) } : {}),
+    ...(createdByNum !== undefined
+      ? { createdByUserId: String(Math.trunc(createdByNum)) }
+      : {}),
+    ...(reviewedByNum !== undefined
+      ? { reviewedByUserId: String(Math.trunc(reviewedByNum)) }
+      : {}),
+    source: parseTourismAdSource(
+      pickStr(o, "source"),
+    ),
+    status: parseTourismAdStatus(pickStr(o, "status")),
+    locationName:
+      pickStr(o, "locationName", "location_name") ?? "Untitled location",
+    latitude: String(pickStr(o, "latitude") ?? pickNum(o, "latitude") ?? "0"),
+    longitude: String(pickStr(o, "longitude") ?? pickNum(o, "longitude") ?? "0"),
+    description: pickStr(o, "description") ?? "",
+    openingHours: parseOpeningHoursFromApi(o.opening_hours ?? o.openingHours),
+    services,
+    contact: {
+      ...(pickStr(contactRaw, "phone") ? { phone: pickStr(contactRaw, "phone") } : {}),
+      ...(pickStr(contactRaw, "email") ? { email: pickStr(contactRaw, "email") } : {}),
+      ...(pickStr(contactRaw, "website")
+        ? { website: pickStr(contactRaw, "website") }
+        : {}),
+      ...(pickStr(contactRaw, "whatsapp")
+        ? { whatsapp: pickStr(contactRaw, "whatsapp") }
+        : {}),
+    },
+    mediaLinks,
+    galleryUrls,
+    ...(pickStr(o, "cover_image_url", "coverImageUrl")
+      ? { coverImageUrl: pickStr(o, "cover_image_url", "coverImageUrl") }
+      : galleryUrls[0]
+        ? { coverImageUrl: galleryUrls[0] }
+        : {}),
+    visibilityStartsAt:
+      pickStr(o, "visibility_starts_at", "visibilityStartsAt") ?? null,
+    visibilityEndsAt:
+      pickStr(o, "visibility_ends_at", "visibilityEndsAt") ?? null,
+    rejectionReason:
+      pickStr(o, "rejection_reason", "rejectionReason") ?? null,
+    carouselPosition:
+      carouselPos !== undefined ? Math.trunc(carouselPos) : null,
+    isPinned: pickBool(o, "is_pinned", "isPinned") ?? false,
+    submittedAt: pickStr(o, "submitted_at", "submittedAt") ?? null,
+    reviewedAt: pickStr(o, "reviewed_at", "reviewedAt") ?? null,
+    publishedAt: pickStr(o, "published_at", "publishedAt") ?? null,
+    createdAt: pickStr(o, "created_at", "createdAt") ?? "",
+    updatedAt: pickStr(o, "updated_at", "updatedAt") ?? "",
+    ...(user ? { user } : {}),
+    ...(createdBy ? { createdBy } : {}),
+    ...(reviewedBy ? { reviewedBy } : {}),
+  };
+  return tourismAdSchema.parse(candidate);
+}
+
+function extractTourismAdsRows(raw: unknown): unknown[] {
+  const inner = unwrapApiJson(raw);
+  if (Array.isArray(inner)) return inner;
+  if (isRecord(inner)) {
+    if (Array.isArray(inner.data)) return inner.data;
+    const dataObj = inner.data;
+    if (isRecord(dataObj)) {
+      if (Array.isArray(dataObj.data)) return dataObj.data;
+    }
+  }
+  throw new ApiJsonError(
+    "Expected tourism ads array or wrapped paginator",
+    "expected_array",
+    { cause: raw },
+  );
+}
+
+function extractTourismAdsPaginatorMeta(raw: unknown) {
+  const inner = unwrapApiJson(raw);
+  if (!isRecord(inner)) {
+    return { currentPage: 1, perPage: 20, total: 0 };
+  }
+  const block = isRecord(inner.data) ? asObject(inner.data) : inner;
+  return {
+    currentPage: intNonNeg(pickNum(block, "current_page", "currentPage"), 1),
+    perPage: intNonNeg(pickNum(block, "per_page", "perPage"), 20),
+    total: intNonNeg(pickNum(block, "total"), 0),
+  };
+}
+
+export function mapTourismAdsListFromApi(raw: unknown): TourismAdsListResult {
+  const rows = extractTourismAdsRows(raw);
+  const meta = extractTourismAdsPaginatorMeta(raw);
+  const items = rows.map(mapTourismAdFromApi);
+  return tourismAdsListResultSchema.parse({
+    items: tourismAdsListSchema.parse(items),
+    currentPage: meta.currentPage || 1,
+    perPage: meta.perPage || 20,
+    total: meta.total || items.length,
+  });
+}
+
+export function mapTourismAdsFromApi(raw: unknown): TourismAd[] {
+  return mapTourismAdsListFromApi(raw).items;
 }

@@ -26,6 +26,7 @@ import {
   Building2,
   Flag,
   Store,
+  Palmtree,
 } from 'lucide-react';
 
 export type NavItem = {
@@ -46,6 +47,7 @@ export const NAV_APPROVALS: NavItem[] = [
 ];
 
 export const NAV_OPERATIONS: NavItem[] = [
+  { to: '/tourism-ads', label: 'Tourism ads', icon: Palmtree },
   { to: '/users', label: 'Users', icon: Users },
   { to: '/orders', label: 'Orders', icon: ShoppingBag },
   { to: '/refunds', label: 'Refunds', icon: Banknote },

@@ -37,6 +37,7 @@ import {
   auditLogDetailsState,
   auditLogsState,
   complaintsState,
+  tourismAdsState,
   scanLogsState,
   scannersState,
   organizerKycByOrganizerId,
@@ -79,6 +80,21 @@ import { adminRefundRowSchema } from '@/schemas/refund.schema';
 import { adminUserDetailSchema, suspendUserSchema, type SuspendUserInput } from '@/schemas/user.schema';
 import { rejectPayoutSchema } from '@/schemas/payout.schema';
 import { resolveComplaintSchema } from '@/schemas/complaint.schema';
+import {
+  carouselOrderSchema,
+  createTourismAdSchema,
+  pinTourismAdSchema,
+  rejectTourismAdSchema,
+  tourismAdSchema,
+  tourismAdsListResultSchema,
+  toApiTourismAdBody,
+  updateTourismAdSchema,
+  type CreateTourismAdInput,
+  type TourismAd,
+  type TourismAdsListParams,
+  type TourismAdsListResult,
+  type UpdateTourismAdInput,
+} from '@/schemas/tourismAd.schema';
 import { cancelEventSchema } from '@/schemas/event.schema';
 import type { RevenueChartRange } from '@/types/analytics';
 import { baseQueryWithReauth, sessionHasApiCredentials } from '@/services/adminFetchBaseQuery';
@@ -127,6 +143,8 @@ import {
   mapTalentProfileDetailFromApi,
   mapTalentProfilesFromApi,
   mapAdminAuctionDetailFromApi,
+  mapTourismAdFromApi,
+  mapTourismAdsListFromApi,
 } from '@/schemas/api/adminMappers';
 import {
   adminOrganizerKycDetailSchema,
@@ -204,6 +222,8 @@ type LiveReadName =
   | 'getScanners'
   | 'getScanLogs'
   | 'getComplaints'
+  | 'getTourismAds'
+  | 'getTourismAd'
   | 'getAdminActions'
   | 'getAuditLogs'
   | 'getAdminHealth'
@@ -249,6 +269,8 @@ const LIVE_GET: Record<LiveReadName, string | null> = {
   getScanners: '/api/v1/admin/scanners',
   getScanLogs: '/api/v1/admin/scan-logs',
   getComplaints: '/api/v1/admin/complaints',
+  getTourismAds: '/api/v1/admin/tourism-ads',
+  getTourismAd: '/api/v1/admin/tourism-ads/:id',
   getAdminActions: '/api/v1/admin/admin-actions',
   getAuditLogs: '/api/v1/admin/audit-logs',
   getAdminHealth: '/api/v1/admin/health',
@@ -345,6 +367,45 @@ function syncComplaintRow(id: string, patch: Partial<(typeof complaintsState)[nu
   if (r) Object.assign(r, patch);
 }
 
+function filterTourismAdsMock(params?: TourismAdsListParams): TourismAdsListResult {
+  let rows = [...tourismAdsState];
+  if (params?.status) rows = rows.filter((r) => r.status === params.status);
+  if (params?.source) rows = rows.filter((r) => r.source === params.source);
+  const perPage = params?.perPage ?? 20;
+  const page = params?.page ?? 1;
+  const total = rows.length;
+  const start = (page - 1) * perPage;
+  const items = rows.slice(start, start + perPage);
+  return tourismAdsListResultSchema.parse({
+    items,
+    currentPage: page,
+    perPage,
+    total,
+  });
+}
+
+function syncTourismAdRow(id: string, patch: Partial<TourismAd>) {
+  const r = tourismAdsState.find((x) => x.id === id);
+  if (r) Object.assign(r, { ...patch, updatedAt: new Date().toISOString() });
+}
+
+function nextTourismAdMockId() {
+  let n = tourismAdsState.length + 1;
+  while (tourismAdsState.some((r) => r.id === `ta-${n}`)) n += 1;
+  return `ta-${n}`;
+}
+
+function tourismAdListQueryParams(
+  filters?: TourismAdsListParams | void,
+): Record<string, string | number | boolean | undefined> {
+  const params: Record<string, string | number | boolean | undefined> = {};
+  if (filters?.status) params.status = filters.status;
+  if (filters?.source) params.source = filters.source;
+  if (filters?.page) params.page = filters.page;
+  if (filters?.perPage) params.per_page = filters.perPage;
+  return params;
+}
+
 function syncListingModerationRow(id: string, patch: Partial<(typeof listingModerationState)[number]>) {
   const r = listingModerationState.find((x) => x.id === id);
   if (r) Object.assign(r, patch);
@@ -389,6 +450,7 @@ export const adminApi = createApi({
     'Scanners',
     'ScanLogs',
     'Complaints',
+    'TourismAds',
     'AdminActions',
     'AuditLogs',
     'AdminHealth',
@@ -1179,6 +1241,371 @@ export const adminApi = createApi({
         if (res.error) return { error: toFetchError(res.error) };
         if (shouldUseMockReads()) syncComplaintRow(id, { status: 'escalated', updatedAt: new Date().toISOString() });
         return { data: { ok: true } };
+      },
+    }),
+    getTourismAds: builder.query<TourismAdsListResult, TourismAdsListParams | void>({
+      providesTags: (r) =>
+        r
+          ? [...r.items.map((row) => ({ type: 'TourismAds' as const, id: row.id })), 'TourismAds']
+          : ['TourismAds'],
+      async queryFn(filters, api, extraOptions) {
+        if (shouldUseMockReads()) {
+          await delay(55);
+          return { data: filterTourismAdsMock(filters ?? undefined) };
+        }
+        const livePath = LIVE_GET.getTourismAds;
+        if (!livePath) {
+          warnReadFallback('getTourismAds');
+          await delay(55);
+          return { data: filterTourismAdsMock(filters ?? undefined) };
+        }
+        if (!getAccessToken()) return unauthenticatedReadError();
+        const params = tourismAdListQueryParams(filters);
+        const res = await baseQueryWithReauth(
+          {
+            url: livePath,
+            method: 'GET',
+            params: Object.keys(params).length ? params : undefined,
+          },
+          api,
+          extraOptions
+        );
+        if (res.error) return { error: toFetchError(res.error) };
+        try {
+          return { data: mapTourismAdsListFromApi(res.data) };
+        } catch (e) {
+          return mapLiveReadFailure(e);
+        }
+      },
+    }),
+    getTourismAd: builder.query<TourismAd, string>({
+      providesTags: (_r, _e, id) => [{ type: 'TourismAds', id }],
+      async queryFn(id, api, extraOptions) {
+        await delay(40);
+        const localRow = tourismAdsState.find((r) => r.id === id);
+        const localParsed = localRow ? tourismAdSchema.safeParse(localRow) : null;
+        const resolveFromMock = (): { data: TourismAd } | { error: { status: number; data: unknown } } => {
+          if (!localParsed?.success) return { error: { status: 404, data: 'Not found' } };
+          return { data: localParsed.data };
+        };
+        if (shouldUseMockReads()) return resolveFromMock();
+        const detailPath = LIVE_GET.getTourismAd;
+        if (!detailPath) {
+          warnReadFallback('getTourismAd');
+          return resolveFromMock();
+        }
+        if (!getAccessToken()) return unauthenticatedReadError();
+        const res = await baseQueryWithReauth(
+          { url: detailPath.replace(':id', encodeURIComponent(id)), method: 'GET' },
+          api,
+          extraOptions
+        );
+        if (res.error) return { error: toFetchError(res.error) };
+        try {
+          return { data: mapTourismAdFromApi(res.data) };
+        } catch (e) {
+          return mapLiveReadFailure(e);
+        }
+      },
+    }),
+    createTourismAd: builder.mutation<TourismAd, CreateTourismAdInput>({
+      invalidatesTags: ['TourismAds', 'Dashboard'],
+      async queryFn(body, api, extraOptions) {
+        const parsed = createTourismAdSchema.safeParse(body);
+        if (!parsed.success) return { error: { status: 400, data: parsed.error.flatten() } };
+        if (!sessionHasApiCredentials()) {
+          await delay(100);
+          const now = new Date().toISOString();
+          const ad = tourismAdSchema.parse({
+            id: nextTourismAdMockId(),
+            source: 'admin',
+            status: 'published',
+            locationName: parsed.data.locationName,
+            latitude: String(parsed.data.latitude),
+            longitude: String(parsed.data.longitude),
+            description: parsed.data.description,
+            openingHours: parsed.data.openingHours,
+            services: parsed.data.services,
+            contact: parsed.data.contact,
+            mediaLinks: parsed.data.mediaLinks ?? [],
+            galleryUrls: parsed.data.galleryUrls,
+            coverImageUrl: parsed.data.galleryUrls[0],
+            visibilityStartsAt: parsed.data.visibilityStartsAt ?? null,
+            visibilityEndsAt: parsed.data.visibilityEndsAt ?? null,
+            isPinned: false,
+            publishedAt: now,
+            createdAt: now,
+            updatedAt: now,
+          });
+          tourismAdsState.unshift(ad);
+          return { data: ad };
+        }
+        const res = await baseQueryWithReauth(
+          {
+            url: '/api/v1/admin/tourism-ads',
+            method: 'POST',
+            body: toApiTourismAdBody(parsed.data),
+          },
+          api,
+          extraOptions
+        );
+        if (res.error) return { error: toFetchError(res.error) };
+        try {
+          const mapped = mapTourismAdFromApi(res.data);
+          if (shouldUseMockReads()) {
+            const idx = tourismAdsState.findIndex((r) => r.id === mapped.id);
+            if (idx >= 0) tourismAdsState[idx] = mapped;
+            else tourismAdsState.unshift(mapped);
+          }
+          return { data: mapped };
+        } catch (e) {
+          return mapLiveReadFailure(e);
+        }
+      },
+    }),
+    updateTourismAd: builder.mutation<TourismAd, { id: string; body: UpdateTourismAdInput }>({
+      invalidatesTags: (_r, _e, arg) => ['TourismAds', 'Dashboard', { type: 'TourismAds', id: arg.id }],
+      async queryFn({ id, body }, api, extraOptions) {
+        const parsed = updateTourismAdSchema.safeParse(body);
+        if (!parsed.success) return { error: { status: 400, data: parsed.error.flatten() } };
+        if (!sessionHasApiCredentials()) {
+          await delay(90);
+          const existing = tourismAdsState.find((r) => r.id === id);
+          if (!existing) return { error: { status: 404, data: 'Not found' } };
+          const patch: Partial<TourismAd> = {
+            ...(parsed.data.locationName !== undefined ? { locationName: parsed.data.locationName } : {}),
+            ...(parsed.data.latitude !== undefined ? { latitude: String(parsed.data.latitude) } : {}),
+            ...(parsed.data.longitude !== undefined ? { longitude: String(parsed.data.longitude) } : {}),
+            ...(parsed.data.description !== undefined ? { description: parsed.data.description } : {}),
+            ...(parsed.data.openingHours !== undefined ? { openingHours: parsed.data.openingHours } : {}),
+            ...(parsed.data.services !== undefined ? { services: parsed.data.services } : {}),
+            ...(parsed.data.contact !== undefined ? { contact: parsed.data.contact } : {}),
+            ...(parsed.data.mediaLinks !== undefined ? { mediaLinks: parsed.data.mediaLinks } : {}),
+            ...(parsed.data.galleryUrls !== undefined
+              ? { galleryUrls: parsed.data.galleryUrls, coverImageUrl: parsed.data.galleryUrls[0] }
+              : {}),
+            ...(parsed.data.visibilityStartsAt !== undefined
+              ? { visibilityStartsAt: parsed.data.visibilityStartsAt }
+              : {}),
+            ...(parsed.data.visibilityEndsAt !== undefined
+              ? { visibilityEndsAt: parsed.data.visibilityEndsAt }
+              : {}),
+          };
+          syncTourismAdRow(id, patch);
+          const updated = tourismAdsState.find((r) => r.id === id);
+          if (!updated) return { error: { status: 404, data: 'Not found' } };
+          return { data: updated };
+        }
+        const res = await baseQueryWithReauth(
+          {
+            url: `/api/v1/admin/tourism-ads/${encodeURIComponent(id)}`,
+            method: 'PATCH',
+            body: toApiTourismAdBody(parsed.data),
+          },
+          api,
+          extraOptions
+        );
+        if (res.error) return { error: toFetchError(res.error) };
+        try {
+          const mapped = mapTourismAdFromApi(res.data);
+          if (shouldUseMockReads()) syncTourismAdRow(id, mapped);
+          return { data: mapped };
+        } catch (e) {
+          return mapLiveReadFailure(e);
+        }
+      },
+    }),
+    approveTourismAd: builder.mutation<TourismAd, string>({
+      invalidatesTags: (_r, _e, id) => ['TourismAds', 'Dashboard', { type: 'TourismAds', id }],
+      async queryFn(id, api, extraOptions) {
+        if (!id) return { error: { status: 400, data: { message: 'Invalid id' } } };
+        if (!sessionHasApiCredentials()) {
+          await delay(90);
+          const now = new Date().toISOString();
+          syncTourismAdRow(id, { status: 'published', publishedAt: now, reviewedAt: now });
+          const row = tourismAdsState.find((r) => r.id === id);
+          if (!row) return { error: { status: 404, data: 'Not found' } };
+          return { data: row };
+        }
+        const res = await baseQueryWithReauth(
+          { url: `/api/v1/admin/tourism-ads/${encodeURIComponent(id)}/approve`, method: 'POST', body: {} },
+          api,
+          extraOptions
+        );
+        if (res.error) return { error: toFetchError(res.error) };
+        try {
+          const mapped = mapTourismAdFromApi(res.data);
+          if (shouldUseMockReads()) syncTourismAdRow(id, mapped);
+          return { data: mapped };
+        } catch (e) {
+          return mapLiveReadFailure(e);
+        }
+      },
+    }),
+    rejectTourismAd: builder.mutation<TourismAd, { id: string; reason: string }>({
+      invalidatesTags: (_r, _e, arg) => ['TourismAds', 'Dashboard', { type: 'TourismAds', id: arg.id }],
+      async queryFn({ id, reason }, api, extraOptions) {
+        const parsed = rejectTourismAdSchema.safeParse({ reason });
+        if (!parsed.success) return { error: { status: 400, data: parsed.error.flatten() } };
+        if (!sessionHasApiCredentials()) {
+          await delay(90);
+          const now = new Date().toISOString();
+          syncTourismAdRow(id, {
+            status: 'rejected',
+            rejectionReason: parsed.data.reason,
+            reviewedAt: now,
+          });
+          const row = tourismAdsState.find((r) => r.id === id);
+          if (!row) return { error: { status: 404, data: 'Not found' } };
+          return { data: row };
+        }
+        const res = await baseQueryWithReauth(
+          {
+            url: `/api/v1/admin/tourism-ads/${encodeURIComponent(id)}/reject`,
+            method: 'POST',
+            body: { reason: parsed.data.reason },
+          },
+          api,
+          extraOptions
+        );
+        if (res.error) return { error: toFetchError(res.error) };
+        try {
+          const mapped = mapTourismAdFromApi(res.data);
+          if (shouldUseMockReads()) syncTourismAdRow(id, mapped);
+          return { data: mapped };
+        } catch (e) {
+          return mapLiveReadFailure(e);
+        }
+      },
+    }),
+    archiveTourismAd: builder.mutation<TourismAd, string>({
+      invalidatesTags: (_r, _e, id) => ['TourismAds', 'Dashboard', { type: 'TourismAds', id }],
+      async queryFn(id, api, extraOptions) {
+        if (!id) return { error: { status: 400, data: { message: 'Invalid id' } } };
+        if (!sessionHasApiCredentials()) {
+          await delay(90);
+          syncTourismAdRow(id, { status: 'archived', isPinned: false, carouselPosition: null });
+          const row = tourismAdsState.find((r) => r.id === id);
+          if (!row) return { error: { status: 404, data: 'Not found' } };
+          return { data: row };
+        }
+        const res = await baseQueryWithReauth(
+          { url: `/api/v1/admin/tourism-ads/${encodeURIComponent(id)}/archive`, method: 'POST', body: {} },
+          api,
+          extraOptions
+        );
+        if (res.error) return { error: toFetchError(res.error) };
+        try {
+          const mapped = mapTourismAdFromApi(res.data);
+          if (shouldUseMockReads()) syncTourismAdRow(id, mapped);
+          return { data: mapped };
+        } catch (e) {
+          return mapLiveReadFailure(e);
+        }
+      },
+    }),
+    pinTourismAd: builder.mutation<TourismAd, { id: string; position?: number }>({
+      invalidatesTags: (_r, _e, arg) => ['TourismAds', 'Dashboard', { type: 'TourismAds', id: arg.id }],
+      async queryFn({ id, position }, api, extraOptions) {
+        const parsed = pinTourismAdSchema.safeParse({ position });
+        if (!parsed.success) return { error: { status: 400, data: parsed.error.flatten() } };
+        if (!sessionHasApiCredentials()) {
+          await delay(90);
+          const pos =
+            parsed.data.position ??
+            tourismAdsState.filter((r) => r.isPinned && r.status === 'published').length;
+          syncTourismAdRow(id, { isPinned: true, carouselPosition: pos, status: 'published' });
+          const row = tourismAdsState.find((r) => r.id === id);
+          if (!row) return { error: { status: 404, data: 'Not found' } };
+          return { data: row };
+        }
+        const res = await baseQueryWithReauth(
+          {
+            url: `/api/v1/admin/tourism-ads/${encodeURIComponent(id)}/pin`,
+            method: 'POST',
+            body: parsed.data.position !== undefined ? { position: parsed.data.position } : {},
+          },
+          api,
+          extraOptions
+        );
+        if (res.error) return { error: toFetchError(res.error) };
+        try {
+          const mapped = mapTourismAdFromApi(res.data);
+          if (shouldUseMockReads()) syncTourismAdRow(id, mapped);
+          return { data: mapped };
+        } catch (e) {
+          return mapLiveReadFailure(e);
+        }
+      },
+    }),
+    unpinTourismAd: builder.mutation<TourismAd, string>({
+      invalidatesTags: (_r, _e, id) => ['TourismAds', 'Dashboard', { type: 'TourismAds', id }],
+      async queryFn(id, api, extraOptions) {
+        if (!id) return { error: { status: 400, data: { message: 'Invalid id' } } };
+        if (!sessionHasApiCredentials()) {
+          await delay(90);
+          syncTourismAdRow(id, { isPinned: false, carouselPosition: null });
+          const row = tourismAdsState.find((r) => r.id === id);
+          if (!row) return { error: { status: 404, data: 'Not found' } };
+          return { data: row };
+        }
+        const res = await baseQueryWithReauth(
+          { url: `/api/v1/admin/tourism-ads/${encodeURIComponent(id)}/unpin`, method: 'POST', body: {} },
+          api,
+          extraOptions
+        );
+        if (res.error) return { error: toFetchError(res.error) };
+        try {
+          const mapped = mapTourismAdFromApi(res.data);
+          if (shouldUseMockReads()) syncTourismAdRow(id, mapped);
+          return { data: mapped };
+        } catch (e) {
+          return mapLiveReadFailure(e);
+        }
+      },
+    }),
+    updateTourismCarouselOrder: builder.mutation<TourismAd[], { items: { id: string; position: number }[] }>({
+      invalidatesTags: ['TourismAds', 'Dashboard'],
+      async queryFn({ items }, api, extraOptions) {
+        const parsed = carouselOrderSchema.safeParse({ items });
+        if (!parsed.success) return { error: { status: 400, data: parsed.error.flatten() } };
+        if (!sessionHasApiCredentials()) {
+          await delay(90);
+          parsed.data.items.forEach(({ id, position }) => {
+            syncTourismAdRow(id, { isPinned: true, carouselPosition: position, status: 'published' });
+          });
+          const ordered = tourismAdsState
+            .filter((r) => r.isPinned && r.status === 'published')
+            .sort((a, b) => (a.carouselPosition ?? 0) - (b.carouselPosition ?? 0));
+          return { data: ordered };
+        }
+        const apiItems = parsed.data.items.map((item) => ({
+          id: /^\d+$/.test(item.id) ? Number(item.id) : item.id,
+          position: item.position,
+        }));
+        const res = await baseQueryWithReauth(
+          {
+            url: '/api/v1/admin/tourism-ads/carousel-order',
+            method: 'PATCH',
+            body: { items: apiItems },
+          },
+          api,
+          extraOptions
+        );
+        if (res.error) return { error: toFetchError(res.error) };
+        try {
+          const inner = res.data as unknown;
+          const rows = Array.isArray(inner)
+            ? inner
+            : typeof inner === 'object' && inner !== null && Array.isArray((inner as { data?: unknown }).data)
+              ? (inner as { data: unknown[] }).data
+              : [];
+          const mapped = rows.map(mapTourismAdFromApi);
+          if (shouldUseMockReads()) mapped.forEach((ad) => syncTourismAdRow(ad.id, ad));
+          return { data: mapped };
+        } catch (e) {
+          return mapLiveReadFailure(e);
+        }
       },
     }),
     getAdminActions: builder.query<typeof adminActionsState, void>({
@@ -2476,6 +2903,16 @@ export const {
   useTriageComplaintMutation,
   useResolveComplaintMutation,
   useEscalateComplaintMutation,
+  useGetTourismAdsQuery,
+  useGetTourismAdQuery,
+  useCreateTourismAdMutation,
+  useUpdateTourismAdMutation,
+  useApproveTourismAdMutation,
+  useRejectTourismAdMutation,
+  useArchiveTourismAdMutation,
+  usePinTourismAdMutation,
+  useUnpinTourismAdMutation,
+  useUpdateTourismCarouselOrderMutation,
   useGetAdminActionsQuery,
   useGetAuditLogsQuery,
   useGetAdminHealthQuery,

@@ -41,6 +41,9 @@ import { AnalyticsPage } from "@/pages/analytics/AnalyticsPage";
 import { ListingsPage } from "@/pages/moderation/ListingsPage";
 import { RatingsPage } from "@/pages/moderation/RatingsPage";
 import { ComplaintsPage } from "@/pages/complaints/ComplaintsPage";
+import { TourismAdCreatePage } from "@/pages/tourism-ads/TourismAdCreatePage";
+import { TourismAdDetailPage } from "@/pages/tourism-ads/TourismAdDetailPage";
+import { TourismAdsPage } from "@/pages/tourism-ads/TourismAdsPage";
 import { SupportInboxPage } from "@/pages/support/SupportInboxPage";
 import { SupportThreadPage } from "@/pages/support/SupportThreadPage";
 import { Navigate, Route, Routes } from "react-router-dom";
@@ -116,6 +119,9 @@ export function App() {
             <Route path="support" element={<SupportInboxPage />} />
             <Route path="support/:id" element={<SupportThreadPage />} />
             <Route path="complaints" element={<ComplaintsPage />} />
+            <Route path="tourism-ads" element={<TourismAdsPage />} />
+            <Route path="tourism-ads/new" element={<TourismAdCreatePage />} />
+            <Route path="tourism-ads/:id" element={<TourismAdDetailPage />} />
           </Route>
         </Route>
 

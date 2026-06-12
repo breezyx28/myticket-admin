@@ -10,6 +10,7 @@ export const dashboardCountersSchema = z.object({
   listingModerationQueuedOrInReview: z.number().int().nonnegative(),
   roleApplicationsSubmitted: z.number().int().nonnegative(),
   payoutsHeld: z.number().int().nonnegative(),
+  tourismAdsPendingReview: z.number().int().nonnegative().optional(),
 });
 
 export type DashboardCounters = z.infer<typeof dashboardCountersSchema>;
@@ -36,13 +37,25 @@ export const dashboardSummaryNestedSchema = z.object({
   payouts: z.object({
     held: z.number().int().nonnegative(),
   }),
+  tourismAds: z
+    .object({
+      pendingReview: z.number().int().nonnegative(),
+    })
+    .optional(),
 });
 
 export type DashboardSummaryNested = z.infer<typeof dashboardSummaryNestedSchema>;
 
 export const pendingActionSchema = z.object({
   id: z.string(),
-  kind: z.enum(['role_application', 'talent_profile', 'support', 'event', 'moderation']),
+  kind: z.enum([
+    'role_application',
+    'talent_profile',
+    'support',
+    'event',
+    'moderation',
+    'tourism_ad',
+  ]),
   title: z.string(),
   subtitle: z.string(),
   href: z.string(),

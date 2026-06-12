@@ -27,6 +27,7 @@ import {
 } from '@/schemas/order.schema';
 import { adminAuctionListSchema } from '@/schemas/auction.schema';
 import { adminComplaintListSchema } from '@/schemas/complaint.schema';
+import { defaultOpeningHours, tourismAdsListSchema } from '@/schemas/tourismAd.schema';
 import { adminScanLogListSchema, adminScannerListSchema } from '@/schemas/scanner.schema';
 import { adminPayoutListSchema } from '@/schemas/payout.schema';
 import { refundBreakdownsViewSchema } from '@/schemas/refundBreakdown.schema';
@@ -57,6 +58,7 @@ export const MOCK_DASHBOARD_COUNTERS = dashboardCountersSchema.parse({
   listingModerationQueuedOrInReview: 18,
   roleApplicationsSubmitted: 15,
   payoutsHeld: 6,
+  tourismAdsPendingReview: 2,
 });
 
 export const MOCK_DASHBOARD_SUMMARY = dashboardSummaryNestedSchema.parse({
@@ -66,6 +68,7 @@ export const MOCK_DASHBOARD_SUMMARY = dashboardSummaryNestedSchema.parse({
   listingModeration: { queuedOrInReview: 18 },
   roleApplications: { submitted: 15 },
   payouts: { held: 6 },
+  tourismAds: { pendingReview: 2 },
 });
 
 export const MOCK_PENDING_ACTIONS = pendingActionsResponseSchema.parse([
@@ -1003,3 +1006,101 @@ export const MOCK_ORGANIZER_KYC_BY_ORG: Record<string, AdminOrganizerKycDetail> 
     ],
   }),
 };
+
+const MOCK_OPENING = defaultOpeningHours();
+
+export const MOCK_TOURISM_ADS = tourismAdsListSchema.parse([
+  {
+    id: 'ta-1',
+    userId: '42',
+    createdByUserId: '42',
+    source: 'guest',
+    status: 'pending_review',
+    locationName: 'Red Sea Coral Bay',
+    latitude: '22.5960000',
+    longitude: '39.1180000',
+    description:
+      'Guided snorkeling and reef walks along the southern Red Sea coast with certified marine guides and small groups.',
+    openingHours: MOCK_OPENING,
+    services: ['guided tours', 'snorkeling', 'boat trips'],
+    contact: { phone: '+966500000001', email: 'reef.guide@example.com' },
+    mediaLinks: [{ platform: 'instagram', url: 'https://instagram.com/reefbay' }],
+    galleryUrls: [
+      'https://picsum.photos/seed/tourism-red-sea/800/600',
+      'https://picsum.photos/seed/tourism-red-sea-2/800/600',
+    ],
+    coverImageUrl: 'https://picsum.photos/seed/tourism-red-sea/800/600',
+    isPinned: false,
+    submittedAt: '2026-06-14T09:00:00+00:00',
+    createdAt: '2026-06-14T08:30:00+00:00',
+    updatedAt: '2026-06-14T09:00:00+00:00',
+    user: { id: '42', fullName: 'Layla Al-Harbi', email: 'layla@example.com' },
+    createdBy: { id: '42', fullName: 'Layla Al-Harbi', email: 'layla@example.com' },
+  },
+  {
+    id: 'ta-2',
+    userId: '55',
+    createdByUserId: '55',
+    source: 'guest',
+    status: 'pending_review',
+    locationName: 'AlUla Heritage Trail',
+    latitude: '26.6140000',
+    longitude: '37.9200000',
+    description:
+      'Sunset camel caravans and stargazing experiences across sandstone canyons with local historians and storytellers.',
+    openingHours: MOCK_OPENING,
+    services: ['camel tours', 'stargazing', 'heritage walks'],
+    contact: { phone: '+966550112233', email: 'heritage@example.com' },
+    mediaLinks: [],
+    galleryUrls: ['https://picsum.photos/seed/tourism-alula/800/600'],
+    coverImageUrl: 'https://picsum.photos/seed/tourism-alula/800/600',
+    isPinned: false,
+    submittedAt: '2026-06-13T16:20:00+00:00',
+    createdAt: '2026-06-13T15:00:00+00:00',
+    updatedAt: '2026-06-13T16:20:00+00:00',
+    user: { id: '55', fullName: 'Omar Qahtani', email: 'omar@example.com' },
+    createdBy: { id: '55', fullName: 'Omar Qahtani', email: 'omar@example.com' },
+  },
+  {
+    id: 'ta-3',
+    source: 'admin',
+    status: 'published',
+    locationName: 'Riyadh Season Pavilion',
+    latitude: '24.7136000',
+    longitude: '46.6753000',
+    description:
+      'Official tourism pavilion showcasing curated dining, light installations, and family activities during the winter season.',
+    openingHours: MOCK_OPENING,
+    services: ['family activities', 'dining', 'light shows'],
+    contact: { phone: '+966112223344', email: 'pavilion@myticket.test' },
+    mediaLinks: [{ platform: 'website', url: 'https://myticket.kat-jr.com' }],
+    galleryUrls: ['https://picsum.photos/seed/tourism-riyadh/800/600'],
+    coverImageUrl: 'https://picsum.photos/seed/tourism-riyadh/800/600',
+    isPinned: true,
+    carouselPosition: 0,
+    publishedAt: '2026-06-01T10:00:00+00:00',
+    createdAt: '2026-06-01T10:00:00+00:00',
+    updatedAt: '2026-06-01T10:00:00+00:00',
+  },
+  {
+    id: 'ta-4',
+    source: 'admin',
+    status: 'published',
+    locationName: 'Jeddah Corniche Walk',
+    latitude: '21.5433000',
+    longitude: '39.1728000',
+    description:
+      'Waterfront promenade experiences with art installations, coffee carts, and evening performances along the Red Sea.',
+    openingHours: MOCK_OPENING,
+    services: ['walking tours', 'coffee tastings', 'live music'],
+    contact: { email: 'corniche@myticket.test', phone: '+966533221100' },
+    mediaLinks: [],
+    galleryUrls: ['https://picsum.photos/seed/tourism-jeddah/800/600'],
+    coverImageUrl: 'https://picsum.photos/seed/tourism-jeddah/800/600',
+    isPinned: true,
+    carouselPosition: 1,
+    publishedAt: '2026-06-02T12:00:00+00:00',
+    createdAt: '2026-06-02T12:00:00+00:00',
+    updatedAt: '2026-06-02T12:00:00+00:00',
+  },
+]);

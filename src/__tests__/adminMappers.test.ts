@@ -47,6 +47,9 @@ import {
   mapAdminProfileDirectoryRowFromApi,
   slugifyCategoryBaseName,
   suggestUniqueCategorySlug,
+  mapTourismAdFromApi,
+  mapTourismAdsFromApi,
+  mapTourismAdsListFromApi,
 } from "@/schemas/api/adminMappers";
 
 describe("mapDashboardCountersFromApi", () => {
@@ -1971,5 +1974,126 @@ describe("mapLeaderboardsFromApi", () => {
     expect(lb.events[0].code).toBe("EVT-7");
     expect(lb.organizers).toHaveLength(0);
     expect(lb.generatedAt).toBe("2026-05-12T12:18:16+00:00");
+  });
+});
+
+describe("mapTourismAdsListFromApi / mapTourismAdFromApi", () => {
+  it("unwraps nested paginator data.data and maps snake_case fields", () => {
+    const result = mapTourismAdsListFromApi({
+      data: {
+        current_page: 2,
+        per_page: 10,
+        total: 25,
+        data: [
+          {
+            id: 12,
+            user_id: 42,
+            source: "guest",
+            status: "pending_review",
+            location_name: "Red Sea Coral Bay",
+            latitude: "22.5960000",
+            longitude: "39.1180000",
+            description: "Guided snorkeling along the reef with certified marine guides.",
+            opening_hours: {
+              mon: { closed: false, opens: "09:00", closes: "18:00" },
+              tue: { closed: false, opens: "09:00", closes: "18:00" },
+              wed: { closed: false, opens: "09:00", closes: "18:00" },
+              thu: { closed: false, opens: "09:00", closes: "18:00" },
+              fri: { closed: false, opens: "14:00", closes: "22:00" },
+              sat: { closed: false, opens: "09:00", closes: "22:00" },
+              sun: { closed: true },
+            },
+            services: ["snorkeling", "boat trips"],
+            contact: { phone: "+966500000001", email: "reef@example.com" },
+            media_links: [{ platform: "instagram", url: "https://instagram.com/reef" }],
+            gallery_urls: ["https://cdn.example/reef.jpg"],
+            cover_image_url: "https://cdn.example/reef.jpg",
+            is_pinned: false,
+            submitted_at: "2026-06-14T09:00:00+00:00",
+            created_at: "2026-06-14T08:30:00+00:00",
+            updated_at: "2026-06-14T09:00:00+00:00",
+            user: { id: 42, full_name: "Layla Al-Harbi", email: "layla@example.com" },
+          },
+        ],
+      },
+    });
+    expect(result.currentPage).toBe(2);
+    expect(result.perPage).toBe(10);
+    expect(result.total).toBe(25);
+    expect(result.items).toHaveLength(1);
+    const ad = result.items[0];
+    expect(ad.id).toBe("12");
+    expect(ad.userId).toBe("42");
+    expect(ad.status).toBe("pending_review");
+    expect(ad.locationName).toBe("Red Sea Coral Bay");
+    expect(ad.openingHours.mon.opens).toBe("09:00");
+    expect(ad.openingHours.sun.closed).toBe(true);
+    expect(ad.user?.fullName).toBe("Layla Al-Harbi");
+    expect(ad.galleryUrls[0]).toBe("https://cdn.example/reef.jpg");
+  });
+
+  it("mapTourismAdFromApi maps published carousel fields", () => {
+    const ad = mapTourismAdFromApi({
+      id: 8,
+      source: "admin",
+      status: "published",
+      location_name: "Riyadh Pavilion",
+      latitude: 24.7136,
+      longitude: 46.6753,
+      description: "Season pavilion with dining and family activities for visitors.",
+      opening_hours: {
+        mon: { closed: false, opens: "10:00", closes: "22:00" },
+        tue: { closed: false, opens: "10:00", closes: "22:00" },
+        wed: { closed: false, opens: "10:00", closes: "22:00" },
+        thu: { closed: false, opens: "10:00", closes: "22:00" },
+        fri: { closed: false, opens: "14:00", closes: "23:00" },
+        sat: { closed: false, opens: "10:00", closes: "23:00" },
+        sun: { closed: false, opens: "10:00", closes: "22:00" },
+      },
+      services: ["dining"],
+      contact: { email: "pavilion@example.com" },
+      media_links: [],
+      gallery_urls: ["https://cdn.example/pavilion.jpg"],
+      is_pinned: true,
+      carousel_position: 0,
+      published_at: "2026-06-01T10:00:00+00:00",
+      created_at: "2026-06-01T10:00:00+00:00",
+      updated_at: "2026-06-01T10:00:00+00:00",
+    });
+    expect(ad.isPinned).toBe(true);
+    expect(ad.carouselPosition).toBe(0);
+    expect(ad.latitude).toBe("24.7136");
+  });
+
+  it("mapTourismAdsFromApi accepts a plain array", () => {
+    const items = mapTourismAdsFromApi([
+      {
+        id: "ta-1",
+        source: "guest",
+        status: "draft",
+        location_name: "Test Spot",
+        latitude: "0",
+        longitude: "0",
+        description: "Draft listing for mapper coverage with enough characters here.",
+        opening_hours: {
+          mon: { closed: true },
+          tue: { closed: true },
+          wed: { closed: true },
+          thu: { closed: true },
+          fri: { closed: true },
+          sat: { closed: true },
+          sun: { closed: true },
+        },
+        services: ["tours"],
+        contact: { phone: "+966500000000" },
+        media_links: [],
+        gallery_urls: ["https://cdn.example/1.jpg"],
+        is_pinned: false,
+        created_at: "2026-06-01T00:00:00Z",
+        updated_at: "2026-06-01T00:00:00Z",
+      },
+    ]);
+    expect(items).toHaveLength(1);
+    expect(items[0].status).toBe("draft");
   });
 });

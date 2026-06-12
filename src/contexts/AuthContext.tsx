@@ -6,6 +6,7 @@ import {
   type SessionUser,
   type SignInFailureReason,
 } from '@/contexts/adminAuthContext';
+import { destroyAdminEcho } from '@/lib/realtime/echo';
 import {
   clearPersistedSession,
   loadPersistedSession,
@@ -107,6 +108,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = useCallback(() => {
     void postAdminLogout();
+    destroyAdminEcho();
     clearPersistedSession();
     setUser(null);
   }, []);

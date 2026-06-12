@@ -39,6 +39,7 @@ export function DashboardHomePage() {
   const listingModerationQueuedOrInReview = useCountUp(c?.listingModerationQueuedOrInReview ?? null);
   const roleApplicationsSubmitted = useCountUp(c?.roleApplicationsSubmitted ?? null);
   const payoutsHeld = useCountUp(c?.payoutsHeld ?? null);
+  const tourismAdsPendingReview = useCountUp(c?.tourismAdsPendingReview ?? null);
 
   const spotlight = events.data?.slice(0, 3) ?? [];
 
@@ -89,6 +90,13 @@ export function DashboardHomePage() {
             color="bg-mint text-ink"
           />
           <StatBubble label="Payouts held" value={c ? formatInt(payoutsHeld) : '—'} color="bg-coral text-white" />
+          <Link to="/tourism-ads?tab=review" className="block">
+            <StatBubble
+              label="Tourism ads (pending review)"
+              value={c ? formatInt(tourismAdsPendingReview) : '—'}
+              color="bg-ink text-white"
+            />
+          </Link>
         </div>
       </AdminSection>
 
