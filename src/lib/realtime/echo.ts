@@ -1,11 +1,11 @@
-import { getApiBaseUrl } from '@/config/env';
-import { getAccessToken } from '@/lib/authSession';
 import Echo from 'laravel-echo';
 import Pusher from 'pusher-js';
+import { getBroadcastingAuthUrl, readReverbConfig } from './config';
 
 declare global {
   interface Window {
     Pusher: typeof Pusher;
+    Echo?: Echo<'reverb'>;
   }
 }
 
@@ -13,29 +13,25 @@ let echoInstance: Echo<'reverb'> | null = null;
 let echoAuthToken: string | null = null;
 let warnedMissing = false;
 
-function reverbConfig() {
-  const key = import.meta.env.VITE_REVERB_APP_KEY;
-  const host = import.meta.env.VITE_REVERB_HOST;
-  const portRaw = import.meta.env.VITE_REVERB_PORT;
-  const scheme = import.meta.env.VITE_REVERB_SCHEME ?? 'https';
-  if (!key || !host) return null;
-  const port = portRaw ? Number(portRaw) : scheme === 'https' ? 443 : 80;
-  return { key, host, port, scheme };
+export function getEcho(): Echo<'reverb'> | null {
+  return echoInstance;
 }
 
-export function getAdminEcho(): Echo<'reverb'> | null {
-  const cfg = reverbConfig();
+/** @deprecated Use getEcho — kept for any legacy imports */
+export const getAdminEcho = getEcho;
+
+export function connectEcho(token: string): Echo<'reverb'> | null {
+  const cfg = readReverbConfig();
   if (!cfg) {
     if (!warnedMissing) {
       warnedMissing = true;
-      console.info('[realtime] Reverb env not configured; tourism ads realtime disabled.');
+      console.info('[realtime] Reverb env not configured; admin realtime disabled.');
     }
     return null;
   }
 
-  const token = getAccessToken() ?? '';
   if (echoInstance && echoAuthToken !== token) {
-    destroyAdminEcho();
+    disconnectEcho();
   }
   if (echoInstance) return echoInstance;
 
@@ -49,7 +45,7 @@ export function getAdminEcho(): Echo<'reverb'> | null {
     wssPort: cfg.port,
     forceTLS: cfg.scheme === 'https',
     enabledTransports: ['ws', 'wss'],
-    authEndpoint: `${getApiBaseUrl()}/broadcasting/auth`,
+    authEndpoint: getBroadcastingAuthUrl(),
     auth: {
       headers: {
         Authorization: `Bearer ${token}`,
@@ -58,11 +54,16 @@ export function getAdminEcho(): Echo<'reverb'> | null {
     },
   });
 
+  window.Echo = echoInstance;
   return echoInstance;
 }
 
-export function destroyAdminEcho() {
+export function disconnectEcho(): void {
   echoInstance?.disconnect();
   echoInstance = null;
   echoAuthToken = null;
+  window.Echo = undefined;
 }
+
+/** @deprecated Use disconnectEcho */
+export const destroyAdminEcho = disconnectEcho;

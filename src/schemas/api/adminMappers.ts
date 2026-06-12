@@ -521,7 +521,7 @@ function mapPendingActionRow(row: unknown): PendingAction {
       pickStr(user, "full_name", "email") ??
       pickStr(o, "source") ??
       "Guest submission";
-    href = `/tourism-ads/${id}`;
+    href = normalizeNotificationHref(pickStr(o, "href")) ?? `/tourism-ads/${id}`;
     priority = "high";
     dueLabel = pickStr(o, "submitted_at", "created_at") ?? "";
   }
@@ -3932,9 +3932,9 @@ export function mapAdminRecentNotificationRowFromApi(
       : "") ||
     "Notification";
   const body = pickStr(o, "body", "message", "content", "text");
-  const channel =
-    pickStr(o, "channel", "via", "medium", "delivery_channel", "kind") ??
-    undefined;
+  const kind = pickStr(o, "kind", "notification_kind", "type") ?? undefined;
+  const deliveryChannel = pickStr(o, "channel", "via", "medium", "delivery_channel");
+  const channel = deliveryChannel ?? (kind && !kind.includes("_") ? kind : undefined);
   const read =
     pickBool(o, "read", "is_read", "seen") ??
     (pickStr(o, "read_at", "seen_at") ? true : undefined);
@@ -3947,11 +3947,29 @@ export function mapAdminRecentNotificationRowFromApi(
     title: title.length > 200 ? `${title.slice(0, 197)}…` : title,
     createdAt,
     ...(body ? { body } : {}),
+    ...(kind ? { kind } : {}),
     ...(channel ? { channel } : {}),
     ...(href ? { href } : {}),
     ...(read !== undefined ? { read } : {}),
   };
   return adminRecentNotificationRowSchema.parse(candidate);
+}
+
+export function mapAdminUploadFromApi(raw: unknown): {
+  url: string;
+  contentType?: string;
+  sizeBytes?: number;
+} {
+  const inner = unwrapApiJson(raw);
+  const o = asObject(inner);
+  const url = pickStr(o, "url") ?? "";
+  const contentType = pickStr(o, "content_type", "contentType");
+  const sizeNum = pickNum(o, "size_bytes", "sizeBytes");
+  return {
+    url,
+    ...(contentType ? { contentType } : {}),
+    ...(sizeNum !== undefined ? { sizeBytes: Math.trunc(sizeNum) } : {}),
+  };
 }
 
 export function mapAdminRecentNotificationsFromApi(

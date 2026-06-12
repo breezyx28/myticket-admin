@@ -1,5 +1,6 @@
 import { NAV_GROUPS } from '@/config/nav';
 import { Button } from '@/components/ui/Button';
+import { useAdminRealtime } from '@/hooks/useAdminRealtime';
 import { useAuth } from '@/hooks/useAuth';
 import { getAccessToken } from '@/lib/authSession';
 import { shouldUseMockReads } from '@/services/adminReadMode';
@@ -19,6 +20,7 @@ function dataSourceBadge(): string {
 export function AdminShell({ children }: { children?: ReactNode }) {
   const { user, signOut } = useAuth();
   const [open, setOpen] = useState(false);
+  useAdminRealtime({ userId: user?.id ?? null });
 
   return (
     <div className="min-h-dvh bg-surface-page text-ink">

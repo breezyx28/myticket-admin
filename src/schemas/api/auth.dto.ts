@@ -41,6 +41,7 @@ export function parseAdminRefreshToken(json: unknown): { accessToken: string } |
 
 const userShape = z
   .object({
+    id: z.union([z.string(), z.number()]).optional(),
     email: z.string().email().optional(),
     name: z.string().optional(),
     full_name: z.string().optional(),
@@ -49,10 +50,18 @@ const userShape = z
   })
   .passthrough();
 
-export function parseAdminLoginUser(json: unknown, fallbackEmail: string): { email: string; name: string; role: 'admin' } {
+export function parseAdminLoginUser(
+  json: unknown,
+  fallbackEmail: string,
+): { id?: string; email: string; name: string; role: 'admin' } {
   if (!json || typeof json !== 'object') {
     return { email: fallbackEmail, name: fallbackEmail.split('@')[0] ?? 'Admin', role: 'admin' };
   }
+  const pickId = (raw: unknown): string | undefined => {
+    if (typeof raw === 'string' && raw.trim()) return raw.trim();
+    if (typeof raw === 'number' && Number.isFinite(raw)) return String(Math.trunc(raw));
+    return undefined;
+  };
   const root = json as Record<string, unknown>;
   const data = root.data;
   const inner =
@@ -68,5 +77,14 @@ export function parseAdminLoginUser(json: unknown, fallbackEmail: string): { ema
     (typeof inner.name === 'string' && inner.name) ||
     email.split('@')[0] ||
     'Admin';
-  return { email, name, role: 'admin' };
+  const id =
+    (parsed.success && pickId(parsed.data.id)) ||
+    pickId(inner.id) ||
+    pickId(inner.user_id);
+  return {
+    ...(id ? { id } : {}),
+    email,
+    name,
+    role: 'admin',
+  };
 }

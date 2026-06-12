@@ -1,3 +1,4 @@
+import { filterAdminOperationalNotifications } from '@/lib/adminNotificationKinds';
 import { cn } from '@/lib/utils';
 import type { AdminRecentNotificationRow } from '@/schemas/adminNotifications.schema';
 import { useGetNotificationsRecentQuery } from '@/services/adminApi';
@@ -185,10 +186,11 @@ export function AdminNotificationsDropdown({ className }: AdminNotificationsDrop
 
   const { data, isLoading, isError, refetch, isFetching } = useGetNotificationsRecentQuery();
 
-  const items = useMemo(() => (data ?? []).slice(0, DROPDOWN_LIMIT), [data]);
+  const adminRows = useMemo(() => filterAdminOperationalNotifications(data ?? []), [data]);
+  const items = useMemo(() => adminRows.slice(0, DROPDOWN_LIMIT), [adminRows]);
   const unreadCount = useMemo(
-    () => (data ?? []).filter((row) => row.read === false).length,
-    [data],
+    () => adminRows.filter((row) => row.read === false).length,
+    [adminRows],
   );
 
   const updatePanelPosition = () => {

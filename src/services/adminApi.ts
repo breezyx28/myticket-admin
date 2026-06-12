@@ -145,6 +145,7 @@ import {
   mapAdminAuctionDetailFromApi,
   mapTourismAdFromApi,
   mapTourismAdsListFromApi,
+  mapAdminUploadFromApi,
 } from '@/schemas/api/adminMappers';
 import {
   adminOrganizerKycDetailSchema,
@@ -2406,6 +2407,47 @@ export const adminApi = createApi({
         return { data: { ok: true, data: res.data } };
       },
     }),
+    uploadAdminFile: builder.mutation<
+      { url: string; contentType?: string; sizeBytes?: number },
+      { file: File; context: string }
+    >({
+      async queryFn({ file, context }, api, extraOptions) {
+        if (!file || !(file instanceof File)) {
+          return { error: { status: 400, data: { message: 'File is required' } } };
+        }
+        if (!context?.trim()) {
+          return { error: { status: 400, data: { message: 'Upload context is required' } } };
+        }
+        if (!sessionHasApiCredentials()) {
+          await delay(120);
+          return {
+            data: {
+              url: `https://picsum.photos/seed/${encodeURIComponent(file.name)}-${Date.now()}/800/600`,
+              contentType: file.type || 'image/jpeg',
+              sizeBytes: file.size,
+            },
+          };
+        }
+        const form = new FormData();
+        form.append('file', file);
+        form.append('context', context);
+        const res = await baseQueryWithReauth(
+          {
+            url: '/api/v1/admin/uploads',
+            method: 'POST',
+            body: form,
+          },
+          api,
+          extraOptions
+        );
+        if (res.error) return { error: toFetchError(res.error) };
+        try {
+          return { data: mapAdminUploadFromApi(res.data) };
+        } catch (e) {
+          return mapLiveReadFailure(e);
+        }
+      },
+    }),
     getFinancialAnalytics: builder.query<FinancialAnalytics, RevenueChartRange | void>({
       providesTags: ['Analytics'],
       async queryFn(rangeArg, api, extraOptions) {
@@ -2950,6 +2992,7 @@ export const {
   useGetNotificationsRecentQuery,
   useGetNotificationsDeliveryLogQuery,
   useSendTestNotificationMutation,
+  useUploadAdminFileMutation,
   useGetFinancialAnalyticsQuery,
   useGetPlatformCountersQuery,
   useGetLeaderboardsQuery,

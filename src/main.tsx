@@ -12,6 +12,7 @@ import { Provider } from 'react-redux';
 import { BrowserRouter } from 'react-router-dom';
 import { Toaster } from 'sonner';
 import { App } from './App';
+import 'leaflet/dist/leaflet.css';
 import './index.css';
 
 createRoot(document.getElementById('root')!).render(

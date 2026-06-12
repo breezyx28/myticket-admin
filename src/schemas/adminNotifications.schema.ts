@@ -14,6 +14,7 @@ export const adminRecentNotificationRowSchema = z.object({
   id: z.string().min(1),
   title: z.string(),
   body: z.string().optional(),
+  kind: z.string().optional(),
   channel: z.string().optional(),
   href: z.string().optional(),
   read: z.boolean().optional(),

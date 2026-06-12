@@ -2,6 +2,7 @@ import type { AdminRole } from '@/types/domain';
 import { createContext } from 'react';
 
 export type SessionUser = {
+  id?: string;
   email: string;
   name: string;
   role: AdminRole;

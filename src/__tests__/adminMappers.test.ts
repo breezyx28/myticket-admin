@@ -1610,11 +1610,45 @@ describe("mapAdminRecentNotificationsFromApi", () => {
       id: "46",
       title: "Organizer event requires review",
       body: "Event updated: test",
-      channel: "event_review_required",
+      kind: "event_review_required",
       href: "/events/18",
       read: false,
       createdAt: "2026-05-17T12:58:27.000000Z",
     });
+  });
+
+  it("maps kind separately from delivery channel", () => {
+    const out = mapAdminRecentNotificationsFromApi({
+      data: [
+        {
+          id: 1,
+          kind: "tourism_ad_submitted",
+          title: "New tourism ad",
+          channel: "in_app",
+          href: "/tourism-ads/12",
+          is_read: false,
+          created_at: "2026-06-14T10:00:00Z",
+        },
+      ],
+    });
+    expect(out[0]?.kind).toBe("tourism_ad_submitted");
+    expect(out[0]?.channel).toBe("in_app");
+  });
+});
+
+describe("mapAdminUploadFromApi", () => {
+  it("unwraps upload response url", async () => {
+    const { mapAdminUploadFromApi } = await import("@/schemas/api/adminMappers");
+    const out = mapAdminUploadFromApi({
+      data: {
+        url: "https://myticket-api.kat-jr.com/storage/tourism/ads/gallery/abc.jpg",
+        content_type: "image/jpeg",
+        size_bytes: 245000,
+      },
+    });
+    expect(out.url).toContain("abc.jpg");
+    expect(out.contentType).toBe("image/jpeg");
+    expect(out.sizeBytes).toBe(245000);
   });
 });
 

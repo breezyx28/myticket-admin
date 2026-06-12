@@ -1,6 +1,7 @@
 import { ListFiltersBar } from '@/components/admin/ListFiltersBar';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { filterAdminOperationalNotifications } from '@/lib/adminNotificationKinds';
 import { rowMatchesSearch } from '@/lib/listQuery';
 import { notifyError, notifySuccess } from '@/lib/notify';
 import { notificationSettingsSchema, type NotificationSettings } from '@/schemas/settings.schema';
@@ -38,8 +39,15 @@ export function NotificationsPage() {
   const channels = useWatch({ control: form.control, name: 'channels' });
 
   const filteredRecent = useMemo(() => {
-    return (recentQ.data ?? []).filter((row) =>
-      rowMatchesSearch(searchRecent, [row.id, row.title, row.body, row.channel, String(row.read ?? '')])
+    return filterAdminOperationalNotifications(recentQ.data ?? []).filter((row) =>
+      rowMatchesSearch(searchRecent, [
+        row.id,
+        row.title,
+        row.body,
+        row.kind,
+        row.channel,
+        String(row.read ?? ''),
+      ]),
     );
   }, [recentQ.data, searchRecent]);
 

@@ -15,6 +15,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { OpeningHoursEditor } from './components/OpeningHoursEditor';
 import { TourismAdContactFields } from './components/TourismAdContactFields';
 import { TourismAdGalleryField } from './components/TourismAdGalleryField';
+import { TourismAdLocationPicker } from './components/TourismAdLocationPicker';
 
 export function TourismAdCreatePage() {
   const navigate = useNavigate();
@@ -91,8 +92,8 @@ export function TourismAdCreatePage() {
           <CardHeader>
             <CardTitle className="text-lg">Location</CardTitle>
           </CardHeader>
-          <CardContent className="grid gap-4 sm:grid-cols-2">
-            <label className="sm:col-span-2 flex flex-col gap-1 text-[12px] font-semibold text-ink-60">
+          <CardContent className="space-y-4">
+            <label className="flex flex-col gap-1 text-[12px] font-semibold text-ink-60">
               Location name
               <input
                 {...form.register('locationName')}
@@ -102,24 +103,31 @@ export function TourismAdCreatePage() {
                 <span className="text-coral">{form.formState.errors.locationName.message}</span>
               ) : null}
             </label>
-            <label className="flex flex-col gap-1 text-[12px] font-semibold text-ink-60">
-              Latitude
-              <input
-                type="number"
-                step="any"
-                {...form.register('latitude')}
-                className="h-11 rounded-xl border border-ink-10 bg-white px-3 text-[14px] text-ink"
-              />
-            </label>
-            <label className="flex flex-col gap-1 text-[12px] font-semibold text-ink-60">
-              Longitude
-              <input
-                type="number"
-                step="any"
-                {...form.register('longitude')}
-                className="h-11 rounded-xl border border-ink-10 bg-white px-3 text-[14px] text-ink"
-              />
-            </label>
+            <Controller
+              control={form.control}
+              name="latitude"
+              render={({ field: latField }) => (
+                <Controller
+                  control={form.control}
+                  name="longitude"
+                  render={({ field: lngField }) => (
+                    <TourismAdLocationPicker
+                      latitude={latField.value}
+                      longitude={lngField.value}
+                      onCoordinatesChange={(lat, lng) => {
+                        latField.onChange(lat);
+                        lngField.onChange(lng);
+                      }}
+                      onLocationNameSuggest={(name) => {
+                        if (!form.getValues('locationName')?.trim()) {
+                          form.setValue('locationName', name, { shouldValidate: true });
+                        }
+                      }}
+                    />
+                  )}
+                />
+              )}
+            />
           </CardContent>
         </Card>
 
