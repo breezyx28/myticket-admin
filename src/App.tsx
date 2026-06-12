@@ -22,8 +22,11 @@ import { OrdersListPage } from "@/pages/orders/OrdersListPage";
 import { RefundDetailPage } from "@/pages/refunds/RefundDetailPage";
 import { RefundsListPage } from "@/pages/refunds/RefundsListPage";
 import { UsersPage } from "@/pages/users/UsersPage";
-import { EventCategoriesPage } from "@/pages/events/EventCategoriesPage";
-import { EventDetailPage } from "@/pages/events/EventDetailPage";
+import {
+  CategoriesHubPage,
+  CategoriesLegacyRedirect,
+} from '@/pages/categories/CategoriesHubPage';
+import { EventDetailPage } from '@/pages/events/EventDetailPage';
 import { EventsListPage } from "@/pages/events/EventsListPage";
 import { FeaturedEventsPage } from "@/pages/events/FeaturedEventsPage";
 import { AdminProfilePage } from "@/pages/profile/AdminProfilePage";
@@ -93,7 +96,8 @@ export function App() {
             <Route path="auctions/:id" element={<AuctionDetailPage />} />
             <Route path="scanners" element={<ScannersPage />} />
             <Route path="events" element={<EventsListPage />} />
-            <Route path="events/categories" element={<EventCategoriesPage />} />
+            <Route path="categories" element={<CategoriesHubPage />} />
+            <Route path="events/categories" element={<CategoriesLegacyRedirect />} />
             <Route path="events/featured" element={<FeaturedEventsPage />} />
             <Route path="events/:id" element={<EventDetailPage />} />
             <Route path="profile" element={<AdminProfilePage />} />

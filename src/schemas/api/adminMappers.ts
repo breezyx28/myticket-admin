@@ -135,12 +135,23 @@ import {
   type SupportThreadDetail,
 } from "@/schemas/support.schema";
 import {
+  badgeCategoriesListResultSchema,
+  badgeCategoryListSchema,
+  badgeCategorySchema,
+  eventCategoriesListResultSchema,
+  type BadgeCategory,
+  type BadgeCategoriesListResult,
+  type EventCategoriesListResult,
+} from "@/schemas/categoryTaxonomy.schema";
+import {
   adminUserDetailSchema,
   adminUserListSchema,
   adminUserRowSchema,
+  adminUsersListResultSchema,
   type AdminUserDetail,
   type AdminUserRow,
 } from "@/schemas/user.schema";
+import { platformUserRoleSchema } from "@/schemas/shared";
 import {
   adminKycDocumentSchema,
   adminKycDocStatusSchema,
@@ -1319,12 +1330,15 @@ export function mapAdminProfileDirectoryFromApi(
 }
 
 function extractUsersPayload(raw: unknown): unknown[] {
+  if (isRecord(raw) && isLaravelPaginator(raw)) return raw.data as unknown[];
+
   const inner = unwrapApiJson(raw);
   if (Array.isArray(inner)) return inner;
   if (isRecord(inner)) {
-    // Handle nested pagination
+    if (isLaravelPaginator(inner)) return inner.data as unknown[];
     const dataObj = inner.data;
     if (isRecord(dataObj)) {
+      if (isLaravelPaginator(dataObj)) return dataObj.data as unknown[];
       const nested = dataObj.data;
       if (Array.isArray(nested)) return nested;
     }
@@ -1343,40 +1357,84 @@ function extractUsersPayload(raw: unknown): unknown[] {
   );
 }
 
+function extractUsersPaginatorMeta(raw: unknown) {
+  const readMeta = (block: Record<string, unknown>) => ({
+    currentPage: intNonNeg(pickNum(block, "current_page", "currentPage"), 1),
+    perPage: intNonNeg(pickNum(block, "per_page", "perPage"), 30),
+    total: intNonNeg(pickNum(block, "total"), 0),
+  });
+
+  if (isRecord(raw) && isLaravelPaginator(raw)) return readMeta(raw);
+
+  if (isRecord(raw)) {
+    const wrapped = raw.data;
+    if (isRecord(wrapped) && isLaravelPaginator(wrapped)) return readMeta(wrapped);
+  }
+
+  const inner = unwrapApiJson(raw);
+  if (isRecord(inner) && isLaravelPaginator(inner)) return readMeta(inner);
+  if (isRecord(inner)) {
+    const nested = inner.data;
+    if (isRecord(nested) && isLaravelPaginator(nested)) return readMeta(nested);
+  }
+
+  return { currentPage: 1, perPage: 30, total: 0 };
+}
+
 function normalizePlatformRole(raw: string | undefined): AdminUserRow["role"] {
   const r = (raw ?? "guest").toLowerCase();
-  if (r === "guest" || r === "talent" || r === "vendor" || r === "organizer")
-    return r;
+  const parsed = platformUserRoleSchema.safeParse(r);
+  if (parsed.success) return parsed.data;
   return "guest";
+}
+
+function pickUserId(o: Record<string, unknown>): string {
+  const idStr = pickStr(o, "id", "user_id", "uuid");
+  const idNum = pickNum(o, "id", "user_id");
+  return idStr ?? (idNum !== undefined ? String(idNum) : "");
+}
+
+function pickUserDisplayName(o: Record<string, unknown>): string {
+  return (
+    pickStr(o, "displayName", "display_name", "name", "full_name", "username") ??
+    pickStr(o, "email")?.split("@")[0] ??
+    ""
+  );
 }
 
 export function mapAdminUserRowFromApi(raw: unknown): AdminUserRow {
   const inner = unwrapApiJson(raw);
   const o = asObject(inner);
   const candidate = {
-    id: pickStr(o, "id", "user_id", "uuid") ?? "",
-    displayName:
-      pickStr(
-        o,
-        "displayName",
-        "display_name",
-        "name",
-        "full_name",
-        "username",
-      ) ?? "",
+    id: pickUserId(o),
+    displayName: pickUserDisplayName(o),
     email: pickStr(o, "email") ?? "",
+    ...(pickStr(o, "phone") ? { phone: pickStr(o, "phone") } : {}),
     role: normalizePlatformRole(pickStr(o, "role", "user_role", "type")),
     suspended: pickBool(o, "suspended", "is_suspended", "banned") ?? false,
+    ...(pickBool(o, "is_active", "isActive") !== undefined
+      ? { isActive: pickBool(o, "is_active", "isActive") }
+      : {}),
     joinedAt:
       pickStr(o, "joinedAt", "joined_at", "created_at", "registered_at") ?? "",
   };
   return adminUserRowSchema.parse(candidate);
 }
 
-export function mapAdminUsersFromApi(raw: unknown): AdminUserRow[] {
+export function mapAdminUsersListFromApi(raw: unknown) {
   const rows = extractUsersPayload(raw);
-  const mapped = rows.map(mapAdminUserRowFromApi);
-  return adminUserListSchema.parse(mapped);
+  const meta = extractUsersPaginatorMeta(raw);
+  const items = rows.map(mapAdminUserRowFromApi);
+  return adminUsersListResultSchema.parse({
+    items: adminUserListSchema.parse(items),
+    currentPage: meta.currentPage || 1,
+    perPage: meta.perPage || 30,
+    total: meta.total || items.length,
+  });
+}
+
+export function mapAdminUsersFromApi(raw: unknown): AdminUserRow[] {
+  return mapAdminUsersListFromApi(raw).items;
 }
 
 export function mapAdminUserDetailFromApi(raw: unknown): AdminUserDetail {
@@ -1394,6 +1452,30 @@ export function mapAdminUserDetailFromApi(raw: unknown): AdminUserDetail {
     ratingGivenCount: intNonNeg(
       pickNum(o, "ratingGivenCount", "rating_given_count", "ratings_given"),
     ),
+    emailVerifiedAt:
+      pickStr(o, "email_verified_at", "emailVerifiedAt") ?? null,
+    phoneVerifiedAt:
+      pickStr(o, "phone_verified_at", "phoneVerifiedAt") ?? null,
+    suspensionReason:
+      pickStr(o, "suspension_reason", "suspensionReason") ?? null,
+    ...(pickBool(o, "suspension_is_permanent", "suspensionIsPermanent") !==
+    undefined
+      ? {
+          suspensionIsPermanent: pickBool(
+            o,
+            "suspension_is_permanent",
+            "suspensionIsPermanent",
+          ),
+        }
+      : {}),
+    suspendedAt: pickStr(o, "suspended_at", "suspendedAt") ?? null,
+    suspendedBy:
+      pickStr(o, "suspended_by", "suspendedBy") ??
+      (pickNum(o, "suspended_by", "suspendedBy") !== undefined
+        ? String(pickNum(o, "suspended_by", "suspendedBy"))
+        : null),
+    lastLoginAt: pickStr(o, "last_login_at", "lastLoginAt") ?? null,
+    lastLoginIp: pickStr(o, "last_login_ip", "lastLoginIp") ?? null,
   };
   return adminUserDetailSchema.parse(candidate);
 }
@@ -1648,31 +1730,19 @@ export function suggestUniqueCategorySlug(
 }
 
 function extractEventCategoriesPayload(raw: unknown): unknown[] {
+  if (isRecord(raw) && isLaravelPaginator(raw)) return raw.data as unknown[];
+
   const inner = unwrapApiJson(raw);
   if (Array.isArray(inner)) return inner;
   if (isRecord(inner)) {
-    if (
-      Array.isArray(inner.data) &&
-      (typeof inner.total === "number" ||
-        typeof inner.current_page === "number" ||
-        typeof inner.last_page === "number")
-    ) {
-      return inner.data;
-    }
+    if (isLaravelPaginator(inner)) return inner.data as unknown[];
     const nested =
       inner.items ?? inner.categories ?? inner.event_categories ?? inner.data;
     if (Array.isArray(nested)) return nested;
   }
   if (isRecord(raw) && isRecord(raw.data)) {
     const block = asObject(raw.data);
-    if (
-      Array.isArray(block.data) &&
-      (typeof block.total === "number" ||
-        typeof block.current_page === "number" ||
-        typeof block.last_page === "number")
-    ) {
-      return block.data;
-    }
+    if (isLaravelPaginator(block)) return block.data as unknown[];
   }
   throw new ApiJsonError(
     "Expected event categories array or wrapped list",
@@ -1681,6 +1751,23 @@ function extractEventCategoriesPayload(raw: unknown): unknown[] {
       cause: raw,
     },
   );
+}
+
+function extractCategoryPaginatorMeta(raw: unknown, defaultPerPage = 50) {
+  const readMeta = (block: Record<string, unknown>) => ({
+    currentPage: intNonNeg(pickNum(block, "current_page", "currentPage"), 1),
+    perPage: intNonNeg(pickNum(block, "per_page", "perPage"), defaultPerPage),
+    total: intNonNeg(pickNum(block, "total"), 0),
+  });
+
+  if (isRecord(raw) && isLaravelPaginator(raw)) return readMeta(raw);
+  if (isRecord(raw)) {
+    const wrapped = raw.data;
+    if (isRecord(wrapped) && isLaravelPaginator(wrapped)) return readMeta(wrapped);
+  }
+  const inner = unwrapApiJson(raw);
+  if (isRecord(inner) && isLaravelPaginator(inner)) return readMeta(inner);
+  return { currentPage: 1, perPage: defaultPerPage, total: 0 };
 }
 
 export function mapEventCategoryFromApi(raw: unknown): EventCategory {
@@ -1716,10 +1803,104 @@ export function mapEventCategoryFromApi(raw: unknown): EventCategory {
   return eventCategorySchema.parse(candidate);
 }
 
-export function mapEventCategoriesFromApi(raw: unknown): EventCategory[] {
+export function mapEventCategoriesListFromApi(raw: unknown): EventCategoriesListResult {
   const rows = extractEventCategoriesPayload(raw);
-  const mapped = rows.map(mapEventCategoryFromApi);
-  return eventCategoryListSchema.parse(mapped);
+  const meta = extractCategoryPaginatorMeta(raw, 50);
+  const items = rows.map(mapEventCategoryFromApi);
+  return eventCategoriesListResultSchema.parse({
+    items: eventCategoryListSchema.parse(items),
+    currentPage: meta.currentPage || 1,
+    perPage: meta.perPage || 50,
+    total: meta.total || items.length,
+  });
+}
+
+export function mapEventCategoriesFromApi(raw: unknown): EventCategory[] {
+  return mapEventCategoriesListFromApi(raw).items;
+}
+
+function extractBadgeCategoriesPayload(raw: unknown): unknown[] {
+  if (isRecord(raw) && isLaravelPaginator(raw)) return raw.data as unknown[];
+
+  const inner = unwrapApiJson(raw);
+  if (Array.isArray(inner)) return inner;
+  if (isRecord(inner)) {
+    if (isLaravelPaginator(inner)) return inner.data as unknown[];
+    const nested =
+      inner.items ??
+      inner.categories ??
+      inner.talent_categories ??
+      inner.vendor_service_categories ??
+      inner.data;
+    if (Array.isArray(nested)) return nested;
+  }
+  throw new ApiJsonError(
+    "Expected badge categories array or wrapped list",
+    "expected_array",
+    { cause: raw },
+  );
+}
+
+export function mapBadgeCategoryFromApi(raw: unknown): BadgeCategory {
+  const inner = unwrapApiJson(raw);
+  const o = asObject(inner);
+  const idNum = pickNum(o, "id");
+  const idStr =
+    pickStr(o, "id", "uuid") ??
+    (idNum !== undefined ? String(Math.trunc(idNum)) : "");
+  const slugVal = pickStr(o, "slug") ?? "";
+  const nameEn =
+    pickStr(o, "name_en", "nameEn", "name", "title", "label")?.trim() ?? "";
+  const nameAr = pickStr(o, "name_ar", "nameAr")?.trim() ?? "";
+  const displayOrderRaw = pickNum(o, "displayOrder", "display_order");
+  const createdByRaw =
+    pickStr(o, "created_by_user_id", "createdByUserId") ??
+    (pickNum(o, "created_by_user_id", "createdByUserId") !== undefined
+      ? String(pickNum(o, "created_by_user_id", "createdByUserId"))
+      : null);
+  const candidate = {
+    id: idStr,
+    slug: slugVal || slugifyCategoryBaseName(nameEn || idStr || "category"),
+    nameEn: nameEn || nameAr || slugVal || idStr || "Unnamed",
+    nameAr: nameAr || nameEn || slugVal || "",
+    active: pickBool(o, "active", "is_active") ?? false,
+    ...(displayOrderRaw !== undefined
+      ? { displayOrder: Math.min(65535, intNonNeg(displayOrderRaw)) }
+      : {}),
+    ...(pickBool(o, "is_custom", "isCustom") !== undefined
+      ? { isCustom: pickBool(o, "is_custom", "isCustom") }
+      : {}),
+    ...(createdByRaw !== undefined ? { createdByUserId: createdByRaw } : {}),
+  };
+  return badgeCategorySchema.parse(candidate);
+}
+
+export function mapTalentCategoriesListFromApi(
+  raw: unknown,
+): BadgeCategoriesListResult {
+  const rows = extractBadgeCategoriesPayload(raw);
+  const meta = extractCategoryPaginatorMeta(raw, 50);
+  const items = rows.map(mapBadgeCategoryFromApi);
+  return badgeCategoriesListResultSchema.parse({
+    items: badgeCategoryListSchema.parse(items),
+    currentPage: meta.currentPage || 1,
+    perPage: meta.perPage || 50,
+    total: meta.total || items.length,
+  });
+}
+
+export function mapVendorServiceCategoriesListFromApi(
+  raw: unknown,
+): BadgeCategoriesListResult {
+  return mapTalentCategoriesListFromApi(raw);
+}
+
+export function mapTalentCategoriesFromApi(raw: unknown): BadgeCategory[] {
+  return mapTalentCategoriesListFromApi(raw).items;
+}
+
+export function mapVendorServiceCategoriesFromApi(raw: unknown): BadgeCategory[] {
+  return mapVendorServiceCategoriesListFromApi(raw).items;
 }
 
 function normalizeFeeType(

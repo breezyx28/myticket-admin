@@ -5,6 +5,7 @@ import {
   mapAdminEventsFromApi,
   mapAdminUserDetailFromApi,
   mapAdminUsersFromApi,
+  mapAdminUsersListFromApi,
   mapDashboardCountersFromApi,
   mapDashboardSummaryFromApi,
   mapEventCategoriesFromApi,
@@ -526,6 +527,48 @@ describe("mapAdminUsersFromApi / mapAdminUserDetailFromApi", () => {
       role: "organizer",
       suspended: false,
       joinedAt: "2025-01-01T00:00:00Z",
+    });
+  });
+
+  it("maps Laravel paginator with numeric ids and full_name fallback", () => {
+    const out = mapAdminUsersListFromApi({
+      current_page: 1,
+      per_page: 30,
+      total: 2,
+      data: [
+        {
+          id: 27,
+          email: "mazeed.trading.contracting@gmail.com",
+          full_name: "Talent User",
+          display_name: null,
+          role: "guest",
+          is_suspended: false,
+          created_at: "2026-06-10T08:33:48.000000Z",
+        },
+        {
+          id: 2,
+          email: "organizer@myticket.test",
+          full_name: "Demo Organizer",
+          display_name: "Organizer",
+          role: "organizer",
+          is_suspended: true,
+          created_at: "2026-05-10T22:03:33.000000Z",
+        },
+      ],
+    });
+    expect(out.currentPage).toBe(1);
+    expect(out.perPage).toBe(30);
+    expect(out.total).toBe(2);
+    expect(out.items[0]).toMatchObject({
+      id: "27",
+      displayName: "Talent User",
+      role: "guest",
+      suspended: false,
+    });
+    expect(out.items[1]).toMatchObject({
+      id: "2",
+      displayName: "Organizer",
+      suspended: true,
     });
   });
 

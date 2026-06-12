@@ -16,11 +16,13 @@ import type { AdminPayoutRow } from '@/schemas/payout.schema';
 import type { RefundBreakdownsView } from '@/schemas/refundBreakdown.schema';
 import type { AdminRefundRow } from '@/schemas/refund.schema';
 import type { AdminUserDetail, AdminUserRow } from '@/schemas/user.schema';
-import type { AdminEventRow } from '@/schemas/event.schema';
-import type { EventCategory } from '@/schemas/event.schema';
+import type { AdminEventRow, EventCategory } from '@/schemas/event.schema';
+import type { BadgeCategory } from '@/schemas/categoryTaxonomy.schema';
 import type { ListingModerationRow, RatingRow } from '@/schemas/moderation.schema';
 import {
   MOCK_CATEGORIES,
+  MOCK_TALENT_CATEGORIES,
+  MOCK_VENDOR_SERVICE_CATEGORIES,
   MOCK_EVENTS,
   MOCK_FEATURED_CONFIG,
   MOCK_FEE_CONFIG,
@@ -69,6 +71,8 @@ export const usersState: AdminUserRow[] = clone(MOCK_USERS);
 export const userDetailsState: Record<string, AdminUserDetail> = clone(MOCK_USER_DETAILS);
 export const eventsState: AdminEventRow[] = clone(MOCK_EVENTS);
 export const categoriesState: EventCategory[] = clone(MOCK_CATEGORIES);
+export const talentCategoriesState: BadgeCategory[] = clone(MOCK_TALENT_CATEGORIES);
+export const vendorServiceCategoriesState: BadgeCategory[] = clone(MOCK_VENDOR_SERVICE_CATEGORIES);
 export const featuredConfigState: FeaturedEventsConfig = clone(MOCK_FEATURED_CONFIG);
 export const feeConfigState: FeeConfiguration = clone(MOCK_FEE_CONFIG);
 export const notificationSettingsState: NotificationSettings = clone(MOCK_NOTIFICATION_SETTINGS);

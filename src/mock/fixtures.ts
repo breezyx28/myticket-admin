@@ -9,6 +9,7 @@ import {
   leaderboardsSchema,
   platformCountersSchema,
 } from '@/schemas/analytics.schema';
+import { badgeCategoryListSchema } from '@/schemas/categoryTaxonomy.schema';
 import { adminEventListSchema, eventCategoryListSchema, featuredEventsConfigSchema } from '@/schemas/event.schema';
 import { feeConfigurationSchema, notificationSettingsSchema } from '@/schemas/settings.schema';
 import { listingModerationListSchema, ratingListSchema } from '@/schemas/moderation.schema';
@@ -417,6 +418,72 @@ export const MOCK_CATEGORIES = eventCategoryListSchema.parse([
     colorToken: 'lemon',
     active: false,
     displayOrder: 2,
+  },
+]);
+
+export const MOCK_TALENT_CATEGORIES = badgeCategoryListSchema.parse([
+  {
+    id: '1',
+    slug: 'singer',
+    nameEn: 'Singer',
+    nameAr: 'مغني',
+    active: true,
+    displayOrder: 1,
+    isCustom: false,
+    createdByUserId: null,
+  },
+  {
+    id: '2',
+    slug: 'dj',
+    nameEn: 'DJ',
+    nameAr: 'دي جي',
+    active: true,
+    displayOrder: 2,
+    isCustom: false,
+    createdByUserId: null,
+  },
+  {
+    id: '3',
+    slug: 'street-performer',
+    nameEn: 'Street performer',
+    nameAr: 'فنان شارع',
+    active: true,
+    displayOrder: 3,
+    isCustom: true,
+    createdByUserId: '25',
+  },
+]);
+
+export const MOCK_VENDOR_SERVICE_CATEGORIES = badgeCategoryListSchema.parse([
+  {
+    id: '1',
+    slug: 'catering',
+    nameEn: 'Catering',
+    nameAr: 'تموين',
+    active: true,
+    displayOrder: 1,
+    isCustom: false,
+    createdByUserId: null,
+  },
+  {
+    id: '2',
+    slug: 'av-production',
+    nameEn: 'AV & production',
+    nameAr: 'صوت وإنتاج',
+    active: true,
+    displayOrder: 2,
+    isCustom: false,
+    createdByUserId: null,
+  },
+  {
+    id: '3',
+    slug: 'mobile-coffee-bar',
+    nameEn: 'Mobile coffee bar',
+    nameAr: 'بار قهوة متنقل',
+    active: false,
+    displayOrder: 4,
+    isCustom: true,
+    createdByUserId: '5',
   },
 ]);
 

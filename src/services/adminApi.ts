@@ -18,6 +18,8 @@ import {
 } from '@/mock/fixtures';
 import {
   categoriesState,
+  talentCategoriesState,
+  vendorServiceCategoriesState,
   eventsState,
   featuredConfigState,
   feeConfigState,
@@ -77,7 +79,7 @@ import type {
 import { talentProfileSchema } from '@/schemas/talentApproval.schema';
 import { adminOrderDetailSchema, forceRefundOrderSchema } from '@/schemas/order.schema';
 import { adminRefundRowSchema } from '@/schemas/refund.schema';
-import { adminUserDetailSchema, suspendUserSchema, type SuspendUserInput } from '@/schemas/user.schema';
+import { adminUserDetailSchema, adminUsersListResultSchema, suspendUserSchema, type AdminUsersListParams, type AdminUsersListResult, type SuspendUserInput } from '@/schemas/user.schema';
 import { rejectPayoutSchema } from '@/schemas/payout.schema';
 import { resolveComplaintSchema } from '@/schemas/complaint.schema';
 import {
@@ -96,6 +98,15 @@ import {
   type UpdateTourismAdInput,
 } from '@/schemas/tourismAd.schema';
 import { cancelEventSchema } from '@/schemas/event.schema';
+import {
+  badgeCategoriesListResultSchema,
+  badgeCategoryUpsertFormSchema,
+  eventCategoriesListResultSchema,
+  type BadgeCategoriesListResult,
+  type BadgeCategoryUpsertForm,
+  type CategoryListParams,
+  type EventCategoriesListResult,
+} from '@/schemas/categoryTaxonomy.schema';
 import type { RevenueChartRange } from '@/types/analytics';
 import { baseQueryWithReauth, sessionHasApiCredentials } from '@/services/adminFetchBaseQuery';
 import { shouldUseMockReads, warnReadFallback } from '@/services/adminReadMode';
@@ -103,12 +114,14 @@ import {
   mapAdminEventDetailFromApi,
   mapAdminEventsFromApi,
   mapAdminUserDetailFromApi,
-  mapAdminUsersFromApi,
+  mapAdminUsersListFromApi,
   dashboardCountersFromSummary,
   mapDashboardCountersFromApi,
   mapDashboardSummaryFromApi,
   mapPlatformCountersFromApi,
-  mapEventCategoriesFromApi,
+  mapEventCategoriesListFromApi,
+  mapTalentCategoriesListFromApi,
+  mapVendorServiceCategoriesListFromApi,
   mapFeaturedConfigFromApi,
   mapFeeConfigurationFromApi,
   mapFinancialAnalyticsFromApi,
@@ -199,6 +212,8 @@ type LiveReadName =
   | 'getEvents'
   | 'getEvent'
   | 'getCategories'
+  | 'getTalentCategories'
+  | 'getVendorServiceCategories'
   | 'getFeaturedConfig'
   | 'getFeeConfiguration'
   | 'getNotificationSettings'
@@ -246,6 +261,8 @@ const LIVE_GET: Record<LiveReadName, string | null> = {
   getEvents: '/api/v1/admin/events',
   getEvent: '/api/v1/admin/events/:id',
   getCategories: '/api/v1/admin/event-categories',
+  getTalentCategories: '/api/v1/admin/talent-categories',
+  getVendorServiceCategories: '/api/v1/admin/vendor-service-categories',
   getFeaturedConfig: '/api/v1/admin/featured-events/config',
   getFeeConfiguration: '/api/v1/admin/finance/fee-configurations',
   getNotificationSettings: '/api/v1/admin/notification-settings',
@@ -368,6 +385,122 @@ function syncComplaintRow(id: string, patch: Partial<(typeof complaintsState)[nu
   if (r) Object.assign(r, patch);
 }
 
+function categoryListQueryParams(
+  filters?: CategoryListParams | void,
+): Record<string, string | number | boolean | undefined> {
+  const params: Record<string, string | number | boolean | undefined> = {};
+  if (filters?.page) params.page = filters.page;
+  if (filters?.perPage) params.per_page = filters.perPage;
+  return params;
+}
+
+function paginateCategoryMock<T>(rows: T[], params?: CategoryListParams) {
+  const perPage = params?.perPage ?? 50;
+  const page = params?.page ?? 1;
+  const total = rows.length;
+  const start = (page - 1) * perPage;
+  return {
+    items: rows.slice(start, start + perPage),
+    currentPage: page,
+    perPage,
+    total,
+  };
+}
+
+function filterEventCategoriesMock(params?: CategoryListParams): EventCategoriesListResult {
+  const paged = paginateCategoryMock(categoriesState, params);
+  return eventCategoriesListResultSchema.parse(paged);
+}
+
+function filterTalentCategoriesMock(params?: CategoryListParams): BadgeCategoriesListResult {
+  const paged = paginateCategoryMock(talentCategoriesState, params);
+  return badgeCategoriesListResultSchema.parse(paged);
+}
+
+function filterVendorServiceCategoriesMock(params?: CategoryListParams): BadgeCategoriesListResult {
+  const paged = paginateCategoryMock(vendorServiceCategoriesState, params);
+  return badgeCategoriesListResultSchema.parse(paged);
+}
+
+function badgeCategoryApiBody(body: BadgeCategoryUpsertForm) {
+  return {
+    slug: body.slug.trim(),
+    name_en: body.nameEn.trim(),
+    name_ar: body.nameAr.trim(),
+    ...(body.displayOrder !== undefined ? { display_order: body.displayOrder } : {}),
+  };
+}
+
+function upsertBadgeCategoryMock(
+  state: typeof talentCategoriesState,
+  id: string | undefined,
+  body: BadgeCategoryUpsertForm,
+) {
+  if (id) {
+    const row = state.find((c) => c.id === id);
+    if (row) {
+      row.slug = body.slug.trim();
+      row.nameEn = body.nameEn.trim();
+      row.nameAr = body.nameAr.trim();
+      if (body.displayOrder !== undefined) row.displayOrder = body.displayOrder;
+    }
+    return;
+  }
+  state.push({
+    id: `cat-${Date.now()}`,
+    slug: body.slug.trim(),
+    nameEn: body.nameEn.trim(),
+    nameAr: body.nameAr.trim(),
+    active: true,
+    displayOrder: body.displayOrder ?? state.length,
+    isCustom: false,
+    createdByUserId: null,
+  });
+}
+
+function filterUsersMock(params?: AdminUsersListParams): AdminUsersListResult {
+  let rows = [...usersState];
+  const search = params?.search?.trim().toLowerCase();
+  if (search) {
+    rows = rows.filter((row) =>
+      [row.displayName, row.email, row.id, row.role, row.phone].some((v) =>
+        String(v ?? '')
+          .toLowerCase()
+          .includes(search),
+      ),
+    );
+  }
+  if (params?.role && params.role !== 'all') {
+    rows = rows.filter((r) => r.role === params.role);
+  }
+  if (params?.suspended === 'yes') rows = rows.filter((r) => r.suspended);
+  if (params?.suspended === 'no') rows = rows.filter((r) => !r.suspended);
+  const perPage = params?.perPage ?? 30;
+  const page = params?.page ?? 1;
+  const total = rows.length;
+  const start = (page - 1) * perPage;
+  const items = rows.slice(start, start + perPage);
+  return adminUsersListResultSchema.parse({
+    items,
+    currentPage: page,
+    perPage,
+    total,
+  });
+}
+
+function usersListQueryParams(
+  filters?: AdminUsersListParams | void,
+): Record<string, string | number | boolean | undefined> {
+  const params: Record<string, string | number | boolean | undefined> = {};
+  if (filters?.page) params.page = filters.page;
+  if (filters?.perPage) params.per_page = filters.perPage;
+  if (filters?.role && filters.role !== 'all') params.role = filters.role;
+  if (filters?.suspended === 'yes') params.is_suspended = 1;
+  if (filters?.suspended === 'no') params.is_suspended = 0;
+  if (filters?.search?.trim()) params.search = filters.search.trim();
+  return params;
+}
+
 function filterTourismAdsMock(params?: TourismAdsListParams): TourismAdsListResult {
   let rows = [...tourismAdsState];
   if (params?.status) rows = rows.filter((r) => r.status === params.status);
@@ -434,6 +567,8 @@ export const adminApi = createApi({
     'Users',
     'Events',
     'Categories',
+    'TalentCategories',
+    'VendorCategories',
     'Featured',
     'Fees',
     'Notifications',
@@ -1842,13 +1977,39 @@ export const adminApi = createApi({
         return { data: { ok: true } };
       },
     }),
-    getUsers: builder.query<typeof usersState, void>({
+    getUsers: builder.query<AdminUsersListResult, AdminUsersListParams | void>({
       providesTags: (r) =>
-        r ? [...r.map((row) => ({ type: 'Users' as const, id: row.id })), 'Users'] : ['Users'],
-      async queryFn(_arg, api, extraOptions) {
-        return tryLiveRead(api, extraOptions, 'getUsers', 55, usersState, {
-          map: mapAdminUsersFromApi,
-        });
+        r
+          ? [...r.items.map((row) => ({ type: 'Users' as const, id: row.id })), 'Users']
+          : ['Users'],
+      async queryFn(filters, api, extraOptions) {
+        if (shouldUseMockReads()) {
+          await delay(55);
+          return { data: filterUsersMock(filters ?? undefined) };
+        }
+        const livePath = LIVE_GET.getUsers;
+        if (!livePath) {
+          warnReadFallback('getUsers');
+          await delay(55);
+          return { data: filterUsersMock(filters ?? undefined) };
+        }
+        if (!getAccessToken()) return unauthenticatedReadError();
+        const params = usersListQueryParams(filters);
+        const res = await baseQueryWithReauth(
+          {
+            url: livePath,
+            method: 'GET',
+            params: Object.keys(params).length ? params : undefined,
+          },
+          api,
+          extraOptions,
+        );
+        if (res.error) return { error: toFetchError(res.error) };
+        try {
+          return { data: mapAdminUsersListFromApi(res.data) };
+        } catch (e) {
+          return mapLiveReadFailure(e);
+        }
       },
     }),
     getUser: builder.query<(typeof userDetailsState)[string], string>({
@@ -1886,7 +2047,7 @@ export const adminApi = createApi({
       },
     }),
     suspendUser: builder.mutation<{ ok: true }, { id: string; body: SuspendUserInput }>({
-      invalidatesTags: (_r, _e, arg) => ['Users', { type: 'Users', id: arg.id }],
+      invalidatesTags: (_r, _e, arg) => ['Users', 'Dashboard', { type: 'Users', id: arg.id }],
       async queryFn({ id, body }, api, extraOptions) {
         const parsed = suspendUserSchema.safeParse(body);
         if (!parsed.success) return { error: { status: 400, data: parsed.error.flatten() } };
@@ -1918,7 +2079,7 @@ export const adminApi = createApi({
       },
     }),
     unsuspendUser: builder.mutation<{ ok: true }, string>({
-      invalidatesTags: (_r, _e, id) => ['Users', { type: 'Users', id }],
+      invalidatesTags: (_r, _e, id) => ['Users', 'Dashboard', { type: 'Users', id }],
       async queryFn(id, api, extraOptions) {
         if (!sessionHasApiCredentials()) {
           await delay(100);
@@ -2120,13 +2281,115 @@ export const adminApi = createApi({
         return { data: { ok: true } };
       },
     }),
-    getCategories: builder.query<typeof categoriesState, void>({
-      providesTags: ['Categories'],
-      async queryFn(_arg, api, extraOptions) {
-        return tryLiveRead(api, extraOptions, 'getCategories', 45, categoriesState, {
-          params: { per_page: 500 },
-          map: mapEventCategoriesFromApi,
-        });
+    getCategories: builder.query<EventCategoriesListResult, CategoryListParams | void>({
+      providesTags: (r) =>
+        r
+          ? [...r.items.map((row) => ({ type: 'Categories' as const, id: row.id })), 'Categories']
+          : ['Categories'],
+      async queryFn(filters, api, extraOptions) {
+        if (shouldUseMockReads()) {
+          await delay(45);
+          return { data: filterEventCategoriesMock(filters ?? undefined) };
+        }
+        const livePath = LIVE_GET.getCategories;
+        if (!livePath) {
+          warnReadFallback('getCategories');
+          await delay(45);
+          return { data: filterEventCategoriesMock(filters ?? undefined) };
+        }
+        if (!getAccessToken()) return unauthenticatedReadError();
+        const params = categoryListQueryParams(filters);
+        const res = await baseQueryWithReauth(
+          {
+            url: livePath,
+            method: 'GET',
+            params: Object.keys(params).length ? params : undefined,
+          },
+          api,
+          extraOptions,
+        );
+        if (res.error) return { error: toFetchError(res.error) };
+        try {
+          return { data: mapEventCategoriesListFromApi(res.data) };
+        } catch (e) {
+          return mapLiveReadFailure(e);
+        }
+      },
+    }),
+    getTalentCategories: builder.query<BadgeCategoriesListResult, CategoryListParams | void>({
+      providesTags: (r) =>
+        r
+          ? [
+              ...r.items.map((row) => ({ type: 'TalentCategories' as const, id: row.id })),
+              'TalentCategories',
+            ]
+          : ['TalentCategories'],
+      async queryFn(filters, api, extraOptions) {
+        if (shouldUseMockReads()) {
+          await delay(45);
+          return { data: filterTalentCategoriesMock(filters ?? undefined) };
+        }
+        const livePath = LIVE_GET.getTalentCategories;
+        if (!livePath) {
+          warnReadFallback('getTalentCategories');
+          await delay(45);
+          return { data: filterTalentCategoriesMock(filters ?? undefined) };
+        }
+        if (!getAccessToken()) return unauthenticatedReadError();
+        const params = categoryListQueryParams(filters);
+        const res = await baseQueryWithReauth(
+          {
+            url: livePath,
+            method: 'GET',
+            params: Object.keys(params).length ? params : undefined,
+          },
+          api,
+          extraOptions,
+        );
+        if (res.error) return { error: toFetchError(res.error) };
+        try {
+          return { data: mapTalentCategoriesListFromApi(res.data) };
+        } catch (e) {
+          return mapLiveReadFailure(e);
+        }
+      },
+    }),
+    getVendorServiceCategories: builder.query<BadgeCategoriesListResult, CategoryListParams | void>({
+      providesTags: (r) =>
+        r
+          ? [
+              ...r.items.map((row) => ({ type: 'VendorCategories' as const, id: row.id })),
+              'VendorCategories',
+            ]
+          : ['VendorCategories'],
+      async queryFn(filters, api, extraOptions) {
+        if (shouldUseMockReads()) {
+          await delay(45);
+          return { data: filterVendorServiceCategoriesMock(filters ?? undefined) };
+        }
+        const livePath = LIVE_GET.getVendorServiceCategories;
+        if (!livePath) {
+          warnReadFallback('getVendorServiceCategories');
+          await delay(45);
+          return { data: filterVendorServiceCategoriesMock(filters ?? undefined) };
+        }
+        if (!getAccessToken()) return unauthenticatedReadError();
+        const params = categoryListQueryParams(filters);
+        const res = await baseQueryWithReauth(
+          {
+            url: livePath,
+            method: 'GET',
+            params: Object.keys(params).length ? params : undefined,
+          },
+          api,
+          extraOptions,
+        );
+        if (res.error) return { error: toFetchError(res.error) };
+        try {
+          return { data: mapVendorServiceCategoriesListFromApi(res.data) };
+        } catch (e) {
+          return mapLiveReadFailure(e);
+        }
       },
     }),
     upsertCategory: builder.mutation<{ ok: true }, { id?: string; body: EventCategoryUpsertForm }>({
@@ -2624,6 +2887,175 @@ export const adminApi = createApi({
         return { data: { ok: true } };
       },
     }),
+    upsertTalentCategory: builder.mutation<{ ok: true }, { id?: string; body: BadgeCategoryUpsertForm }>({
+      invalidatesTags: ['TalentCategories'],
+      async queryFn({ id, body }, api, extraOptions) {
+        const parsed = badgeCategoryUpsertFormSchema.safeParse(body);
+        if (!parsed.success) return { error: { status: 400, data: parsed.error.flatten() } };
+        if (!sessionHasApiCredentials()) {
+          await delay(90);
+          upsertBadgeCategoryMock(talentCategoriesState, id, parsed.data);
+          return { data: { ok: true } };
+        }
+        const apiBody = badgeCategoryApiBody(parsed.data);
+        const res = id
+          ? await baseQueryWithReauth(
+              {
+                url: `/api/v1/admin/talent-categories/${encodeURIComponent(id)}`,
+                method: 'PATCH',
+                body: apiBody,
+              },
+              api,
+              extraOptions,
+            )
+          : await baseQueryWithReauth(
+              {
+                url: '/api/v1/admin/talent-categories',
+                method: 'POST',
+                body: { ...apiBody, is_active: true, display_order: parsed.data.displayOrder ?? 0 },
+              },
+              api,
+              extraOptions,
+            );
+        if (res.error) return { error: toFetchError(res.error) };
+        if (shouldUseMockReads()) upsertBadgeCategoryMock(talentCategoriesState, id, parsed.data);
+        return { data: { ok: true } };
+      },
+    }),
+    toggleTalentCategoryActive: builder.mutation<{ ok: true }, { id: string; active: boolean }>({
+      invalidatesTags: ['TalentCategories'],
+      async queryFn({ id, active }, api, extraOptions) {
+        await delay(60);
+        if (!sessionHasApiCredentials()) {
+          const row = talentCategoriesState.find((c) => c.id === id);
+          if (row) row.active = active;
+          return { data: { ok: true } };
+        }
+        const res = await baseQueryWithReauth(
+          {
+            url: `/api/v1/admin/talent-categories/${encodeURIComponent(id)}`,
+            method: 'PATCH',
+            body: { is_active: active },
+          },
+          api,
+          extraOptions,
+        );
+        if (res.error) return { error: toFetchError(res.error) };
+        if (shouldUseMockReads()) {
+          const row = talentCategoriesState.find((c) => c.id === id);
+          if (row) row.active = active;
+        }
+        return { data: { ok: true } };
+      },
+    }),
+    deleteTalentCategory: builder.mutation<{ ok: true }, string>({
+      invalidatesTags: ['TalentCategories'],
+      async queryFn(id, api, extraOptions) {
+        if (!sessionHasApiCredentials()) {
+          await delay(80);
+          const idx = talentCategoriesState.findIndex((c) => c.id === id);
+          if (idx >= 0) talentCategoriesState.splice(idx, 1);
+          return { data: { ok: true } };
+        }
+        const res = await baseQueryWithReauth(
+          { url: `/api/v1/admin/talent-categories/${encodeURIComponent(id)}`, method: 'DELETE' },
+          api,
+          extraOptions,
+        );
+        if (res.error) return { error: toFetchError(res.error) };
+        if (shouldUseMockReads()) {
+          const idx = talentCategoriesState.findIndex((c) => c.id === id);
+          if (idx >= 0) talentCategoriesState.splice(idx, 1);
+        }
+        return { data: { ok: true } };
+      },
+    }),
+    upsertVendorServiceCategory: builder.mutation<{ ok: true }, { id?: string; body: BadgeCategoryUpsertForm }>({
+      invalidatesTags: ['VendorCategories'],
+      async queryFn({ id, body }, api, extraOptions) {
+        const parsed = badgeCategoryUpsertFormSchema.safeParse(body);
+        if (!parsed.success) return { error: { status: 400, data: parsed.error.flatten() } };
+        if (!sessionHasApiCredentials()) {
+          await delay(90);
+          upsertBadgeCategoryMock(vendorServiceCategoriesState, id, parsed.data);
+          return { data: { ok: true } };
+        }
+        const apiBody = badgeCategoryApiBody(parsed.data);
+        const res = id
+          ? await baseQueryWithReauth(
+              {
+                url: `/api/v1/admin/vendor-service-categories/${encodeURIComponent(id)}`,
+                method: 'PATCH',
+                body: apiBody,
+              },
+              api,
+              extraOptions,
+            )
+          : await baseQueryWithReauth(
+              {
+                url: '/api/v1/admin/vendor-service-categories',
+                method: 'POST',
+                body: { ...apiBody, is_active: true, display_order: parsed.data.displayOrder ?? 0 },
+              },
+              api,
+              extraOptions,
+            );
+        if (res.error) return { error: toFetchError(res.error) };
+        if (shouldUseMockReads()) upsertBadgeCategoryMock(vendorServiceCategoriesState, id, parsed.data);
+        return { data: { ok: true } };
+      },
+    }),
+    toggleVendorServiceCategoryActive: builder.mutation<{ ok: true }, { id: string; active: boolean }>({
+      invalidatesTags: ['VendorCategories'],
+      async queryFn({ id, active }, api, extraOptions) {
+        await delay(60);
+        if (!sessionHasApiCredentials()) {
+          const row = vendorServiceCategoriesState.find((c) => c.id === id);
+          if (row) row.active = active;
+          return { data: { ok: true } };
+        }
+        const res = await baseQueryWithReauth(
+          {
+            url: `/api/v1/admin/vendor-service-categories/${encodeURIComponent(id)}`,
+            method: 'PATCH',
+            body: { is_active: active },
+          },
+          api,
+          extraOptions,
+        );
+        if (res.error) return { error: toFetchError(res.error) };
+        if (shouldUseMockReads()) {
+          const row = vendorServiceCategoriesState.find((c) => c.id === id);
+          if (row) row.active = active;
+        }
+        return { data: { ok: true } };
+      },
+    }),
+    deleteVendorServiceCategory: builder.mutation<{ ok: true }, string>({
+      invalidatesTags: ['VendorCategories'],
+      async queryFn(id, api, extraOptions) {
+        if (!sessionHasApiCredentials()) {
+          await delay(80);
+          const idx = vendorServiceCategoriesState.findIndex((c) => c.id === id);
+          if (idx >= 0) vendorServiceCategoriesState.splice(idx, 1);
+          return { data: { ok: true } };
+        }
+        const res = await baseQueryWithReauth(
+          {
+            url: `/api/v1/admin/vendor-service-categories/${encodeURIComponent(id)}`,
+            method: 'DELETE',
+          },
+          api,
+          extraOptions,
+        );
+        if (res.error) return { error: toFetchError(res.error) };
+        if (shouldUseMockReads()) {
+          const idx = vendorServiceCategoriesState.findIndex((c) => c.id === id);
+          if (idx >= 0) vendorServiceCategoriesState.splice(idx, 1);
+        }
+        return { data: { ok: true } };
+      },
+    }),
     addSupportReply: builder.mutation<{ ok: true }, { threadId: string; body: string }>({
       invalidatesTags: (_r, _e, arg) => ['Support', { type: 'Support', id: arg.threadId }],
       async queryFn({ threadId, body }, api, extraOptions) {
@@ -2980,8 +3412,14 @@ export const {
   useFeatureEventMutation,
   useUnfeatureEventMutation,
   useGetCategoriesQuery,
+  useGetTalentCategoriesQuery,
+  useGetVendorServiceCategoriesQuery,
   useUpsertCategoryMutation,
+  useUpsertTalentCategoryMutation,
+  useUpsertVendorServiceCategoryMutation,
   useDeleteEventCategoryMutation,
+  useDeleteTalentCategoryMutation,
+  useDeleteVendorServiceCategoryMutation,
   useGetFeaturedConfigQuery,
   useSetFeaturedConfigMutation,
   useUpdateAdminProfileMutation,
@@ -3003,6 +3441,8 @@ export const {
   useRejectListingModerationMutation,
   useEscalateListingModerationMutation,
   useToggleCategoryActiveMutation,
+  useToggleTalentCategoryActiveMutation,
+  useToggleVendorServiceCategoryActiveMutation,
   useGetRatingsModerationQuery,
   useHideRatingModerationMutation,
   useRestoreRatingModerationMutation,

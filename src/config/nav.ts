@@ -54,7 +54,7 @@ export const NAV_OPERATIONS: NavItem[] = [
   { to: '/auctions', label: 'Auctions', icon: Gavel },
   { to: '/scanners', label: 'Scanners', icon: ScanLine },
   { to: '/events', label: 'Events', icon: CalendarDays },
-  { to: '/events/categories', label: 'Categories', icon: Tags },
+  { to: '/categories', label: 'Categories', icon: Tags },
   { to: '/events/featured', label: 'Featured', icon: Sparkles },
 ];
 
