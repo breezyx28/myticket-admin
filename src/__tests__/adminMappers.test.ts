@@ -1522,6 +1522,55 @@ describe("mapAdminScannersFromApi", () => {
       lastSeenAt: "2026-01-01T00:00:00Z",
     });
   });
+
+  it("maps nested organizer and is_active from live API shape", () => {
+    const out = mapAdminScannersFromApi({
+      data: [
+        {
+          id: 5,
+          code: "SCN-XXXXXXXXXX",
+          organizer_profile_id: 1,
+          user_id: 42,
+          name: "Gate A — Ahmed",
+          email: "ahmed.gate@example.com",
+          is_active: true,
+          last_login_at: null,
+          created_at: "2026-05-20T12:00:00+00:00",
+          updated_at: "2026-05-20T12:00:00+00:00",
+          organizer: {
+            id: 1,
+            code: "ORG-XXXX",
+            slug: "desert-events-co",
+            display_name: "Desert Events Co",
+            company_name: "Desert Events LLC",
+            is_company: true,
+            is_active: true,
+            user_id: 10,
+          },
+        },
+      ],
+    });
+    expect(out).toHaveLength(1);
+    expect(out[0]).toMatchObject({
+      id: "5",
+      code: "SCN-XXXXXXXXXX",
+      displayName: "Gate A — Ahmed",
+      email: "ahmed.gate@example.com",
+      status: "active",
+      organizerProfileId: "1",
+      organizerName: "Desert Events Co",
+      organizerCompanyName: "Desert Events LLC",
+      organizerCode: "ORG-XXXX",
+      organizerSlug: "desert-events-co",
+    });
+  });
+
+  it("maps is_active false to suspended status", () => {
+    const out = mapAdminScannersFromApi({
+      data: [{ id: 2, name: "Gate B", is_active: false }],
+    });
+    expect(out[0]?.status).toBe("suspended");
+  });
 });
 
 describe("mapAdminHealthFromApi", () => {
@@ -1823,9 +1872,79 @@ describe("mapAdminScanLogsFromApi", () => {
       id: "99",
       scannedAt: "2026-02-02T12:00:00Z",
       outcome: "valid",
+      result: "ok",
       ticketRef: "X-1",
       scannerLabel: "S1",
       eventTitle: "Show",
+    });
+  });
+
+  it("maps nested scanner, event, and ticket with admin detail paths", () => {
+    const out = mapAdminScanLogsFromApi([
+      {
+        id: 1,
+        result: "ok",
+        scanned_at: "2026-06-14T12:00:00+00:00",
+        scanner: {
+          id: 5,
+          code: "SCN-GATE",
+          name: "Gate A",
+          email: "gate@example.com",
+          is_active: true,
+          organizer_profile_id: 1,
+          organizer: {
+            id: 1,
+            code: "ORG-DESERT",
+            slug: "desert-events",
+            display_name: "Desert Events Co",
+          },
+        },
+        event: {
+          id: 18,
+          code: "EVT-SUMMER",
+          title: "Summer Festival",
+          status: "published",
+          detail_href: "https://myticket-admin.kat-jr.com/events/18",
+          api_href: "/api/v1/admin/events/18",
+        },
+        ticket: {
+          id: 99,
+          code: "TIC-123",
+          status: "used",
+          order_id: 42,
+          seat_label: "A-12",
+          type_name: "VIP",
+          detail_href: "https://myticket-admin.kat-jr.com/orders/42?ticket=99",
+          api_href: "/api/v1/admin/orders/42",
+        },
+      },
+    ]);
+    expect(out).toHaveLength(1);
+    expect(out[0]).toMatchObject({
+      id: "1",
+      scannedAt: "2026-06-14T12:00:00+00:00",
+      outcome: "valid",
+      result: "ok",
+      scannerId: "5",
+      scannerCode: "SCN-GATE",
+      scannerName: "Gate A",
+      scannerEmail: "gate@example.com",
+      organizerProfileId: "1",
+      organizerName: "Desert Events Co",
+      organizerCode: "ORG-DESERT",
+      eventId: "18",
+      eventCode: "EVT-SUMMER",
+      eventTitle: "Summer Festival",
+      eventStatus: "published",
+      eventDetailPath: "/events/18",
+      ticketId: "99",
+      ticketCode: "TIC-123",
+      ticketRef: "TIC-123",
+      ticketStatus: "used",
+      ticketOrderId: "42",
+      ticketSeatLabel: "A-12",
+      ticketTypeName: "VIP",
+      ticketDetailPath: "/orders/42?ticket=99",
     });
   });
 });

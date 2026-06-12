@@ -3327,12 +3327,44 @@ function normalizeScannerStatus(raw: string | undefined): AdminScannerStatus {
   return "unknown";
 }
 
+function mapScannerOrganizerFieldsFromApi(raw: unknown) {
+  if (!isRecord(raw)) return {};
+  const org = asObject(raw);
+  const orgIdNum = pickNum(org, "id");
+  const organizerProfileId =
+    pickStr(org, "id") ??
+    (orgIdNum !== undefined ? String(Math.trunc(orgIdNum)) : undefined);
+  const organizerName =
+    pickStr(org, "display_name", "displayName", "name", "title") ?? undefined;
+  const organizerCompanyName =
+    pickStr(org, "company_name", "companyName") ?? undefined;
+  const organizerCode = pickStr(org, "code") ?? undefined;
+  const organizerSlug = pickStr(org, "slug") ?? undefined;
+  return {
+    ...(organizerProfileId ? { organizerProfileId } : {}),
+    ...(organizerName ? { organizerName } : {}),
+    ...(organizerCompanyName ? { organizerCompanyName } : {}),
+    ...(organizerCode ? { organizerCode } : {}),
+    ...(organizerSlug ? { organizerSlug } : {}),
+  };
+}
+
+function resolveScannerStatus(o: Record<string, unknown>): AdminScannerStatus {
+  const statusRaw = pickStr(o, "status", "scanner_status", "state");
+  if (statusRaw) return normalizeScannerStatus(statusRaw);
+  const isActive = pickBool(o, "is_active", "isActive");
+  if (isActive === false) return "suspended";
+  if (isActive === true) return "active";
+  return "unknown";
+}
+
 export function mapAdminScannerRowFromApi(raw: unknown): AdminScannerRow {
   const inner = unwrapApiJson(raw);
   const o = asObject(inner);
   const idStr = pickStr(o, "id", "scanner_id", "uuid");
   const idNum = pickNum(o, "id", "scanner_id");
   const id = idStr ?? (idNum !== undefined ? String(idNum) : "");
+  const code = pickStr(o, "code", "scanner_code");
   const displayName =
     pickStr(
       o,
@@ -3343,12 +3375,11 @@ export function mapAdminScannerRowFromApi(raw: unknown): AdminScannerRow {
       "scanner_name",
       "title",
     ) ?? "";
-  const organizerName =
-    pickStr(o, "organizerName", "organizer_name", "organizer", "vendor_name") ??
-    (isRecord(o.organizer)
-      ? pickStr(asObject(o.organizer), "name", "title")
-      : undefined) ??
-    "";
+  const email = pickStr(o, "email");
+  const nestedOrganizer = mapScannerOrganizerFieldsFromApi(o.organizer);
+  const flatOrganizerName =
+    pickStr(o, "organizerName", "organizer_name", "vendor_name") ?? undefined;
+  const organizerName = nestedOrganizer.organizerName ?? flatOrganizerName;
   const deviceLabel = pickStr(
     o,
     "deviceLabel",
@@ -3357,20 +3388,23 @@ export function mapAdminScannerRowFromApi(raw: unknown): AdminScannerRow {
     "device",
     "terminal",
   );
-  const lastSeenAt = pickStr(
-    o,
-    "lastSeenAt",
-    "last_seen_at",
-    "last_active_at",
-    "updated_at",
-  );
+  const lastSeenAt =
+    pickStr(
+      o,
+      "lastSeenAt",
+      "last_seen_at",
+      "last_login_at",
+      "lastLoginAt",
+      "last_active_at",
+    ) ?? undefined;
   const candidate = {
     id,
     displayName,
-    status: normalizeScannerStatus(
-      pickStr(o, "status", "scanner_status", "state"),
-    ),
+    status: resolveScannerStatus(o),
+    ...(code ? { code } : {}),
+    ...(email ? { email } : {}),
     ...(organizerName ? { organizerName } : {}),
+    ...nestedOrganizer,
     ...(deviceLabel ? { deviceLabel } : {}),
     ...(lastSeenAt ? { lastSeenAt } : {}),
   };
@@ -3416,6 +3450,207 @@ function normalizeScanLogOutcome(raw: string | undefined): AdminScanLogOutcome {
   return "unknown";
 }
 
+function resolveAdminDetailPath(
+  detailHref?: string,
+  apiHref?: string,
+  opts?: { orderId?: string; ticketId?: string },
+): string | undefined {
+  if (detailHref) {
+    try {
+      if (detailHref.startsWith("http://") || detailHref.startsWith("https://")) {
+        const u = new URL(detailHref);
+        return `${u.pathname}${u.search}`;
+      }
+      if (detailHref.startsWith("/")) return detailHref;
+    } catch {
+      // fall through to api_href
+    }
+  }
+  if (apiHref?.startsWith("/")) {
+    const eventMatch = apiHref.match(/\/api\/v\d+\/admin\/events\/(\d+)/);
+    if (eventMatch) return `/events/${eventMatch[1]}`;
+    const orderMatch = apiHref.match(/\/api\/v\d+\/admin\/orders\/(\d+)/);
+    if (orderMatch) {
+      const base = `/orders/${orderMatch[1]}`;
+      const ticketId = opts?.ticketId;
+      return ticketId ? `${base}?ticket=${encodeURIComponent(ticketId)}` : base;
+    }
+  }
+  if (opts?.orderId && opts.ticketId) {
+    return `/orders/${opts.orderId}?ticket=${encodeURIComponent(opts.ticketId)}`;
+  }
+  return undefined;
+}
+
+function mapScanLogScannerFieldsFromApi(
+  o: Record<string, unknown>,
+): Pick<
+  AdminScanLogRow,
+  | "scannerLabel"
+  | "scannerId"
+  | "scannerCode"
+  | "scannerName"
+  | "scannerEmail"
+  | "organizerProfileId"
+  | "organizerName"
+  | "organizerCode"
+> {
+  const scannerObj = isRecord(o.scanner) ? asObject(o.scanner) : null;
+  const scannerIdRaw = scannerObj
+    ? (pickStr(scannerObj, "id", "scanner_id") ??
+      (pickNum(scannerObj, "id", "scanner_id") !== undefined
+        ? String(pickNum(scannerObj, "id", "scanner_id"))
+        : undefined))
+    : undefined;
+  const scannerCode = scannerObj ? pickStr(scannerObj, "code") : undefined;
+  const scannerName = scannerObj
+    ? pickStr(scannerObj, "name", "display_name", "displayName")
+    : undefined;
+  const scannerEmail = scannerObj ? pickStr(scannerObj, "email") : undefined;
+  const scannerLabel =
+    pickStr(o, "scannerLabel", "scanner_label", "scanner_name", "device_name") ??
+    (scannerName && scannerCode
+      ? `${scannerName} (${scannerCode})`
+      : (scannerName ?? scannerCode));
+
+  const organizerObj =
+    scannerObj && isRecord(scannerObj.organizer)
+      ? asObject(scannerObj.organizer)
+      : null;
+  const organizerProfileIdRaw = scannerObj
+    ? (pickStr(scannerObj, "organizer_profile_id", "organizerProfileId") ??
+      (organizerObj
+        ? (pickStr(organizerObj, "id") ??
+          (pickNum(organizerObj, "id") !== undefined
+            ? String(pickNum(organizerObj, "id"))
+            : undefined))
+        : undefined))
+    : undefined;
+
+  return {
+    ...(scannerLabel ? { scannerLabel } : {}),
+    ...(scannerIdRaw ? { scannerId: scannerIdRaw } : {}),
+    ...(scannerCode ? { scannerCode } : {}),
+    ...(scannerName ? { scannerName } : {}),
+    ...(scannerEmail ? { scannerEmail } : {}),
+    ...(organizerProfileIdRaw ? { organizerProfileId: organizerProfileIdRaw } : {}),
+    ...(organizerObj
+      ? {
+          ...(pickStr(organizerObj, "display_name", "displayName", "name")
+            ? {
+                organizerName: pickStr(
+                  organizerObj,
+                  "display_name",
+                  "displayName",
+                  "name",
+                ),
+              }
+            : {}),
+          ...(pickStr(organizerObj, "code")
+            ? { organizerCode: pickStr(organizerObj, "code") }
+            : {}),
+        }
+      : {}),
+  };
+}
+
+function mapScanLogEventFieldsFromApi(
+  o: Record<string, unknown>,
+): Pick<
+  AdminScanLogRow,
+  "eventId" | "eventCode" | "eventTitle" | "eventStatus" | "eventDetailPath"
+> {
+  const eventObj = isRecord(o.event) ? asObject(o.event) : null;
+  const eventIdRaw = eventObj
+    ? (pickStr(eventObj, "id", "event_id") ??
+      (pickNum(eventObj, "id", "event_id") !== undefined
+        ? String(pickNum(eventObj, "id", "event_id"))
+        : undefined))
+    : undefined;
+  const eventTitle =
+    pickStr(o, "eventTitle", "event_title", "event_name") ??
+    (eventObj ? pickStr(eventObj, "title", "name") : undefined);
+  const eventCode = eventObj ? pickStr(eventObj, "code") : undefined;
+  const eventStatus = eventObj ? pickStr(eventObj, "status") : undefined;
+  const eventDetailPath = eventObj
+    ? resolveAdminDetailPath(
+        pickStr(eventObj, "detail_href", "detailHref"),
+        pickStr(eventObj, "api_href", "apiHref"),
+      )
+    : eventIdRaw
+      ? `/events/${eventIdRaw}`
+      : undefined;
+
+  return {
+    ...(eventIdRaw ? { eventId: eventIdRaw } : {}),
+    ...(eventCode ? { eventCode } : {}),
+    ...(eventTitle ? { eventTitle } : {}),
+    ...(eventStatus ? { eventStatus } : {}),
+    ...(eventDetailPath ? { eventDetailPath } : {}),
+  };
+}
+
+function mapScanLogTicketFieldsFromApi(
+  o: Record<string, unknown>,
+): Pick<
+  AdminScanLogRow,
+  | "ticketRef"
+  | "ticketId"
+  | "ticketCode"
+  | "ticketStatus"
+  | "ticketOrderId"
+  | "ticketSeatLabel"
+  | "ticketTypeName"
+  | "ticketDetailPath"
+> {
+  const ticketObj = isRecord(o.ticket) ? asObject(o.ticket) : null;
+  const ticketIdRaw = ticketObj
+    ? (pickStr(ticketObj, "id", "ticket_id") ??
+      (pickNum(ticketObj, "id", "ticket_id") !== undefined
+        ? String(pickNum(ticketObj, "id", "ticket_id"))
+        : undefined))
+    : undefined;
+  const ticketOrderIdRaw = ticketObj
+    ? (pickStr(ticketObj, "order_id", "orderId") ??
+      (pickNum(ticketObj, "order_id", "orderId") !== undefined
+        ? String(pickNum(ticketObj, "order_id", "orderId"))
+        : undefined))
+    : undefined;
+  const ticketCode = ticketObj ? pickStr(ticketObj, "code") : undefined;
+  const ticketRef =
+    pickStr(
+      o,
+      "ticketRef",
+      "ticket_ref",
+      "ticket_code",
+      "reference",
+    ) ?? ticketCode;
+  const ticketDetailPath = ticketObj
+    ? resolveAdminDetailPath(
+        pickStr(ticketObj, "detail_href", "detailHref"),
+        pickStr(ticketObj, "api_href", "apiHref"),
+        { orderId: ticketOrderIdRaw, ticketId: ticketIdRaw },
+      )
+    : undefined;
+
+  return {
+    ...(ticketRef ? { ticketRef } : {}),
+    ...(ticketIdRaw ? { ticketId: ticketIdRaw } : {}),
+    ...(ticketCode ? { ticketCode } : {}),
+    ...(ticketObj && pickStr(ticketObj, "status")
+      ? { ticketStatus: pickStr(ticketObj, "status") }
+      : {}),
+    ...(ticketOrderIdRaw ? { ticketOrderId: ticketOrderIdRaw } : {}),
+    ...(ticketObj && pickStr(ticketObj, "seat_label", "seatLabel")
+      ? { ticketSeatLabel: pickStr(ticketObj, "seat_label", "seatLabel") }
+      : {}),
+    ...(ticketObj && pickStr(ticketObj, "type_name", "typeName")
+      ? { ticketTypeName: pickStr(ticketObj, "type_name", "typeName") }
+      : {}),
+    ...(ticketDetailPath ? { ticketDetailPath } : {}),
+  };
+}
+
 export function mapAdminScanLogRowFromApi(raw: unknown): AdminScanLogRow {
   const inner = unwrapApiJson(raw);
   const o = asObject(inner);
@@ -3431,37 +3666,15 @@ export function mapAdminScanLogRowFromApi(raw: unknown): AdminScanLogRow {
       "timestamp",
       "occurred_at",
     ) ?? new Date().toISOString();
-  const ticketRef = pickStr(
-    o,
-    "ticketRef",
-    "ticket_ref",
-    "ticket_code",
-    "ticket_id",
-    "code",
-    "reference",
-  );
-  const scannerLabel = pickStr(
-    o,
-    "scannerLabel",
-    "scanner_label",
-    "scanner_name",
-    "device_name",
-  );
-  const eventTitle =
-    pickStr(o, "eventTitle", "event_title", "event_name") ??
-    (isRecord(o.event)
-      ? pickStr(asObject(o.event), "title", "name")
-      : undefined) ??
-    "";
+  const resultRaw = pickStr(o, "result", "outcome", "status", "scan_status");
   const candidate = {
     id,
     scannedAt,
-    outcome: normalizeScanLogOutcome(
-      pickStr(o, "outcome", "result", "status", "scan_status"),
-    ),
-    ...(ticketRef ? { ticketRef } : {}),
-    ...(scannerLabel ? { scannerLabel } : {}),
-    ...(eventTitle ? { eventTitle } : {}),
+    outcome: normalizeScanLogOutcome(resultRaw),
+    ...(resultRaw ? { result: resultRaw } : {}),
+    ...mapScanLogScannerFieldsFromApi(o),
+    ...mapScanLogEventFieldsFromApi(o),
+    ...mapScanLogTicketFieldsFromApi(o),
   };
   return adminScanLogRowSchema.parse(candidate);
 }

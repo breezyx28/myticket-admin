@@ -1,12 +1,13 @@
 import { Button } from '@/components/ui/Button';
+import { cn } from '@/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { notifyError, notifySuccess } from '@/lib/notify';
 import type { AdminOrderDetail } from '@/schemas/order.schema';
 import { useForceRefundOrderMutation, useGetOrderQuery } from '@/services/adminApi';
 import { AlertTriangle, RotateCcw } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
 
 function statusLabel(s: string): string {
   return s === 'unknown' ? 'Other' : s.replace(/_/g, ' ');
@@ -94,9 +95,17 @@ function ForceRefundDialog({
 
 export function OrderDetailPage() {
   const { id = '' } = useParams();
+  const [searchParams] = useSearchParams();
+  const focusTicketId = searchParams.get('ticket')?.trim() || undefined;
+  const focusTicketRef = useRef<HTMLTableRowElement | null>(null);
   const q = useGetOrderQuery(id, { skip: !id });
   const [forceRefund, refundState] = useForceRefundOrderMutation();
   const [refundDialogOpen, setRefundDialogOpen] = useState(false);
+
+  useEffect(() => {
+    if (!focusTicketId || !focusTicketRef.current) return;
+    focusTicketRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [focusTicketId, q.data]);
 
   if (q.isLoading) return <p className="text-ink-60">Loading…</p>;
   if (!q.data) {
@@ -289,14 +298,25 @@ export function OrderDetailPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {o.tickets.map((t) => (
-                    <tr key={t.id} className="border-t border-ink-10 hover:bg-surface-tint">
+                  {o.tickets.map((t) => {
+                    const ticketFocused =
+                      focusTicketId !== undefined && t.id === focusTicketId;
+                    return (
+                    <tr
+                      key={t.id}
+                      ref={ticketFocused ? focusTicketRef : undefined}
+                      className={cn(
+                        'border-t border-ink-10 hover:bg-surface-tint',
+                        ticketFocused && 'bg-coral/10 ring-1 ring-inset ring-coral/30',
+                      )}
+                    >
                       <td className="px-4 py-3 font-mono text-[13px] font-semibold text-ink">{t.code}</td>
                       <td className="px-4 py-3 capitalize text-ink-60">{t.status}</td>
                       <td className="px-4 py-3 font-mono text-ink">{t.pricePaidSar.toLocaleString()}</td>
                       <td className="px-4 py-3 text-ink">{t.eventTitleCache ?? o.eventTitle}</td>
                     </tr>
-                  ))}
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
