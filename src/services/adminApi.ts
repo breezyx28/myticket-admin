@@ -61,7 +61,7 @@ import type {
 } from '@/schemas/event.schema';
 import { featuredEventsConfigSchema, rejectEventSchema } from '@/schemas/event.schema';
 import { adminAuctionDetailSchema, type AdminAuctionDetail } from '@/schemas/auction.schema';
-import { adminProfileUpdateSchema, type AdminProfileUpdate } from '@/schemas/adminSelf.schema';
+import { adminProfileUpdateSchema, type AdminProfileUpdate, type AdminProfileImageUploadResult, PROFILE_IMAGE_ACCEPT, PROFILE_IMAGE_MAX_BYTES } from '@/schemas/adminSelf.schema';
 import type { FeeConfiguration, NotificationSettings } from '@/schemas/settings.schema';
 import {
   feeConfigurationSchema,
@@ -159,6 +159,7 @@ import {
   mapTourismAdFromApi,
   mapTourismAdsListFromApi,
   mapAdminUploadFromApi,
+  mapAdminProfileImageUploadFromApi,
 } from '@/schemas/api/adminMappers';
 import {
   adminOrganizerKycDetailSchema,
@@ -2560,6 +2561,49 @@ export const adminApi = createApi({
         return { data: { ok: true } };
       },
     }),
+    uploadAdminProfileImage: builder.mutation<AdminProfileImageUploadResult, File>({
+      async queryFn(file, api, extraOptions) {
+        if (!file || !(file instanceof File)) {
+          return { error: { status: 400, data: { message: 'Image file is required' } } };
+        }
+        const allowed = PROFILE_IMAGE_ACCEPT.split(',');
+        if (file.type && !allowed.includes(file.type)) {
+          return { error: { status: 400, data: { message: 'Use JPEG, PNG, GIF, or WebP.' } } };
+        }
+        if (file.size > PROFILE_IMAGE_MAX_BYTES) {
+          return { error: { status: 400, data: { message: 'Image must be 4 MB or smaller.' } } };
+        }
+        if (!sessionHasApiCredentials()) {
+          await delay(120);
+          const url = URL.createObjectURL(file);
+          return {
+            data: {
+              profileImageUrl: url,
+              avatarUrl: url,
+              contentType: file.type || 'image/jpeg',
+              sizeBytes: file.size,
+            },
+          };
+        }
+        const form = new FormData();
+        form.append('image', file);
+        const res = await baseQueryWithReauth(
+          {
+            url: '/api/v1/admin/me/profile-image',
+            method: 'POST',
+            body: form,
+          },
+          api,
+          extraOptions
+        );
+        if (res.error) return { error: toFetchError(res.error) };
+        try {
+          return { data: mapAdminProfileImageUploadFromApi(res.data) };
+        } catch (e) {
+          return mapLiveReadFailure(e);
+        }
+      },
+    }),
     getFeeConfiguration: builder.query<FeeConfiguration, void>({
       providesTags: ['Fees'],
       async queryFn(_arg, api, extraOptions) {
@@ -3423,6 +3467,7 @@ export const {
   useGetFeaturedConfigQuery,
   useSetFeaturedConfigMutation,
   useUpdateAdminProfileMutation,
+  useUploadAdminProfileImageMutation,
   useGetFeeConfigurationQuery,
   useUpdateFeeConfigurationMutation,
   useGetNotificationSettingsQuery,

@@ -6,6 +6,8 @@ export type SessionUser = {
   email: string;
   name: string;
   role: AdminRole;
+  /** Absolute URL from `profile_image_url` / `avatar_url` on login or upload. */
+  avatarUrl?: string;
 };
 
 export type SignInFailureReason =

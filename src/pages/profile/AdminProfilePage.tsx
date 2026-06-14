@@ -2,6 +2,7 @@ import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/hooks/useAuth';
 import { notifyError, notifySuccess } from '@/lib/notify';
+import { ProfileAvatarUpload } from '@/pages/profile/ProfileAvatarUpload';
 import { useUpdateAdminProfileMutation } from '@/services/adminApi';
 import { useEffect, useMemo, useState } from 'react';
 
@@ -20,23 +21,35 @@ export function AdminProfilePage() {
   const email = useMemo(() => user?.email ?? '—', [user?.email]);
 
   return (
-    <div className="space-y-8">
-      <div>
-        <p className="text-[11px] font-extrabold uppercase tracking-[0.16em] text-ink-40">Account</p>
-        <h1 className="mt-1 text-3xl font-extrabold tracking-tight text-ink">My profile</h1>
-        <p className="mt-2 max-w-2xl text-[14px] text-ink-60">
-          Update how you appear in the admin console. Changes are sent to{' '}
-          <span className="font-mono text-ink">PATCH /api/v1/admin/me</span> when you are signed in with API
-          credentials.
-        </p>
+    <div className="mx-auto max-w-[1400px] space-y-8">
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)] lg:items-end">
+        <div>
+          <p className="text-[11px] font-extrabold uppercase tracking-[0.16em] text-ink-40">Account</p>
+          <h1 className="mt-1 text-3xl font-extrabold tracking-tight text-ink md:text-4xl">My profile</h1>
+          <p className="mt-3 max-w-[65ch] text-[15px] leading-relaxed text-ink-60">
+            Update how you appear in the admin console. Photo uploads and preference changes use your current Sanctum
+            session — no user ID in the request body.
+          </p>
+        </div>
+        <div className="rounded-3xl border border-ink-10 bg-white px-5 py-4 shadow-card-sm">
+          <p className="text-[11px] font-bold uppercase tracking-wide text-ink-40">Endpoints</p>
+          <p className="mt-1 font-mono text-[12px] text-ink">PATCH /api/v1/admin/me</p>
+          <p className="font-mono text-[12px] text-ink">POST /api/v1/admin/me/profile-image</p>
+        </div>
       </div>
 
-      <Card className="rounded-3xl border-ink-10 shadow-card-md">
-        <CardHeader>
-          <CardTitle className="text-xl font-bold">Administrator</CardTitle>
-          <CardDescription>Signed-in session. Email is read-only for audit trails.</CardDescription>
+      <Card className="rounded-[2rem] border-ink-10 shadow-[0_20px_40px_-15px_rgba(0,0,0,0.05)]">
+        <CardHeader className="border-b border-ink-10/80 pb-6">
+          <CardTitle className="text-xl font-bold">Identity</CardTitle>
+          <CardDescription>Profile photo, display name, and session metadata.</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-6">
+        <CardContent className="space-y-8 pt-8">
+          <ProfileAvatarUpload
+            avatarUrl={user?.avatarUrl}
+            displayName={displayName || user?.name || 'Admin'}
+            onUploaded={(avatarUrl) => updateUser({ avatarUrl })}
+          />
+
           <div className="grid gap-6 md:grid-cols-2">
             <label className="flex flex-col gap-2">
               <span className="text-[11px] font-bold uppercase tracking-wide text-ink-40">Work email</span>
@@ -45,13 +58,14 @@ export function AdminProfilePage() {
                 value={email}
                 className="w-full cursor-not-allowed rounded-xl border border-ink-10 bg-ink-5 px-4 py-3 text-[14px] font-semibold text-ink-60"
               />
+              <span className="text-[12px] text-ink-40">Read-only for audit trails.</span>
             </label>
             <label className="flex flex-col gap-2">
               <span className="text-[11px] font-bold uppercase tracking-wide text-ink-40">Display name</span>
               <input
                 value={displayName}
                 onChange={(e) => setDisplayName(e.target.value)}
-                className="w-full rounded-xl border border-ink-10 px-4 py-3 text-[14px] font-semibold text-ink outline-none focus:border-coral focus:ring-2 focus:ring-coral/25"
+                className="w-full rounded-xl border border-ink-10 px-4 py-3 text-[14px] font-semibold text-ink outline-none transition active:scale-[0.99] focus:border-coral focus:ring-2 focus:ring-coral/25"
               />
             </label>
             <label className="flex flex-col gap-2">
@@ -59,7 +73,7 @@ export function AdminProfilePage() {
               <select
                 value={timezone}
                 onChange={(e) => setTimezone(e.target.value)}
-                className="w-full rounded-xl border border-ink-10 bg-white px-4 py-3 text-[14px] font-semibold text-ink outline-none focus:border-coral focus:ring-2 focus:ring-coral/25"
+                className="w-full rounded-xl border border-ink-10 bg-white px-4 py-3 text-[14px] font-semibold text-ink outline-none transition active:scale-[0.99] focus:border-coral focus:ring-2 focus:ring-coral/25"
               >
                 <option value="Asia/Riyadh">Asia/Riyadh</option>
                 <option value="Asia/Dubai">Asia/Dubai</option>
@@ -80,6 +94,7 @@ export function AdminProfilePage() {
               </div>
             </label>
           </div>
+
           <Button
             type="button"
             variant="dark"

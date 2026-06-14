@@ -1744,6 +1744,25 @@ describe("mapAdminUploadFromApi", () => {
   });
 });
 
+describe("mapAdminProfileImageUploadFromApi", () => {
+  it("maps profile image upload response", async () => {
+    const { mapAdminProfileImageUploadFromApi } = await import("@/schemas/api/adminMappers");
+    const out = mapAdminProfileImageUploadFromApi({
+      data: {
+        user_id: 1,
+        profile_image_url: "https://api.test/storage/users/profile-images/1/abc.jpg",
+        avatar_url: "https://api.test/storage/users/profile-images/1/abc.jpg",
+        content_type: "image/jpeg",
+        size_bytes: 12345,
+        synced_profiles: ["user", "talent"],
+      },
+    });
+    expect(out.userId).toBe("1");
+    expect(out.avatarUrl).toContain("abc.jpg");
+    expect(out.syncedProfiles).toEqual(["user", "talent"]);
+  });
+});
+
 describe("mapAdminDeliveryLogsFromApi", () => {
   it("maps delivery_log rows", () => {
     const out = mapAdminDeliveryLogsFromApi({

@@ -1,5 +1,9 @@
 import { placeholderAssetUrl } from "@/config/env";
 import {
+  adminProfileImageUploadSchema,
+  type AdminProfileImageUploadResult,
+} from "@/schemas/adminSelf.schema";
+import {
   ApiJsonError,
   asObject,
   pickBool,
@@ -4364,6 +4368,36 @@ export function mapAdminUploadFromApi(raw: unknown): {
     ...(contentType ? { contentType } : {}),
     ...(sizeNum !== undefined ? { sizeBytes: Math.trunc(sizeNum) } : {}),
   };
+}
+
+export function mapAdminProfileImageUploadFromApi(
+  raw: unknown,
+): AdminProfileImageUploadResult {
+  const inner = unwrapApiJson(raw);
+  const o = asObject(inner);
+  const profileImageUrl =
+    pickStr(o, "profile_image_url", "profileImageUrl") ??
+    pickStr(o, "avatar_url", "avatarUrl") ??
+    "";
+  const avatarUrl =
+    pickStr(o, "avatar_url", "avatarUrl") ??
+    pickStr(o, "profile_image_url", "profileImageUrl") ??
+    profileImageUrl;
+  const userIdRaw = pickNum(o, "user_id", "userId");
+  const contentType = pickStr(o, "content_type", "contentType");
+  const sizeNum = pickNum(o, "size_bytes", "sizeBytes");
+  const syncedRaw = o.synced_profiles ?? o.syncedProfiles;
+  const syncedProfiles = Array.isArray(syncedRaw)
+    ? syncedRaw.filter((x): x is string => typeof x === "string")
+    : undefined;
+  return adminProfileImageUploadSchema.parse({
+    ...(userIdRaw !== undefined ? { userId: String(Math.trunc(userIdRaw)) } : {}),
+    profileImageUrl: profileImageUrl || avatarUrl,
+    avatarUrl: avatarUrl || profileImageUrl,
+    ...(contentType ? { contentType } : {}),
+    ...(sizeNum !== undefined ? { sizeBytes: Math.trunc(sizeNum) } : {}),
+    ...(syncedProfiles?.length ? { syncedProfiles } : {}),
+  });
 }
 
 export function mapAdminRecentNotificationsFromApi(

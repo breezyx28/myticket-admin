@@ -47,13 +47,26 @@ const userShape = z
     full_name: z.string().optional(),
     display_name: z.string().optional(),
     role: z.string().optional(),
+    profile_image_url: z.string().optional(),
+    avatar_url: z.string().optional(),
   })
   .passthrough();
+
+function pickAvatarUrl(...sources: (Record<string, unknown> | undefined)[]): string | undefined {
+  for (const src of sources) {
+    if (!src) continue;
+    for (const key of ['profile_image_url', 'avatar_url', 'profileImageUrl', 'avatarUrl'] as const) {
+      const v = src[key];
+      if (typeof v === 'string' && v.trim()) return v.trim();
+    }
+  }
+  return undefined;
+}
 
 export function parseAdminLoginUser(
   json: unknown,
   fallbackEmail: string,
-): { id?: string; email: string; name: string; role: 'admin' } {
+): { id?: string; email: string; name: string; role: 'admin'; avatarUrl?: string } {
   if (!json || typeof json !== 'object') {
     return { email: fallbackEmail, name: fallbackEmail.split('@')[0] ?? 'Admin', role: 'admin' };
   }
@@ -81,10 +94,18 @@ export function parseAdminLoginUser(
     (parsed.success && pickId(parsed.data.id)) ||
     pickId(inner.id) ||
     pickId(inner.user_id);
+  const avatarUrl = pickAvatarUrl(
+    parsed.success ? (parsed.data as Record<string, unknown>) : undefined,
+    userRaw && typeof userRaw === 'object' && !Array.isArray(userRaw)
+      ? (userRaw as Record<string, unknown>)
+      : undefined,
+    inner,
+  );
   return {
     ...(id ? { id } : {}),
     email,
     name,
     role: 'admin',
+    ...(avatarUrl ? { avatarUrl } : {}),
   };
 }

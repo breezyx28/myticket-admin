@@ -67,9 +67,22 @@ export function AdminShell({ children }: { children?: ReactNode }) {
               Profile
             </NavLink>
             <AdminNotificationsDropdown />
-            <div className="ml-1 rounded-2xl border border-ink-10 bg-white px-3 py-1.5">
-              <p className="max-w-[220px] truncate text-[12px] font-semibold text-ink">{user?.email}</p>
-              <p className="text-[10px] font-bold uppercase tracking-wide text-ink-40">Administrator</p>
+            <div className="ml-1 flex items-center gap-2.5 rounded-2xl border border-ink-10 bg-white px-3 py-1.5">
+              {user?.avatarUrl ? (
+                <img
+                  src={user.avatarUrl}
+                  alt=""
+                  className="h-9 w-9 shrink-0 rounded-xl border border-ink-10 object-cover"
+                />
+              ) : (
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-ink-10 bg-surface-tint text-[11px] font-extrabold text-ink-40">
+                  {(user?.name ?? user?.email ?? 'A').slice(0, 2).toUpperCase()}
+                </span>
+              )}
+              <div className="min-w-0">
+                <p className="max-w-[220px] truncate text-[12px] font-semibold text-ink">{user?.email}</p>
+                <p className="text-[10px] font-bold uppercase tracking-wide text-ink-40">Administrator</p>
+              </div>
             </div>
             <Button type="button" variant="outline" size="sm" onClick={() => signOut()}>
               <span className="inline-flex items-center gap-2">
