@@ -3,6 +3,7 @@ import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
 import markerIcon from 'leaflet/dist/images/marker-icon.png';
 import markerShadow from 'leaflet/dist/images/marker-shadow.png';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { Trans, useTranslation } from 'react-i18next';
 import { MapContainer, Marker, TileLayer, useMap, useMapEvents } from 'react-leaflet';
 
 const pinIcon = L.icon({
@@ -78,6 +79,7 @@ export function TourismAdLocationPicker({
   onLocationNameSuggest,
   disabled,
 }: Props) {
+  const { t } = useTranslation('operations');
   const [search, setSearch] = useState('');
   const [results, setResults] = useState<NominatimResult[]>([]);
   const [searching, setSearching] = useState(false);
@@ -135,24 +137,25 @@ export function TourismAdLocationPicker({
     setShowResults(false);
   }
 
+  const lat = roundCoord(latitude).toFixed(6);
+  const lng = roundCoord(longitude).toFixed(6);
+
   return (
     <div className="space-y-3">
       <div ref={wrapRef} className="relative">
         <label className="flex flex-col gap-1 text-[12px] font-semibold text-ink-60">
-          Search location
+          {t('tourismAds.locationPicker.searchLabel')}
           <input
             type="text"
             disabled={disabled}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             onFocus={() => results.length > 0 && setShowResults(true)}
-            placeholder="Search places in Saudi Arabia…"
+            placeholder={t('tourismAds.locationPicker.searchPlaceholder')}
             className="h-11 rounded-xl border border-ink-10 bg-white px-3 text-[14px] text-ink disabled:opacity-50"
           />
         </label>
-        {searching ? (
-          <p className="mt-1 text-[11px] text-ink-40">Searching…</p>
-        ) : null}
+        {searching ? <p className="mt-1 text-[11px] text-ink-40">{t('tourismAds.locationPicker.searching')}</p> : null}
         {showResults && results.length > 0 ? (
           <ul className="absolute z-[1000] mt-1 max-h-48 w-full overflow-y-auto rounded-xl border border-ink-10 bg-white shadow-lg">
             {results.map((row) => (
@@ -189,8 +192,8 @@ export function TourismAdLocationPicker({
             draggable={!disabled}
             eventHandlers={{
               dragend: (e) => {
-                const { lat, lng } = e.target.getLatLng();
-                setCoords(lat, lng);
+                const { lat: markerLat, lng: markerLng } = e.target.getLatLng();
+                setCoords(markerLat, markerLng);
               },
             }}
           />
@@ -198,19 +201,23 @@ export function TourismAdLocationPicker({
       </div>
 
       <p className="font-mono text-[11px] text-ink-40">
-        {roundCoord(latitude).toFixed(6)}, {roundCoord(longitude).toFixed(6)} — click map or drag marker
+        {t('tourismAds.locationPicker.coordsHint', { lat, lng })}
       </p>
       <p className="text-[11px] text-ink-40">
-        Search powered by{' '}
-        <a
-          href="https://nominatim.org/release-docs/develop/api/Search/"
-          target="_blank"
-          rel="noreferrer"
-          className="text-coral hover:underline"
-        >
-          Nominatim
-        </a>{' '}
-        (OpenStreetMap). Use responsibly.
+        <Trans
+          ns="operations"
+          i18nKey="tourismAds.locationPicker.nominatimHint"
+          components={{
+            link: (
+              <a
+                href="https://nominatim.org/release-docs/develop/api/Search/"
+                target="_blank"
+                rel="noreferrer"
+                className="text-coral hover:underline"
+              />
+            ),
+          }}
+        />
       </p>
     </div>
   );

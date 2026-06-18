@@ -17,7 +17,7 @@ export type RoleApplication = z.infer<typeof roleApplicationSchema>;
 export const roleApplicationsListSchema = z.array(roleApplicationSchema);
 
 export const rejectRoleApplicationSchema = z.object({
-  reason: z.string().trim().min(3, 'Provide a short reason for the applicant'),
+  reason: z.string().trim().min(3, 'validation.applicantReasonMin'),
   internalNote: z.string().trim().optional(),
 });
 

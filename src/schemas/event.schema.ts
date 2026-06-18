@@ -2,6 +2,16 @@ import { z } from 'zod';
 
 export const eventLifecycleSchema = z.enum(['active', 'ended', 'cancelled', 'archived']);
 
+export const eventCategorySummarySchema = z.object({
+  id: z.string(),
+  slug: z.string(),
+  nameEn: z.string(),
+  nameAr: z.string(),
+  iconKey: z.string().optional(),
+});
+
+export type EventCategorySummary = z.infer<typeof eventCategorySummarySchema>;
+
 export const adminEventRowSchema = z.object({
   id: z.string(),
   title: z.string(),
@@ -21,6 +31,7 @@ export const adminEventRowSchema = z.object({
   coverImageUrl: z.string().min(1),
   /** Homepage / manual featuring (admin `POST …/feature` | `…/unfeature`). */
   featured: z.boolean().default(false),
+  categoryDetail: eventCategorySummarySchema.optional(),
 });
 
 export type AdminEventRow = z.infer<typeof adminEventRowSchema>;
@@ -51,11 +62,11 @@ export const eventCategoryUpsertFormSchema = z.object({
   slug: z
     .string()
     .trim()
-    .min(1, 'Slug is required')
+    .min(1, 'validation.slugRequired')
     .max(80)
-    .regex(slugPattern, 'Use lowercase letters, numbers, and single hyphens only'),
-  nameEn: z.string().trim().min(1, 'English name is required').max(120),
-  nameAr: z.string().trim().min(1, 'Arabic name is required').max(120),
+    .regex(slugPattern, 'validation.slugFormat'),
+  nameEn: z.string().trim().min(1, 'validation.nameEnRequired').max(120),
+  nameAr: z.string().trim().min(1, 'validation.nameArRequired').max(120),
   iconKey: z.string().max(80).optional(),
   colorToken: z.string().max(40).optional(),
   displayOrder: z.number().int().min(0).max(65535).optional(),
@@ -77,13 +88,13 @@ export const cancelEventSchema = z.object({
   confirmTitle: z.string().min(1),
   acknowledgement: z
     .boolean()
-    .refine((v) => v === true, { message: 'You must acknowledge cancellation impact' }),
+    .refine((v) => v === true, { message: 'validation.cancellationAckRequired' }),
 });
 
 export type CancelEventInput = z.infer<typeof cancelEventSchema>;
 
 export const rejectEventSchema = z.object({
-  reason: z.string().trim().min(1, 'Rejection reason is required'),
+  reason: z.string().trim().min(1, 'validation.rejectionReasonRequired'),
 });
 
 export type RejectEventInput = z.infer<typeof rejectEventSchema>;
@@ -99,16 +110,6 @@ export const eventOrganizerSummarySchema = z.object({
 });
 
 export type EventOrganizerSummary = z.infer<typeof eventOrganizerSummarySchema>;
-
-export const eventCategorySummarySchema = z.object({
-  id: z.string(),
-  slug: z.string(),
-  nameEn: z.string(),
-  nameAr: z.string(),
-  iconKey: z.string().optional(),
-});
-
-export type EventCategorySummary = z.infer<typeof eventCategorySummarySchema>;
 
 /** Full event record from `GET /api/v1/admin/events/{id}`. */
 export const adminEventDetailSchema = adminEventRowSchema
@@ -141,7 +142,6 @@ export const adminEventDetailSchema = adminEventRowSchema
     isMultiDay: z.boolean().optional(),
     isFeatured: z.boolean().optional(),
     organizer: eventOrganizerSummarySchema.optional(),
-    categoryDetail: eventCategorySummarySchema.optional(),
   });
 
 export type AdminEventDetail = z.infer<typeof adminEventDetailSchema>;

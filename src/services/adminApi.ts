@@ -6,6 +6,7 @@ import { createApi } from '@reduxjs/toolkit/query/react';
 import type { BaseQueryApi, FetchArgs } from '@reduxjs/toolkit/query';
 import { ZodError } from 'zod';
 import { getAccessToken } from '@/lib/authSession';
+import { tError } from '@/lib/i18nMessage';
 import {
   MOCK_DASHBOARD_COUNTERS,
   MOCK_DASHBOARD_SUMMARY,
@@ -187,14 +188,14 @@ function toFetchError(err: unknown): { status: number; data: unknown } {
 }
 
 function unauthenticatedReadError(): { error: { status: number; data: { message: string } } } {
-  return { error: { status: 401, data: { message: 'Not authenticated' } } };
+  return { error: { status: 401, data: { message: tError('notAuthenticated') } } };
 }
 
 function mapLiveReadFailure(e: unknown): { error: { status: number; data: unknown } } {
   if (e instanceof ZodError) {
-    return { error: { status: 422, data: { message: 'Invalid API response', issues: e.flatten() } } };
+    return { error: { status: 422, data: { message: tError('invalidApiResponse'), issues: e.flatten() } } };
   }
-  const message = e instanceof Error ? e.message : 'Map failed';
+  const message = e instanceof Error ? e.message : tError('mapFailed');
   return { error: { status: 422, data: { message, cause: e } } };
 }
 
@@ -645,7 +646,7 @@ export const adminApi = createApi({
         const localParsed = localRow ? roleApplicationSchema.safeParse(localRow) : null;
 
         const resolveFromMock = (): { data: (typeof roleApplicationsState)[number] } | { error: { status: number; data: unknown } } => {
-          if (!localParsed?.success) return { error: { status: 404, data: 'Not found' } };
+          if (!localParsed?.success) return { error: { status: 404, data: { message: tError('notFound') } } };
           return { data: localParsed.data };
         };
 
@@ -750,7 +751,7 @@ export const adminApi = createApi({
         const localParsed = localRow ? talentProfileSchema.safeParse(localRow) : null;
 
         const resolveFromMock = (): { data: (typeof talentProfilesState)[number] } | { error: { status: number; data: unknown } } => {
-          if (!localParsed?.success) return { error: { status: 404, data: 'Not found' } };
+          if (!localParsed?.success) return { error: { status: 404, data: { message: tError('notFound') } } };
           return { data: localParsed.data };
         };
 
@@ -968,7 +969,7 @@ export const adminApi = createApi({
         const localParsed = localRow ? adminOrderDetailSchema.safeParse(localRow) : null;
 
         const resolveFromMock = (): { data: (typeof orderDetailsState)[string] } | { error: { status: number; data: unknown } } => {
-          if (!localParsed?.success) return { error: { status: 404, data: 'Not found' } };
+          if (!localParsed?.success) return { error: { status: 404, data: { message: tError('notFound') } } };
           return { data: localParsed.data };
         };
 
@@ -1043,7 +1044,7 @@ export const adminApi = createApi({
         const localParsed = localRow ? adminRefundRowSchema.safeParse(localRow) : null;
 
         const resolveFromMock = (): { data: (typeof refundsState)[number] } | { error: { status: number; data: unknown } } => {
-          if (!localParsed?.success) return { error: { status: 404, data: 'Not found' } };
+          if (!localParsed?.success) return { error: { status: 404, data: { message: tError('notFound') } } };
           return { data: localParsed.data };
         };
 
@@ -1204,7 +1205,7 @@ export const adminApi = createApi({
         const localParsed = localRow ? adminAuctionDetailSchema.safeParse(localRow) : null;
 
         const resolveFromMock = (): { data: AdminAuctionDetail } | { error: { status: number; data: unknown } } => {
-          if (!localParsed?.success) return { error: { status: 404, data: 'Not found' } };
+          if (!localParsed?.success) return { error: { status: 404, data: { message: tError('notFound') } } };
           return { data: localParsed.data };
         };
 
@@ -1313,7 +1314,7 @@ export const adminApi = createApi({
     triageComplaint: builder.mutation<{ ok: true }, string>({
       invalidatesTags: (_r, _e, id) => ['Complaints', { type: 'Complaints', id }],
       async queryFn(id, api, extraOptions) {
-        if (!id || typeof id !== 'string') return { error: { status: 400, data: { message: 'Invalid complaint id' } } };
+        if (!id || typeof id !== 'string') return { error: { status: 400, data: { message: tError('invalidComplaintId') } } };
         if (!sessionHasApiCredentials()) {
           await delay(90);
           syncComplaintRow(id, { status: 'triaged', updatedAt: new Date().toISOString() });
@@ -1360,7 +1361,7 @@ export const adminApi = createApi({
     escalateComplaint: builder.mutation<{ ok: true }, string>({
       invalidatesTags: (_r, _e, id) => ['Complaints', { type: 'Complaints', id }],
       async queryFn(id, api, extraOptions) {
-        if (!id || typeof id !== 'string') return { error: { status: 400, data: { message: 'Invalid complaint id' } } };
+        if (!id || typeof id !== 'string') return { error: { status: 400, data: { message: tError('invalidComplaintId') } } };
         if (!sessionHasApiCredentials()) {
           await delay(90);
           syncComplaintRow(id, { status: 'escalated', updatedAt: new Date().toISOString() });
@@ -1422,7 +1423,7 @@ export const adminApi = createApi({
         const localRow = tourismAdsState.find((r) => r.id === id);
         const localParsed = localRow ? tourismAdSchema.safeParse(localRow) : null;
         const resolveFromMock = (): { data: TourismAd } | { error: { status: number; data: unknown } } => {
-          if (!localParsed?.success) return { error: { status: 404, data: 'Not found' } };
+          if (!localParsed?.success) return { error: { status: 404, data: { message: tError('notFound') } } };
           return { data: localParsed.data };
         };
         if (shouldUseMockReads()) return resolveFromMock();
@@ -1508,7 +1509,7 @@ export const adminApi = createApi({
         if (!sessionHasApiCredentials()) {
           await delay(90);
           const existing = tourismAdsState.find((r) => r.id === id);
-          if (!existing) return { error: { status: 404, data: 'Not found' } };
+          if (!existing) return { error: { status: 404, data: { message: tError('notFound') } } };
           const patch: Partial<TourismAd> = {
             ...(parsed.data.locationName !== undefined ? { locationName: parsed.data.locationName } : {}),
             ...(parsed.data.latitude !== undefined ? { latitude: String(parsed.data.latitude) } : {}),
@@ -1530,7 +1531,7 @@ export const adminApi = createApi({
           };
           syncTourismAdRow(id, patch);
           const updated = tourismAdsState.find((r) => r.id === id);
-          if (!updated) return { error: { status: 404, data: 'Not found' } };
+          if (!updated) return { error: { status: 404, data: { message: tError('notFound') } } };
           return { data: updated };
         }
         const res = await baseQueryWithReauth(
@@ -1555,13 +1556,13 @@ export const adminApi = createApi({
     approveTourismAd: builder.mutation<TourismAd, string>({
       invalidatesTags: (_r, _e, id) => ['TourismAds', 'Dashboard', { type: 'TourismAds', id }],
       async queryFn(id, api, extraOptions) {
-        if (!id) return { error: { status: 400, data: { message: 'Invalid id' } } };
+        if (!id) return { error: { status: 400, data: { message: tError('invalidId') } } };
         if (!sessionHasApiCredentials()) {
           await delay(90);
           const now = new Date().toISOString();
           syncTourismAdRow(id, { status: 'published', publishedAt: now, reviewedAt: now });
           const row = tourismAdsState.find((r) => r.id === id);
-          if (!row) return { error: { status: 404, data: 'Not found' } };
+          if (!row) return { error: { status: 404, data: { message: tError('notFound') } } };
           return { data: row };
         }
         const res = await baseQueryWithReauth(
@@ -1593,7 +1594,7 @@ export const adminApi = createApi({
             reviewedAt: now,
           });
           const row = tourismAdsState.find((r) => r.id === id);
-          if (!row) return { error: { status: 404, data: 'Not found' } };
+          if (!row) return { error: { status: 404, data: { message: tError('notFound') } } };
           return { data: row };
         }
         const res = await baseQueryWithReauth(
@@ -1618,12 +1619,12 @@ export const adminApi = createApi({
     archiveTourismAd: builder.mutation<TourismAd, string>({
       invalidatesTags: (_r, _e, id) => ['TourismAds', 'Dashboard', { type: 'TourismAds', id }],
       async queryFn(id, api, extraOptions) {
-        if (!id) return { error: { status: 400, data: { message: 'Invalid id' } } };
+        if (!id) return { error: { status: 400, data: { message: tError('invalidId') } } };
         if (!sessionHasApiCredentials()) {
           await delay(90);
           syncTourismAdRow(id, { status: 'archived', isPinned: false, carouselPosition: null });
           const row = tourismAdsState.find((r) => r.id === id);
-          if (!row) return { error: { status: 404, data: 'Not found' } };
+          if (!row) return { error: { status: 404, data: { message: tError('notFound') } } };
           return { data: row };
         }
         const res = await baseQueryWithReauth(
@@ -1653,7 +1654,7 @@ export const adminApi = createApi({
             tourismAdsState.filter((r) => r.isPinned && r.status === 'published').length;
           syncTourismAdRow(id, { isPinned: true, carouselPosition: pos, status: 'published' });
           const row = tourismAdsState.find((r) => r.id === id);
-          if (!row) return { error: { status: 404, data: 'Not found' } };
+          if (!row) return { error: { status: 404, data: { message: tError('notFound') } } };
           return { data: row };
         }
         const res = await baseQueryWithReauth(
@@ -1678,12 +1679,12 @@ export const adminApi = createApi({
     unpinTourismAd: builder.mutation<TourismAd, string>({
       invalidatesTags: (_r, _e, id) => ['TourismAds', 'Dashboard', { type: 'TourismAds', id }],
       async queryFn(id, api, extraOptions) {
-        if (!id) return { error: { status: 400, data: { message: 'Invalid id' } } };
+        if (!id) return { error: { status: 400, data: { message: tError('invalidId') } } };
         if (!sessionHasApiCredentials()) {
           await delay(90);
           syncTourismAdRow(id, { isPinned: false, carouselPosition: null });
           const row = tourismAdsState.find((r) => r.id === id);
-          if (!row) return { error: { status: 404, data: 'Not found' } };
+          if (!row) return { error: { status: 404, data: { message: tError('notFound') } } };
           return { data: row };
         }
         const res = await baseQueryWithReauth(
@@ -1793,7 +1794,7 @@ export const adminApi = createApi({
           }
           const row = auditLogsState.find((r) => r.id === id);
           if (row) return { data: adminAuditLogDetailSchema.parse({ ...row }) };
-          return { error: { status: 404, data: 'Not found' } };
+          return { error: { status: 404, data: { message: tError('notFound') } } };
         };
 
         if (shouldUseMockReads()) return resolveFromMock();
@@ -1818,7 +1819,7 @@ export const adminApi = createApi({
       invalidatesTags: ['AdminActions', 'AuditLogs'],
       async queryFn(body, api, extraOptions) {
         if (body === null || typeof body !== 'object' || Array.isArray(body)) {
-          return { error: { status: 400, data: { message: 'Body must be a JSON object' } } };
+          return { error: { status: 400, data: { message: tError('bodyMustBeObject') } } };
         }
         if (!sessionHasApiCredentials()) {
           await delay(100);
@@ -2021,7 +2022,7 @@ export const adminApi = createApi({
         const localParsed = localRow ? adminUserDetailSchema.safeParse(localRow) : null;
 
         const resolveFromMock = (): { data: (typeof userDetailsState)[string] } | { error: { status: number; data: unknown } } => {
-          if (!localParsed?.success) return { error: { status: 404, data: 'Not found' } };
+          if (!localParsed?.success) return { error: { status: 404, data: { message: tError('notFound') } } };
           return { data: localParsed.data };
         };
 
@@ -2136,7 +2137,7 @@ export const adminApi = createApi({
         const localRow = eventsState.find((e) => e.id === id);
 
         const resolveFromMock = (): { data: AdminEventDetail } | { error: { status: number; data: unknown } } => {
-          if (!localRow) return { error: { status: 404, data: 'Not found' } };
+          if (!localRow) return { error: { status: 404, data: { message: tError('notFound') } } };
           try {
             return {
               data: mapAdminEventDetailFromApi({
@@ -2564,14 +2565,14 @@ export const adminApi = createApi({
     uploadAdminProfileImage: builder.mutation<AdminProfileImageUploadResult, File>({
       async queryFn(file, api, extraOptions) {
         if (!file || !(file instanceof File)) {
-          return { error: { status: 400, data: { message: 'Image file is required' } } };
+          return { error: { status: 400, data: { message: tError('imageRequired') } } };
         }
         const allowed = PROFILE_IMAGE_ACCEPT.split(',');
         if (file.type && !allowed.includes(file.type)) {
-          return { error: { status: 400, data: { message: 'Use JPEG, PNG, GIF, or WebP.' } } };
+          return { error: { status: 400, data: { message: tError('imageTypeInvalid') } } };
         }
         if (file.size > PROFILE_IMAGE_MAX_BYTES) {
-          return { error: { status: 400, data: { message: 'Image must be 4 MB or smaller.' } } };
+          return { error: { status: 400, data: { message: tError('imageTooLarge') } } };
         }
         if (!sessionHasApiCredentials()) {
           await delay(120);
@@ -2720,10 +2721,10 @@ export const adminApi = createApi({
     >({
       async queryFn({ file, context }, api, extraOptions) {
         if (!file || !(file instanceof File)) {
-          return { error: { status: 400, data: { message: 'File is required' } } };
+          return { error: { status: 400, data: { message: tError('fileRequired') } } };
         }
         if (!context?.trim()) {
-          return { error: { status: 400, data: { message: 'Upload context is required' } } };
+          return { error: { status: 400, data: { message: tError('uploadContextRequired') } } };
         }
         if (!sessionHasApiCredentials()) {
           await delay(120);
@@ -3108,7 +3109,7 @@ export const adminApi = createApi({
         if (!sessionHasApiCredentials()) {
           await delay(90);
           const thread = supportDetailsState[threadId];
-          if (!thread) return { error: { status: 404, data: 'Not found' } };
+          if (!thread) return { error: { status: 404, data: { message: tError('notFound') } } };
           const sentAt = new Date().toISOString();
           const msg = {
             id: `m-${Date.now()}`,
@@ -3243,7 +3244,7 @@ export const adminApi = createApi({
         const localParsed = localRow ? supportThreadDetailSchema.safeParse(localRow) : null;
 
         const resolveFromMock = (): { data: (typeof supportDetailsState)[string] } | { error: { status: number; data: unknown } } => {
-          if (!localParsed?.success) return { error: { status: 404, data: 'Not found' } };
+          if (!localParsed?.success) return { error: { status: 404, data: { message: tError('notFound') } } };
           return { data: localParsed.data };
         };
 

@@ -6,6 +6,8 @@ import {
   type SessionUser,
   type SignInFailureReason,
 } from '@/contexts/adminAuthContext';
+import { buildApiHeaders } from '@/lib/apiHeaders';
+import { tCommon } from '@/lib/i18nMessage';
 import { disconnectEcho } from '@/lib/realtime/echo';
 import {
   clearPersistedSession,
@@ -34,7 +36,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (allowDemoAuth() && resolveDemoAdmin(email)) {
       const nextUser: SessionUser = {
         email,
-        name: email.split('@')[0] ?? 'Admin',
+        name: email.split('@')[0] ?? tCommon('appNameAdmin'),
         role: 'admin',
       };
       const session: PersistedAdminSessionV2 = {
@@ -68,10 +70,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       res = await fetch(`${base}/api/v1/admin/auth/login`, {
         method: 'POST',
-        headers: {
-          Accept: 'application/json',
-          'Content-Type': 'application/json',
-        },
+        headers: buildApiHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify(body),
       });
     } catch {

@@ -81,13 +81,13 @@ export type TalentProfile = z.infer<typeof talentProfileSchema>;
 export const talentProfilesListSchema = z.array(talentProfileSchema);
 
 export const rejectTalentProfileSchema = z.object({
-  reason: z.string().trim().min(3, 'Explain what needs to change'),
+  reason: z.string().trim().min(3, 'validation.explainChanges'),
 });
 
 export type RejectTalentProfileInput = z.infer<typeof rejectTalentProfileSchema>;
 
 export const rejectGovernmentIdSchema = z.object({
-  reason: z.string().trim().min(3, 'Explain why the ID was rejected'),
+  reason: z.string().trim().min(3, 'validation.explainIdRejected'),
 });
 
 export type RejectGovernmentIdInput = z.infer<typeof rejectGovernmentIdSchema>;

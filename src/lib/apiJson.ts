@@ -3,6 +3,8 @@
  * Used by live reads in `adminApi.ts` and future `adminMappers`.
  */
 
+import { tError } from '@/lib/i18nMessage';
+
 export class ApiJsonError extends Error {
   constructor(
     message: string,
@@ -23,7 +25,7 @@ function isPlainObject(v: unknown): v is Record<string, unknown> {
  */
 export function unwrapApiJson(json: unknown): unknown {
   if (json === null || json === undefined) {
-    throw new ApiJsonError('API JSON was null or undefined', 'invalid_json_root');
+    throw new ApiJsonError(tError('apiJson.nullRoot'), 'invalid_json_root');
   }
   if (!isPlainObject(json)) return json;
   if ('data' in json && json.data !== undefined) return json.data;
@@ -33,7 +35,7 @@ export function unwrapApiJson(json: unknown): unknown {
 /** After `unwrapApiJson`, require a non-null object record (not an array). */
 export function asObject(value: unknown): Record<string, unknown> {
   if (!isPlainObject(value)) {
-    throw new ApiJsonError('Expected JSON object', 'expected_object', { cause: value });
+    throw new ApiJsonError(tError('apiJson.expectedObject'), 'expected_object', { cause: value });
   }
   return value;
 }
@@ -41,7 +43,7 @@ export function asObject(value: unknown): Record<string, unknown> {
 /** After `unwrapApiJson`, require an array. */
 export function asArray(value: unknown): unknown[] {
   if (!Array.isArray(value)) {
-    throw new ApiJsonError('Expected JSON array', 'expected_array', { cause: value });
+    throw new ApiJsonError(tError('apiJson.expectedArray'), 'expected_array', { cause: value });
   }
   return value;
 }

@@ -1,0 +1,89 @@
+{
+  "eyebrow": "Trust & safety",
+  "notifyActionFailed": "Action failed.",
+  "listings": {
+    "title": "Listing moderation",
+    "subtitle": "Queue aligned to Postman: <1>claim</1>, <2>release</2>, <3>approve</3>, <4>reject</4>, and <5>escalate</5>.",
+    "queueTitle": "Queue",
+    "searchPlaceholder": "Search listing, owner, flag reason…",
+    "empty": "No listings match your search and filters.",
+    "columns": {
+      "listing": "Listing",
+      "kind": "Kind",
+      "owner": "Owner",
+      "flag": "Flag",
+      "status": "Status",
+      "actions": "Actions column"
+    },
+    "filters": {
+      "allKinds": "All kinds",
+      "allStates": "All queue states"
+    },
+    "kind": {
+      "talent": "Talent",
+      "vendor": "Vendor"
+    },
+    "status": {
+      "queued": "Queued",
+      "claimed": "Claimed",
+      "actioned": "Actioned",
+      "rejected": "Rejected",
+      "escalated": "Escalated"
+    },
+    "actions": {
+      "claim": "Claim",
+      "release": "Release",
+      "reject": "Reject",
+      "escalate": "Escalate",
+      "approve": "Approve",
+      "forListing": "Actions for listing case {{id}}"
+    },
+    "notify": {
+      "claimed": "Claimed.",
+      "released": "Released.",
+      "rejected": "Rejected.",
+      "escalated": "Escalated.",
+      "approved": "Approved / reviewed."
+    }
+  },
+  "ratings": {
+    "title": "Ratings oversight",
+    "subtitle": "Read from <1>GET /api/v1/admin/ratings</1>; hide, restore, and delete map to Postman POSTs on each rating id.",
+    "recentTitle": "Recent ratings",
+    "searchPlaceholder": "Search target, author, comment…",
+    "empty": "No ratings match your search and filters.",
+    "columns": {
+      "target": "Target",
+      "author": "Author",
+      "stars": "Stars",
+      "state": "State",
+      "comment": "Comment",
+      "actions": "Actions column"
+    },
+    "filters": {
+      "allStars": "All star ratings",
+      "stars5": "5 stars only",
+      "stars4Plus": "4+ stars",
+      "stars3Plus": "3+ stars",
+      "stars2Plus": "2+ stars",
+      "stars1Plus": "1+ stars",
+      "allModeration": "All moderation states"
+    },
+    "moderationState": {
+      "visible": "Visible",
+      "hidden": "Hidden",
+      "deleted": "Deleted"
+    },
+    "actions": {
+      "hide": "Hide",
+      "restore": "Restore",
+      "delete": "Delete",
+      "forRating": "Actions for rating {{id}}"
+    },
+    "notify": {
+      "hidden": "Rating hidden.",
+      "restored": "Rating restored.",
+      "deleted": "Rating marked deleted."
+    }
+  }
+}

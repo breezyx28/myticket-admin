@@ -3,18 +3,16 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { StatBubble } from '@/components/ui/StatBubble';
 import { AdminSection } from '@/components/layout/AdminSection';
 import { useCountUp } from '@/hooks/useCountUp';
+import { formatDateTime, formatNumber } from '@/lib/localeFormat';
 import {
   useGetAdminHealthQuery,
   useGetDashboardCountersQuery,
   useGetEventsQuery,
   useGetPendingActionsQuery,
 } from '@/services/adminApi';
+import { Trans, useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { Activity, ArrowRight, Cpu, Radio } from 'lucide-react';
-
-function formatInt(n: number) {
-  return n.toLocaleString();
-}
 
 function healthStatusTone(status: string): string {
   const s = status.toLowerCase();
@@ -24,12 +22,14 @@ function healthStatusTone(status: string): string {
 }
 
 export function DashboardHomePage() {
+  const { t } = useTranslation('dashboard');
   const counters = useGetDashboardCountersQuery();
   const pending = useGetPendingActionsQuery();
   const events = useGetEventsQuery();
   const health = useGetAdminHealthQuery();
 
   const c = counters.data;
+  const empty = t('common:none');
 
   const usersTotal = useCountUp(c?.usersTotal ?? null);
   const usersSuspended = useCountUp(c?.usersSuspended ?? null);
@@ -46,54 +46,72 @@ export function DashboardHomePage() {
   return (
     <div className="space-y-12">
       <div>
-        <p className="text-[11px] font-extrabold uppercase tracking-[0.16em] text-ink-40">Dashboard</p>
-        <h1 className="mt-1 text-4xl font-extrabold tracking-tight text-ink">Platform snapshot</h1>
+        <p className="text-[11px] font-extrabold uppercase tracking-[0.16em] text-ink-40">{t('home.eyebrow')}</p>
+        <h1 className="mt-1 text-4xl font-extrabold tracking-tight text-ink">{t('home.title')}</h1>
         <p className="mt-2 max-w-2xl text-[15px] leading-relaxed text-ink-60">
-          Operational counters from <span className="font-mono text-ink">GET /api/v1/admin/dashboard/counters</span> —
-          same underlying signals as summary, formatted for executive scanning.
+          <Trans
+            i18nKey="home.subtitle"
+            components={[<span key="1" className="font-mono text-ink" />]}
+          />
         </p>
         {counters.isError ? (
           <p className="mt-3 rounded-xl bg-coral/15 px-4 py-3 text-[13px] font-semibold text-ink">
-            Could not load dashboard counters from the API.
+            {t('home.countersError')}
           </p>
         ) : null}
       </div>
 
       <AdminSection
-        eyebrow="Operations"
-        title="Dashboard counters"
-        description="Users, events, support, moderation, roles, and payouts — aligned to the admin API handoff."
+        eyebrow={t('sections.operations.eyebrow')}
+        title={t('sections.operations.title')}
+        description={t('sections.operations.description')}
       >
-        {counters.isLoading ? <p className="text-sm text-ink-60">Loading counters…</p> : null}
+        {counters.isLoading ? <p className="text-sm text-ink-60">{t('home.loadingCounters')}</p> : null}
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <StatBubble label="Users (total)" value={c ? formatInt(usersTotal) : '—'} color="bg-ink text-white" />
-          <StatBubble label="Users suspended" value={c ? formatInt(usersSuspended) : '—'} color="bg-lemon text-ink" />
           <StatBubble
-            label="Events pending approval"
-            value={c ? formatInt(eventsPendingApproval) : '—'}
-            color="bg-mint text-ink"
-          />
-          <StatBubble label="Events published" value={c ? formatInt(eventsPublished) : '—'} color="bg-coral text-white" />
-          <StatBubble
-            label="Support cases (open pipeline)"
-            value={c ? formatInt(supportCasesOpenPipeline) : '—'}
+            label={t('counters.usersTotal')}
+            value={c ? formatNumber(usersTotal) : empty}
             color="bg-ink text-white"
           />
           <StatBubble
-            label="Listing moderation (queued / in review)"
-            value={c ? formatInt(listingModerationQueuedOrInReview) : '—'}
+            label={t('counters.usersSuspended')}
+            value={c ? formatNumber(usersSuspended) : empty}
             color="bg-lemon text-ink"
           />
           <StatBubble
-            label="Role applications submitted"
-            value={c ? formatInt(roleApplicationsSubmitted) : '—'}
+            label={t('counters.eventsPendingApproval')}
+            value={c ? formatNumber(eventsPendingApproval) : empty}
             color="bg-mint text-ink"
           />
-          <StatBubble label="Payouts held" value={c ? formatInt(payoutsHeld) : '—'} color="bg-coral text-white" />
+          <StatBubble
+            label={t('counters.eventsPublished')}
+            value={c ? formatNumber(eventsPublished) : empty}
+            color="bg-coral text-white"
+          />
+          <StatBubble
+            label={t('counters.supportCasesOpenPipeline')}
+            value={c ? formatNumber(supportCasesOpenPipeline) : empty}
+            color="bg-ink text-white"
+          />
+          <StatBubble
+            label={t('counters.listingModerationQueuedOrInReview')}
+            value={c ? formatNumber(listingModerationQueuedOrInReview) : empty}
+            color="bg-lemon text-ink"
+          />
+          <StatBubble
+            label={t('counters.roleApplicationsSubmitted')}
+            value={c ? formatNumber(roleApplicationsSubmitted) : empty}
+            color="bg-mint text-ink"
+          />
+          <StatBubble
+            label={t('counters.payoutsHeld')}
+            value={c ? formatNumber(payoutsHeld) : empty}
+            color="bg-coral text-white"
+          />
           <Link to="/tourism-ads?tab=review" className="block">
             <StatBubble
-              label="Tourism ads (pending review)"
-              value={c ? formatInt(tourismAdsPendingReview) : '—'}
+              label={t('counters.tourismAdsPendingReview')}
+              value={c ? formatNumber(tourismAdsPendingReview) : empty}
               color="bg-ink text-white"
             />
           </Link>
@@ -102,27 +120,27 @@ export function DashboardHomePage() {
 
       <AdminSection
         divider
-        eyebrow="Reliability"
-        title="Operational health"
-        description="Live status from GET /api/v1/admin/health when API read mode is enabled."
+        eyebrow={t('sections.reliability.eyebrow')}
+        title={t('sections.reliability.title')}
+        description={t('sections.reliability.description')}
       >
         <div className="grid gap-4 md:grid-cols-3">
           <Card className="rounded-3xl border-ink-10 shadow-card-sm">
             <CardHeader className="pb-2">
               <div className="flex items-center gap-2 text-coral">
                 <Radio size={18} strokeWidth={2} />
-                <CardTitle className="text-base font-bold">API availability</CardTitle>
+                <CardTitle className="text-base font-bold">{t('health.apiAvailability')}</CardTitle>
               </div>
               <CardDescription>
                 {health.data?.checkedAt
-                  ? `Checked ${new Date(health.data.checkedAt).toLocaleString()}`
-                  : 'Admin health endpoint'}
+                  ? t('health.checkedAt', { date: formatDateTime(health.data.checkedAt) })
+                  : t('health.adminHealthEndpoint')}
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {health.isLoading ? <p className="text-sm text-ink-60">Loading…</p> : null}
+              {health.isLoading ? <p className="text-sm text-ink-60">{t('common:loading')}</p> : null}
               {health.isError ? (
-                <p className="text-[13px] font-semibold text-coral">Health check unavailable.</p>
+                <p className="text-[13px] font-semibold text-coral">{t('health.unavailable')}</p>
               ) : null}
               {health.data ? (
                 <>
@@ -140,17 +158,17 @@ export function DashboardHomePage() {
             <CardHeader className="pb-2">
               <div className="flex items-center gap-2 text-ink">
                 <Cpu size={18} strokeWidth={2} />
-                <CardTitle className="text-base font-bold">Support pipeline</CardTitle>
+                <CardTitle className="text-base font-bold">{t('health.supportPipeline')}</CardTitle>
               </div>
-              <CardDescription>Open cases from dashboard counters</CardDescription>
+              <CardDescription>{t('health.supportPipelineDescription')}</CardDescription>
             </CardHeader>
             <CardContent>
               <p className="font-mono text-3xl font-black text-ink">
-                {c ? formatInt(supportCasesOpenPipeline) : '—'}
+                {c ? formatNumber(supportCasesOpenPipeline) : empty}
               </p>
               <p className="mt-2 text-[13px] font-semibold text-ink-60">
                 <Link to="/support" className="font-bold text-coral hover:underline">
-                  Open support inbox →
+                  {t('health.openSupportInbox')}
                 </Link>
               </p>
             </CardContent>
@@ -159,17 +177,17 @@ export function DashboardHomePage() {
             <CardHeader className="pb-2">
               <div className="flex items-center gap-2 text-ink-60">
                 <Activity size={18} strokeWidth={2} />
-                <CardTitle className="text-base font-bold">Risk queue</CardTitle>
+                <CardTitle className="text-base font-bold">{t('health.riskQueue')}</CardTitle>
               </div>
-              <CardDescription>Trust & safety backlog</CardDescription>
+              <CardDescription>{t('health.riskQueueDescription')}</CardDescription>
             </CardHeader>
             <CardContent>
               <p className="font-mono text-3xl font-black text-amber">
-                {c ? formatInt(listingModerationQueuedOrInReview) : '—'}
+                {c ? formatNumber(listingModerationQueuedOrInReview) : empty}
               </p>
               <p className="mt-2 text-[13px] font-semibold text-ink-60">
                 <Link to="/moderation/listings" className="font-bold text-coral hover:underline">
-                  Open listings moderation →
+                  {t('health.openListingsModeration')}
                 </Link>
               </p>
             </CardContent>
@@ -179,16 +197,16 @@ export function DashboardHomePage() {
 
       <AdminSection
         divider
-        eyebrow="Live catalog"
-        title="Spotlight events"
-        description="Recent events from GET /api/v1/admin/events."
+        eyebrow={t('sections.catalog.eyebrow')}
+        title={t('sections.catalog.title')}
+        description={t('sections.catalog.description')}
       >
-        {events.isLoading ? <p className="text-sm text-ink-60">Loading…</p> : null}
+        {events.isLoading ? <p className="text-sm text-ink-60">{t('common:loading')}</p> : null}
         {events.isError ? (
-          <p className="text-sm font-semibold text-coral">Could not load events from the API.</p>
+          <p className="text-sm font-semibold text-coral">{t('home.eventsError')}</p>
         ) : null}
         {!events.isLoading && !events.isError && spotlight.length === 0 ? (
-          <p className="text-sm text-ink-60">No events returned.</p>
+          <p className="text-sm text-ink-60">{t('home.noEvents')}</p>
         ) : null}
         <div className="grid gap-6 lg:grid-cols-3">
           {spotlight.map((ev) => (
@@ -196,22 +214,22 @@ export function DashboardHomePage() {
           ))}
         </div>
         <Link to="/events" className="mt-4 inline-flex text-[14px] font-bold text-coral hover:underline">
-          Browse full catalog →
+          {t('home.browseCatalog')}
         </Link>
       </AdminSection>
 
       <AdminSection
         divider
-        eyebrow="Queues"
-        title="Pending actions"
-        description="Grouped buckets from GET /api/v1/admin/dashboard/pending-actions."
+        eyebrow={t('sections.queues.eyebrow')}
+        title={t('sections.queues.title')}
+        description={t('sections.queues.description')}
       >
-        {pending.isLoading ? <p className="text-sm text-ink-60">Loading…</p> : null}
+        {pending.isLoading ? <p className="text-sm text-ink-60">{t('common:loading')}</p> : null}
         {pending.isError ? (
-          <p className="text-sm font-semibold text-coral">Could not load pending actions from the API.</p>
+          <p className="text-sm font-semibold text-coral">{t('home.pendingActionsError')}</p>
         ) : null}
         {!pending.isLoading && !pending.isError && (pending.data?.length ?? 0) === 0 ? (
-          <p className="text-sm text-ink-60">No pending actions in the queue.</p>
+          <p className="text-sm text-ink-60">{t('home.noPendingActions')}</p>
         ) : null}
         <div className="grid gap-4 md:grid-cols-1 xl:grid-cols-3">
           {pending.data?.map((item) => (
@@ -224,9 +242,9 @@ export function DashboardHomePage() {
                 <img src={item.imageUrl} alt="" className="h-full w-full object-cover transition-transform group-hover:scale-[1.02]" />
                 <div className="absolute left-3 top-3 rounded-full bg-white/95 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wide text-ink">
                   {item.priority === 'high' ? (
-                    <span className="text-coral">High priority</span>
+                    <span className="text-coral">{t('pending.highPriority')}</span>
                   ) : (
-                    <span className="text-ink-60">Standard</span>
+                    <span className="text-ink-60">{t('pending.standard')}</span>
                   )}
                 </div>
               </div>
@@ -237,7 +255,7 @@ export function DashboardHomePage() {
                   <p className="mt-2 text-[12px] font-bold text-mint">{item.dueLabel}</p>
                 </div>
                 <span className="mt-auto inline-flex items-center gap-2 text-[13px] font-bold text-coral">
-                  Open workflow
+                  {t('pending.openWorkflow')}
                   <ArrowRight size={16} strokeWidth={2} />
                 </span>
               </div>

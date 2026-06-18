@@ -1,0 +1,162 @@
+{
+  "noData": "لا توجد بيانات.",
+  "notifyActionFailed": "فشل الإجراء.",
+  "feeType": {
+    "percent": "نسبة مئوية",
+    "flat": "مبلغ ثابت",
+    "combined": "مختلط"
+  },
+  "feePayer": {
+    "buyer": "المشتري (يُضاف فوق السعر)",
+    "organizer": "المنظم (يُخصم من الإيرادات)"
+  },
+  "payoutStatus": {
+    "pending": "قيد الانتظار",
+    "approved": "موافق عليه",
+    "processing": "قيد المعالجة",
+    "paid": "مدفوع",
+    "failed": "فشل",
+    "rejected": "مرفوض",
+    "unknown": "أخرى"
+  },
+  "fees": {
+    "title": "إعداد الرسوم",
+    "subtitle": "النسبة المئوية والمبلغ الثابت ودافع الرسوم وعمولة المزاد وحصة الطرف الثالث — تُحفظ عبر واجهة المالية الإدارية عند تسجيل الدخول برمز.",
+    "rulesTitle": "القواعد",
+    "feeTypeLabel": "نوع الرسوم",
+    "percentLabel": "النسبة (%)",
+    "flatSarLabel": "رسوم ثابتة (ر.س)",
+    "payerLabel": "دافع الرسوم",
+    "auctionCommissionLabel": "عمولة المزاد (%)",
+    "thirdPartyShareLabel": "حصة الطرف الثالث (%)",
+    "notifySaved": "تم حفظ إعداد الرسوم.",
+    "notifySaveFailed": "تعذر حفظ إعداد الرسوم."
+  },
+  "refundBreakdowns": {
+    "title": "تفصيل المبالغ المستردة",
+    "subtitle": "حجم الاسترداد المجمع من <mono>GET /api/v1/admin/finance/refund-breakdowns</mono>. يتم تطبيع شكل الصفوف من أنماط قوائم Laravel الشائعة؛ تأكد من أسماء الحقول مع واجهة API عند الإطلاق.",
+    "totalTitle": "إجمالي المسترد (المُبلَّغ)",
+    "totalHint": "إذا لم تُرجع الواجهة إجمالياً، فهذا الرقم هو مجموع صفوف التفصيل أدناه.",
+    "bySegmentTitle": "حسب الشريحة",
+    "viewRefundRequests": "عرض طلبات الاسترداد ←",
+    "columns": {
+      "segment": "الشريحة",
+      "refunds": "الاستردادات",
+      "amount": "المبلغ (ر.س)",
+      "share": "الحصة"
+    }
+  },
+  "payouts": {
+    "title": "مدفوعات المنظمين",
+    "subtitle": "قائمة الانتظار من <mono>GET /api/v1/admin/finance/payouts</mono> مع إجراءات دورة الحياة في Postman (موافقة ← معالجة ← مدفوع / فشل، أو رفض). قد يتضمن الرفض <mono>reason</mono> اختيارياً في جسم JSON؛ <mono>{}</mono> فارغ صالح.",
+    "cardTitle": "المدفوعات",
+    "searchPlaceholder": "بحث بالمعرّف أو المنظم أو الفعالية أو المرجع…",
+    "allStatuses": "جميع الحالات",
+    "noMatches": "لا توجد مدفوعات تطابق البحث والفلاتر.",
+    "columns": {
+      "payout": "الدفعة",
+      "organizer": "المنظم",
+      "event": "الفعالية",
+      "status": "الحالة",
+      "amount": "المبلغ (ر.س)",
+      "created": "تاريخ الإنشاء"
+    },
+    "approve": "موافقة",
+    "reject": "رفض",
+    "markProcessing": "تعيين قيد المعالجة",
+    "markPaid": "تعيين مدفوع",
+    "markFailed": "تعيين فاشل",
+    "reviewInApi": "مراجعة في API",
+    "confirmReject": "رفض هذه الدفعة؟",
+    "rejectReasonPrompt": "سبب الرفض (اختياري):",
+    "confirmMarkFailed": "تعيين الدفعة كفاشلة؟",
+    "notifyApproved": "تمت الموافقة على الدفعة.",
+    "notifyRejected": "تم رفض الدفعة.",
+    "notifyProcessing": "تم التعيين قيد المعالجة.",
+    "notifyPaid": "تم التعيين مدفوع.",
+    "notifyFailed": "تم التعيين فاشل."
+  },
+  "financeCompliance": {
+    "title": "الامتثال المالي",
+    "subtitle": "أدوات متوافقة مع Postman: <mono>POST /api/v1/admin/finance/fee-adjustments</mono>، <mono>GET …/finance/organizers/{id}/kyc</mono>، ووثائق <mono>…/approve</mono> / <mono>…/reject</mono>. البيانات الوهمية تستخدم معرّفات المنظمين <mono>{{ids}}</mono>.",
+    "feeAdjustmentTitle": "تعديل الرسوم",
+    "organizerIdLabel": "معرّف المنظم",
+    "amountLabel": "المبلغ (ر.س)",
+    "reasonLabel": "السبب",
+    "referenceLabel": "المرجع (اختياري)",
+    "submitAdjustment": "إرسال التعديل",
+    "defaultReason": "تصحيح رسوم المنصة يدوياً بعد حل النزاع.",
+    "notifyAmountInvalid": "يجب أن يكون المبلغ رقماً.",
+    "notifyAdjustmentSubmitted": "تم إرسال تعديل الرسوم.",
+    "notifyAdjustmentFailed": "تعذر إرسال تعديل الرسوم.",
+    "kycTitle": "اعرف عميلك للمنظم",
+    "kycLoadFailed": "تعذر تحميل اعرف عميلك (تحقق من المعرّف أو استجابة API).",
+    "organizerFallback": "منظم",
+    "noDocuments": "لم تُرجع وثائق لهذا المنظم.",
+    "columns": {
+      "document": "الوثيقة",
+      "type": "النوع",
+      "status": "الحالة",
+      "uploaded": "تاريخ الرفع"
+    },
+    "rejectReasonPrompt": "سبب الرفض (اختياري)",
+    "notifyDocApproved": "تمت الموافقة على الوثيقة.",
+    "notifyDocRejected": "تم رفض الوثيقة."
+  },
+  "notifications": {
+    "title": "الإشعارات",
+    "subtitle": "أعلام القنوات النشطة من <mono>GET …/notification-settings</mono> (الجذر <mono>active</mono> / <mono>history</mono>)، تُحفظ بـ <mono>PATCH …/notification-settings</mono> (جسم snake_case). العروض التشغيلية: <mono>GET …/notifications/recent</mono>، <mono>GET …/notifications/delivery-log</mono>، و<mono>POST …/notifications/test</mono> (الجسم يحدده الخادم).",
+    "channelsTitle": "القنوات",
+    "loadingSettings": "جارٍ تحميل الإعدادات…",
+    "channelEmail": "البريد الإلكتروني",
+    "channelInApp": "داخل التطبيق",
+    "channelPush": "إشعار فوري",
+    "channelSms": "رسالة نصية",
+    "reminder1Label": "تذكير 1 (ساعات)",
+    "reminder2Label": "تذكير 2 (ساعات)",
+    "notifySaved": "تم حفظ إعدادات الإشعارات.",
+    "notifySaveFailed": "تعذر حفظ إعدادات الإشعارات.",
+    "recentTitle": "الإشعارات الأخيرة",
+    "recentSearchPlaceholder": "بحث بالمعرّف أو العنوان أو النص أو القناة…",
+    "noSearchMatches": "لا توجد صفوف تطابق البحث.",
+    "recentColumns": {
+      "time": "الوقت",
+      "title": "العنوان",
+      "channel": "القناة",
+      "read": "مقروء"
+    },
+    "deliveryTitle": "سجل التسليم",
+    "deliverySearchPlaceholder": "بحث بالمعرّف أو القناة أو الحالة أو المستلم أو القالب…",
+    "deliveryColumns": {
+      "sent": "أُرسل",
+      "status": "الحالة",
+      "channel": "القناة",
+      "recipient": "المستلم",
+      "template": "القالب",
+      "error": "خطأ"
+    },
+    "testTitle": "إرسال إشعار تجريبي",
+    "testHint": "أرسل كائناً تتوقعه واجهة API (غالباً <mono>{}</mono> فارغ). يُرفض JSON غير الصالح قبل استدعاء الشبكة.",
+    "testSubmit": "POST /notifications/test",
+    "notifyJsonRoot": "يجب أن تكون قيمة JSON الجذرية كائناً.",
+    "notifyInvalidJson": "JSON غير صالح.",
+    "notifyTestSent": "تم إرسال طلب الإشعار التجريبي.",
+    "notifyTestFailed": "فشل الإشعار التجريبي."
+  },
+  "systemStatus": {
+    "title": "حالة النظام",
+    "subtitle": "<mono>GET /api/v1/admin/health</mono> و<mono>GET /api/v1/admin/version</mono> — لقطات تشغيلية للقراءة فقط عند تفعيل وضع قراءة API وتوفر رمز المصادقة.",
+    "refreshHealth": "تحديث الصحة",
+    "refreshVersion": "تحديث الإصدار",
+    "healthTitle": "الصحة",
+    "healthLoadFailed": "تعذر تحميل الصحة.",
+    "statusLabel": "الحالة:",
+    "checkedAt": "تم الفحص: {{time}}",
+    "versionTitle": "الإصدار",
+    "versionLoadFailed": "تعذر تحميل الإصدار.",
+    "versionLabel": "الإصدار",
+    "commitLabel": "الالتزام",
+    "buildLabel": "البناء",
+    "environmentLabel": "البيئة"
+  }
+}

@@ -5,6 +5,7 @@ import { PROFILE_IMAGE_ACCEPT, PROFILE_IMAGE_MAX_BYTES } from '@/schemas/adminSe
 import { useUploadAdminProfileImageMutation } from '@/services/adminApi';
 import { Camera } from '@phosphor-icons/react';
 import { useRef, useState } from 'react';
+import { Trans, useTranslation } from 'react-i18next';
 
 type ProfileAvatarUploadProps = {
   avatarUrl?: string;
@@ -12,21 +13,10 @@ type ProfileAvatarUploadProps = {
   onUploaded: (avatarUrl: string, syncedProfiles?: string[]) => void;
 };
 
-function initialsFromName(name: string): string {
+function initialsFromName(name: string, fallback: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean);
   if (parts.length >= 2) return `${parts[0]![0] ?? ''}${parts[1]![0] ?? ''}`.toUpperCase();
-  return (parts[0]?.slice(0, 2) ?? 'AD').toUpperCase();
-}
-
-function validateProfileImage(file: File): string | null {
-  const allowed = PROFILE_IMAGE_ACCEPT.split(',');
-  if (file.type && !allowed.includes(file.type)) {
-    return 'Use JPEG, PNG, GIF, or WebP.';
-  }
-  if (file.size > PROFILE_IMAGE_MAX_BYTES) {
-    return 'Image must be 4 MB or smaller.';
-  }
-  return null;
+  return (parts[0]?.slice(0, 2) ?? fallback).toUpperCase();
 }
 
 export function ProfileAvatarUpload({
@@ -34,13 +24,25 @@ export function ProfileAvatarUpload({
   displayName,
   onUploaded,
 }: ProfileAvatarUploadProps) {
+  const { t } = useTranslation(['profile', 'common']);
   const fileRef = useRef<HTMLInputElement>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [syncNote, setSyncNote] = useState<string | null>(null);
   const [upload, { isLoading }] = useUploadAdminProfileImageMutation();
 
   const shownUrl = previewUrl ?? avatarUrl;
-  const initials = initialsFromName(displayName);
+  const initials = initialsFromName(displayName, t('common:appNameAdmin').slice(0, 2));
+
+  function validateProfileImage(file: File): string | null {
+    const allowed = PROFILE_IMAGE_ACCEPT.split(',');
+    if (file.type && !allowed.includes(file.type)) {
+      return t('profile:avatar.invalidType');
+    }
+    if (file.size > PROFILE_IMAGE_MAX_BYTES) {
+      return t('profile:avatar.tooLarge');
+    }
+    return null;
+  }
 
   async function onFileSelected(files: FileList | null) {
     const file = files?.[0];
@@ -61,12 +63,12 @@ export function ProfileAvatarUpload({
       onUploaded(result.avatarUrl, result.syncedProfiles);
       setPreviewUrl(null);
       if (result.syncedProfiles?.length) {
-        setSyncNote(`Synced to ${result.syncedProfiles.join(', ')} profiles.`);
+        setSyncNote(t('profile:avatar.syncedTo', { profiles: result.syncedProfiles.join(', ') }));
       }
-      notifySuccess('Profile photo updated.');
+      notifySuccess(t('profile:avatar.notifyUpdated'));
     } catch (err) {
       setPreviewUrl(null);
-      notifyError(getApiErrorMessage(err, 'Could not upload profile photo.'));
+      notifyError(getApiErrorMessage(err, t('profile:avatar.notifyUploadFailed')));
     } finally {
       URL.revokeObjectURL(localPreview);
       if (fileRef.current) fileRef.current.value = '';
@@ -92,11 +94,13 @@ export function ProfileAvatarUpload({
 
       <div className="min-w-0 flex-1 space-y-3">
         <div>
-          <p className="text-[15px] font-extrabold text-ink">Profile photo</p>
+          <p className="text-[15px] font-extrabold text-ink">{t('profile:avatar.title')}</p>
           <p className="mt-1 max-w-[42ch] text-[13px] leading-relaxed text-ink-60">
-            Uploads to{' '}
-            <span className="font-mono text-[12px] text-ink">POST /api/v1/admin/me/profile-image</span>. JPEG, PNG,
-            GIF, or WebP up to 4 MB.
+            <Trans
+              ns="profile"
+              i18nKey="avatar.description"
+              components={{ mono: <span className="font-mono text-[12px] text-ink" /> }}
+            />
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -108,7 +112,7 @@ export function ProfileAvatarUpload({
             onClick={() => fileRef.current?.click()}
           >
             <Camera size={16} weight="bold" className="mr-1.5" />
-            {shownUrl ? 'Replace photo' : 'Upload photo'}
+            {shownUrl ? t('profile:avatar.replacePhoto') : t('profile:avatar.uploadPhoto')}
           </Button>
         </div>
         {syncNote ? <p className="text-[12px] font-semibold text-ink-60">{syncNote}</p> : null}

@@ -15,22 +15,29 @@ import {
 } from '@/services/adminApi';
 import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, MapPin, Plus } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Trans, useTranslation } from 'react-i18next';
 import { Link, useSearchParams } from 'react-router-dom';
 import { TourismAdStatusBadge } from './components/TourismAdStatusBadge';
 
 type Tab = 'review' | 'all' | 'carousel';
 
-const TABS: { id: Tab; label: string }[] = [
-  { id: 'review', label: 'Review queue' },
-  { id: 'all', label: 'All ads' },
-  { id: 'carousel', label: 'Carousel' },
+const STATUS_FILTERS: TourismAdStatus[] = [
+  'draft',
+  'pending_review',
+  'published',
+  'rejected',
+  'withdrawn',
+  'archived',
 ];
+
+const SOURCE_FILTERS: TourismAdSource[] = ['guest', 'admin'];
 
 function submitterLabel(ad: TourismAd) {
   return ad.user?.fullName ?? ad.createdBy?.fullName ?? ad.user?.email ?? ad.createdBy?.email ?? '—';
 }
 
 export function TourismAdsPage() {
+  const { t } = useTranslation(['operations', 'common']);
   useTourismAdsRealtime();
   const [searchParams, setSearchParams] = useSearchParams();
   const tab = (searchParams.get('tab') as Tab) || 'review';
@@ -41,6 +48,16 @@ export function TourismAdsPage() {
   const [sourceFilter, setSourceFilter] = useState<'all' | TourismAdSource>('all');
   const [carouselBusy, setCarouselBusy] = useState(false);
   const reorderTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const tabs = useMemo(
+    () =>
+      [
+        { id: 'review' as const, label: t('operations:tourismAds.tabs.review') },
+        { id: 'all' as const, label: t('operations:tourismAds.tabs.all') },
+        { id: 'carousel' as const, label: t('operations:tourismAds.tabs.carousel') },
+      ] satisfies { id: Tab; label: string }[],
+    [t],
+  );
 
   const listParams = useMemo(() => {
     if (tab === 'review') {
@@ -113,15 +130,15 @@ export function TourismAdsPage() {
           await reorderCarousel({
             items: ordered.map((ad, index) => ({ id: ad.id, position: index })),
           }).unwrap();
-          notifySuccess('Carousel order saved.');
+          notifySuccess(t('operations:tourismAds.notify.carouselOrderSaved'));
         } catch {
-          notifyError('Could not save carousel order.');
+          notifyError(t('operations:tourismAds.notify.carouselOrderFailed'));
         } finally {
           setCarouselBusy(false);
         }
       }, 450);
     },
-    [reorderCarousel],
+    [reorderCarousel, t],
   );
 
   useEffect(() => {
@@ -145,13 +162,13 @@ export function TourismAdsPage() {
     try {
       if (ad.isPinned) {
         await unpinAd(ad.id).unwrap();
-        notifySuccess('Unpinned from carousel.');
+        notifySuccess(t('operations:tourismAds.notify.unpinned'));
       } else {
         await pinAd({ id: ad.id }).unwrap();
-        notifySuccess('Pinned to carousel.');
+        notifySuccess(t('operations:tourismAds.notify.pinned'));
       }
     } catch {
-      notifyError('Pin action failed.');
+      notifyError(t('operations:tourismAds.notify.pinFailed'));
     }
   }
 
@@ -159,33 +176,38 @@ export function TourismAdsPage() {
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-ink-40">Operations</p>
-          <h1 className="text-3xl font-extrabold text-ink">Tourism ads</h1>
+          <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-ink-40">
+            {t('operations:operationsLabel')}
+          </p>
+          <h1 className="text-3xl font-extrabold text-ink">{t('operations:tourismAds.title')}</h1>
           <p className="mt-2 max-w-2xl text-[14px] text-ink-60">
-            Review guest submissions, manage the directory, and curate the homepage carousel via{' '}
-            <span className="font-mono text-ink">/api/v1/admin/tourism-ads</span>.
+            <Trans
+              ns="operations"
+              i18nKey="tourismAds.subtitle"
+              components={{ mono: <span className="font-mono text-ink" /> }}
+            />
           </p>
         </div>
         <Link to="/tourism-ads/new">
           <Button variant="secondary">
             <Plus size={16} className="mr-1.5" />
-            Publish new ad
+            {t('operations:tourismAds.publishNewAd')}
           </Button>
         </Link>
       </div>
 
       <div className="flex flex-wrap gap-2">
-        {TABS.map((t) => (
+        {tabs.map((tabItem) => (
           <button
-            key={t.id}
+            key={tabItem.id}
             type="button"
-            onClick={() => setTab(t.id)}
+            onClick={() => setTab(tabItem.id)}
             className={cn(
               'rounded-full px-4 py-2 text-[13px] font-bold transition active:scale-[0.98]',
-              tab === t.id ? 'bg-coral text-white' : 'bg-ink-5 text-ink-60 hover:bg-ink-10',
+              tab === tabItem.id ? 'bg-coral text-white' : 'bg-ink-5 text-ink-60 hover:bg-ink-10',
             )}
           >
-            {t.label}
+            {tabItem.label}
           </button>
         ))}
       </div>
@@ -193,16 +215,21 @@ export function TourismAdsPage() {
       {tab === 'carousel' ? (
         <Card className="rounded-3xl border-ink-10 shadow-card-sm">
           <CardHeader>
-            <CardTitle className="text-lg">Pinned carousel</CardTitle>
+            <CardTitle className="text-lg">{t('operations:tourismAds.carousel.title')}</CardTitle>
             <p className="text-[13px] text-ink-60">
-              Reorder with up/down controls — changes debounce to{' '}
-              <span className="font-mono text-ink">PATCH /carousel-order</span>.
+              <Trans
+                ns="operations"
+                i18nKey="tourismAds.carousel.hint"
+                components={{ mono: <span className="font-mono text-ink" /> }}
+              />
             </p>
           </CardHeader>
           <CardContent>
-            {isLoading || isFetching ? <p className="text-sm text-ink-60">Loading carousel…</p> : null}
+            {isLoading || isFetching ? (
+              <p className="text-sm text-ink-60">{t('operations:tourismAds.carousel.loading')}</p>
+            ) : null}
             {!isLoading && carouselOrder.length === 0 ? (
-              <p className="text-sm font-semibold text-ink-60">No pinned published ads yet.</p>
+              <p className="text-sm font-semibold text-ink-60">{t('operations:tourismAds.carousel.empty')}</p>
             ) : null}
             <div className="space-y-3">
               {carouselOrder.map((ad, index) => (
@@ -223,7 +250,9 @@ export function TourismAdsPage() {
                   )}
                   <div className="min-w-0 flex-1">
                     <p className="font-bold text-ink">{ad.locationName}</p>
-                    <p className="text-[12px] text-ink-60">Position {index}</p>
+                    <p className="text-[12px] text-ink-60">
+                      {t('operations:tourismAds.carousel.position', { index })}
+                    </p>
                   </div>
                   <div className="flex flex-wrap gap-2">
                     <Button
@@ -244,18 +273,20 @@ export function TourismAdsPage() {
                     </Button>
                     <Link to={`/tourism-ads/${ad.id}`}>
                       <Button variant="ghost" size="sm">
-                        Open
+                        {t('operations:tourismAds.open')}
                       </Button>
                     </Link>
                     <Button variant="ghost" size="sm" disabled={carouselBusy} onClick={() => togglePin(ad)}>
-                      Unpin
+                      {t('operations:tourismAds.unpin')}
                     </Button>
                   </div>
                 </div>
               ))}
             </div>
             <div className="mt-6 border-t border-ink-10 pt-6">
-              <p className="mb-3 text-[13px] font-bold text-ink">Published ads (pin to carousel)</p>
+              <p className="mb-3 text-[13px] font-bold text-ink">
+                {t('operations:tourismAds.carousel.publishedAdsTitle')}
+              </p>
               <div className="grid gap-3 sm:grid-cols-2">
                 {(data?.items ?? [])
                   .filter((ad) => ad.status === 'published' && !ad.isPinned)
@@ -269,7 +300,7 @@ export function TourismAdsPage() {
                         <p className="font-mono text-[11px] text-ink-40">{ad.id}</p>
                       </div>
                       <Button variant="outline" size="sm" onClick={() => togglePin(ad)}>
-                        Pin
+                        {t('operations:tourismAds.pin')}
                       </Button>
                     </div>
                   ))}
@@ -280,13 +311,17 @@ export function TourismAdsPage() {
       ) : (
         <Card className="rounded-3xl border-ink-10 shadow-card-sm">
           <CardHeader>
-            <CardTitle className="text-lg">{tab === 'review' ? 'Awaiting review' : 'Directory'}</CardTitle>
+            <CardTitle className="text-lg">
+              {tab === 'review'
+                ? t('operations:tourismAds.awaitingReview')
+                : t('operations:tourismAds.directory')}
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <ListFiltersBar
               searchValue={search}
               onSearchChange={setSearch}
-              searchPlaceholder="Search location, submitter, id…"
+              searchPlaceholder={t('operations:tourismAds.searchPlaceholder')}
               className="mb-4"
             >
               {tab === 'all' ? (
@@ -296,30 +331,32 @@ export function TourismAdsPage() {
                     value={statusFilter}
                     onChange={(e) => setStatusFilter(e.target.value as typeof statusFilter)}
                   >
-                    <option value="all">All statuses</option>
-                    <option value="draft">Draft</option>
-                    <option value="pending_review">Pending review</option>
-                    <option value="published">Published</option>
-                    <option value="rejected">Rejected</option>
-                    <option value="withdrawn">Withdrawn</option>
-                    <option value="archived">Archived</option>
+                    <option value="all">{t('operations:tourismAds.allStatuses')}</option>
+                    {STATUS_FILTERS.map((status) => (
+                      <option key={status} value={status}>
+                        {t(`operations:tourismAds.status.${status}`)}
+                      </option>
+                    ))}
                   </select>
                   <select
                     className={filterSelectClassName()}
                     value={sourceFilter}
                     onChange={(e) => setSourceFilter(e.target.value as typeof sourceFilter)}
                   >
-                    <option value="all">All sources</option>
-                    <option value="guest">Guest</option>
-                    <option value="admin">Admin</option>
+                    <option value="all">{t('operations:tourismAds.allSources')}</option>
+                    {SOURCE_FILTERS.map((source) => (
+                      <option key={source} value={source}>
+                        {t(`operations:tourismAds.sourceType.${source}`)}
+                      </option>
+                    ))}
                   </select>
                 </>
               ) : null}
             </ListFiltersBar>
 
-            {isLoading ? <p className="text-sm text-ink-60">Loading…</p> : null}
+            {isLoading ? <p className="text-sm text-ink-60">{t('common:loading')}</p> : null}
             {!isLoading && filtered.length === 0 ? (
-              <p className="text-sm font-semibold text-ink-60">No tourism ads match your filters.</p>
+              <p className="text-sm font-semibold text-ink-60">{t('operations:tourismAds.empty')}</p>
             ) : null}
 
             <div className="space-y-3">
@@ -345,7 +382,7 @@ export function TourismAdsPage() {
                       <p className="text-lg font-bold text-ink">{ad.locationName}</p>
                       <TourismAdStatusBadge status={ad.status} />
                       <span className="rounded-full bg-ink-5 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-ink-60">
-                        {ad.source}
+                        {t(`operations:tourismAds.sourceType.${ad.source}`)}
                       </span>
                     </div>
                     <p className="mt-1 line-clamp-2 text-[13px] text-ink-60">{ad.description}</p>
@@ -360,7 +397,11 @@ export function TourismAdsPage() {
             {data && data.total > data.perPage ? (
               <div className="mt-6 flex items-center justify-between border-t border-ink-10 pt-4">
                 <p className="text-[13px] text-ink-60">
-                  Page {data.currentPage} of {totalPages} · {data.total} total
+                  {t('operations:tourismAds.pagination', {
+                    page: data.currentPage,
+                    totalPages,
+                    total: data.total,
+                  })}
                 </p>
                 <div className="flex gap-2">
                   <Button

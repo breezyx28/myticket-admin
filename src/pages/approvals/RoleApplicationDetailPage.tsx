@@ -11,10 +11,12 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import type { RejectRoleApplicationInput } from '@/schemas/roleApplication.schema';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 
 type RejectForm = RejectRoleApplicationInput;
 
 export function RoleApplicationDetailPage() {
+  const { t } = useTranslation('approvals');
   const { id = '' } = useParams();
   const nav = useNavigate();
   const q = useGetRoleApplicationQuery(id, { skip: !id });
@@ -26,13 +28,13 @@ export function RoleApplicationDetailPage() {
     defaultValues: { reason: '', internalNote: '' },
   });
 
-  if (q.isLoading) return <p className="text-ink-60">Loading…</p>;
+  if (q.isLoading) return <p className="text-ink-60">{t('loading')}</p>;
   if (!q.data) {
     return (
       <div className="rounded-3xl border border-ink-10 bg-white p-8">
-        <p className="font-semibold text-ink">Application not found.</p>
+        <p className="font-semibold text-ink">{t('roleApplicationDetail.notFound')}</p>
         <Link to="/approvals/roles" className="mt-4 inline-block text-coral hover:underline">
-          Back to queue
+          {t('roleApplicationDetail.backToQueue')}
         </Link>
       </div>
     );
@@ -45,11 +47,11 @@ export function RoleApplicationDetailPage() {
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <Link to="/approvals/roles" className="text-[13px] font-semibold text-coral hover:underline">
-            ← Back to queue
+            {t('backToQueue')}
           </Link>
           <h1 className="mt-2 text-3xl font-extrabold text-ink">{row.applicantName}</h1>
           <p className="mt-1 text-[14px] text-ink-60">
-            {row.email} · {row.type} · {row.status}
+            {row.email} · {t(`type.${row.type}`)} · {t(`status.${row.status}`)}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -61,27 +63,27 @@ export function RoleApplicationDetailPage() {
             onClick={async () => {
               try {
                 await approve(row.id).unwrap();
-                notifySuccess('Role application approved.');
+                notifySuccess(t('roleApplicationDetail.approveSuccess'));
                 void nav('/approvals/roles');
               } catch {
-                notifyError('Approval failed.');
+                notifyError(t('roleApplicationDetail.approveFailed'));
               }
             }}
           >
-            Approve
+            {t('roleApplicationDetail.approve')}
           </Button>
         </div>
       </div>
 
       <Card className="rounded-3xl border-ink-10 shadow-card-sm">
         <CardHeader>
-          <CardTitle className="text-lg">Documents</CardTitle>
+          <CardTitle className="text-lg">{t('roleApplicationDetail.documents')}</CardTitle>
         </CardHeader>
         <CardContent>
           <p className="text-[14px] text-ink-60">{row.documentsSummary}</p>
           {row.rejectReason ? (
             <p className="mt-4 rounded-2xl bg-coral/10 px-4 py-3 text-[14px] text-ink">
-              <span className="font-bold">Last rejection reason:</span> {row.rejectReason}
+              <span className="font-bold">{t('roleApplicationDetail.lastRejectionReason')}</span> {row.rejectReason}
             </p>
           ) : null}
         </CardContent>
@@ -89,7 +91,7 @@ export function RoleApplicationDetailPage() {
 
       <Card className="rounded-3xl border-ink-10 shadow-card-sm">
         <CardHeader>
-          <CardTitle className="text-lg">Reject application</CardTitle>
+          <CardTitle className="text-lg">{t('roleApplicationDetail.rejectTitle')}</CardTitle>
         </CardHeader>
         <CardContent>
           <form
@@ -97,15 +99,15 @@ export function RoleApplicationDetailPage() {
             onSubmit={form.handleSubmit(async (values) => {
               try {
                 await reject({ id: row.id, body: values }).unwrap();
-                notifySuccess('Role application rejected with reason.');
+                notifySuccess(t('roleApplicationDetail.rejectSuccess'));
                 void nav('/approvals/roles');
               } catch {
-                notifyError('Rejection failed.');
+                notifyError(t('roleApplicationDetail.rejectFailed'));
               }
             })}
           >
             <label className="block">
-              <span className="text-[12px] font-semibold text-ink-60">Reason (sent to applicant)</span>
+              <span className="text-[12px] font-semibold text-ink-60">{t('roleApplicationDetail.reasonLabel')}</span>
               <textarea
                 className="mt-1.5 min-h-[100px] w-full rounded-xl border border-ink-10 px-4 py-3 text-[14px] outline-none focus:border-coral focus:ring-2 focus:ring-coral/30"
                 {...form.register('reason')}
@@ -115,7 +117,7 @@ export function RoleApplicationDetailPage() {
               <p className="text-[12px] font-medium text-coral">{form.formState.errors.reason.message}</p>
             ) : null}
             <label className="block">
-              <span className="text-[12px] font-semibold text-ink-60">Internal note (optional)</span>
+              <span className="text-[12px] font-semibold text-ink-60">{t('roleApplicationDetail.internalNoteLabel')}</span>
               <textarea
                 className="mt-1.5 min-h-[72px] w-full rounded-xl border border-ink-10 px-4 py-3 text-[14px] outline-none focus:border-coral focus:ring-2 focus:ring-coral/30"
                 {...form.register('internalNote')}
@@ -127,7 +129,7 @@ export function RoleApplicationDetailPage() {
               disabled={row.status !== 'pending' || rejectState.isLoading}
               loading={rejectState.isLoading}
             >
-              Reject with reason
+              {t('roleApplicationDetail.rejectButton')}
             </Button>
           </form>
         </CardContent>

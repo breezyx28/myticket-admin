@@ -1,0 +1,37 @@
+{
+  "accountEyebrow": "Account",
+  "title": "My profile",
+  "subtitle": "Update how you appear in the admin console. Photo uploads and preference changes use your current Sanctum session — no user ID in the request body.",
+  "endpointsTitle": "Endpoints",
+  "patchMe": "PATCH /api/v1/admin/me",
+  "postProfileImage": "POST /api/v1/admin/me/profile-image",
+  "identityTitle": "Identity",
+  "identityDescription": "Profile photo, display name, and session metadata.",
+  "workEmail": "Work email",
+  "workEmailHint": "Read-only for audit trails.",
+  "displayName": "Display name",
+  "timezone": "Timezone",
+  "timezones": {
+    "asiaRiyadh": "Asia/Riyadh (Riyadh)",
+    "asiaDubai": "Asia/Dubai (Dubai)",
+    "europeLondon": "Europe/London (London)",
+    "utc": "UTC"
+  },
+  "digestEmailTitle": "Daily operations digest",
+  "digestEmailDescription": "Morning summary of queues, payouts, and risk flags.",
+  "savePreferences": "Save preferences",
+  "notifySaved": "Profile saved.",
+  "notifySaveFailed": "Could not save profile. Confirm PATCH /api/v1/admin/me exists on the API.",
+  "defaultAdminName": "Admin",
+  "avatar": {
+    "title": "Profile photo",
+    "description": "Uploads to <mono>POST /api/v1/admin/me/profile-image</mono>. JPEG, PNG, GIF, or WebP up to 4 MB.",
+    "replacePhoto": "Replace photo",
+    "uploadPhoto": "Upload photo",
+    "invalidType": "Use JPEG, PNG, GIF, or WebP.",
+    "tooLarge": "Image must be 4 MB or smaller.",
+    "notifyUpdated": "Profile photo updated.",
+    "notifyUploadFailed": "Could not upload profile photo.",
+    "syncedTo": "Synced to {{profiles}} profiles."
+  }
+}

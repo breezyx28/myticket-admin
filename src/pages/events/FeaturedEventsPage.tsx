@@ -6,11 +6,14 @@ import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { StatBubble } from '@/components/ui/StatBubble';
 import { formatSarCompact } from '@/lib/formatSar';
+import { getCurrentLocale } from '@/i18n';
+import { eventCategoryLabel } from '@/lib/pickLocalizedField';
 import { rowMatchesSearch } from '@/lib/listQuery';
 import { notifyError, notifySuccess } from '@/lib/notify';
 import type { AdminEventRow, FeaturedEventsConfig } from '@/schemas/event.schema';
 import { useGetEventsQuery, useGetFeaturedConfigQuery, useSetFeaturedConfigMutation } from '@/services/adminApi';
 import { Sparkles, Wand2 } from 'lucide-react';
+import { Trans, useTranslation } from 'react-i18next';
 import { useEffect, useMemo, useState } from 'react';
 
 const featuredNumericInputClass =
@@ -24,6 +27,8 @@ function modeCardClass(active: boolean): string {
 }
 
 export function FeaturedEventsPage() {
+  const { t } = useTranslation(['operations', 'common']);
+  const locale = getCurrentLocale();
   const cfg = useGetFeaturedConfigQuery();
   const events = useGetEventsQuery();
   const [setCfg, setState] = useSetFeaturedConfigMutation();
@@ -49,9 +54,13 @@ export function FeaturedEventsPage() {
   }, [events.data]);
 
   const categories = useMemo(() => {
-    const s = new Set((events.data ?? []).map((e) => e.category));
-    return Array.from(s).sort();
-  }, [events.data]);
+    const seen = new Map<string, string>();
+    for (const e of events.data ?? []) {
+      if (!e.category || seen.has(e.category)) continue;
+      seen.set(e.category, eventCategoryLabel(e, locale));
+    }
+    return Array.from(seen.entries()).sort((a, b) => a[1].localeCompare(b[1], locale));
+  }, [events.data, locale]);
 
   const filtered = useMemo(() => {
     const rows = events.data ?? [];
@@ -62,7 +71,7 @@ export function FeaturedEventsPage() {
     });
   }, [events.data, search, status, category]);
 
-  if (cfg.isLoading || events.isLoading || !cfg.data) return <p className="text-ink-60">Loading…</p>;
+  if (cfg.isLoading || events.isLoading || !cfg.data) return <p className="text-ink-60">{t('common:loading')}</p>;
 
   const manual = cfg.data.manualEventIds;
   const refreshMinutes = refreshDraft ?? cfg.data.refreshMinutes;
@@ -74,46 +83,43 @@ export function FeaturedEventsPage() {
     };
     try {
       await setCfg(payload).unwrap();
-      notifySuccess('Featured configuration updated.');
+      notifySuccess(t('operations:events.notifyFeaturedUpdated'));
     } catch {
-      notifyError('Could not update featured configuration.');
+      notifyError(t('operations:events.notifyFeaturedFailed'));
     }
   }
 
   return (
     <div className="space-y-8">
       <div>
-        <p className="text-[11px] font-extrabold uppercase tracking-[0.16em] text-ink-40">Events</p>
-        <h1 className="text-3xl font-extrabold tracking-tight text-ink">Featured events</h1>
-        <p className="mt-2 max-w-2xl text-[14px] leading-relaxed text-ink-60">
-          Curate the storefront hero rails: choose algorithmic rotation or a manual override, set how often the rail
-          refreshes (required by the API), then pin the events buyers should see first.
-        </p>
+        <p className="text-[11px] font-extrabold uppercase tracking-[0.16em] text-ink-40">{t('operations:events.eyebrow')}</p>
+        <h1 className="text-3xl font-extrabold tracking-tight text-ink">{t('operations:events.featuredTitle')}</h1>
+        <p className="mt-2 max-w-2xl text-[14px] leading-relaxed text-ink-60">{t('operations:events.featuredDescription')}</p>
       </div>
 
       <AdminSection
-        eyebrow="Impact"
-        title="Merchandising health"
-        description="Synthetic aggregates from the current catalog sample — replace with live merchandising KPIs when analytics GETs are available."
+        eyebrow={t('operations:events.impactEyebrow')}
+        title={t('operations:events.impactTitle')}
+        description={t('operations:events.impactDescription')}
       >
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <StatBubble
-            label="Catalog revenue (sum)"
-            value={stats ? formatSarCompact(stats.revenue) : '—'}
+            label={t('operations:events.stats.catalogRevenue')}
+            value={stats ? formatSarCompact(stats.revenue) : t('common:none')}
             color="bg-coral text-white"
           />
           <StatBubble
-            label="Avg fill rate"
-            value={stats ? `${stats.fillAvg}%` : '—'}
+            label={t('operations:events.stats.avgFillRate')}
+            value={stats ? `${stats.fillAvg}%` : t('common:none')}
             color="bg-mint text-ink"
           />
           <StatBubble
-            label="Avg rating"
-            value={stats ? `${stats.ratingAvg} ★` : '—'}
+            label={t('operations:events.stats.avgRating')}
+            value={stats ? `${stats.ratingAvg} ★` : t('common:none')}
             color="bg-lemon text-ink"
           />
           <StatBubble
-            label="Manual slots in use"
+            label={t('operations:events.stats.manualSlots')}
             value={`${manual.length}`}
             color="bg-ink text-white"
           />
@@ -122,23 +128,26 @@ export function FeaturedEventsPage() {
 
       <AdminSection
         divider
-        eyebrow="Strategy"
-        title="Featuring mode"
-        description="Algorithm keeps the rail rotating on a schedule you control. Manual override pins your shortlist; the server still needs a refresh interval on every save."
+        eyebrow={t('operations:events.strategyEyebrow')}
+        title={t('operations:events.strategyTitle')}
+        description={t('operations:events.strategyDescription')}
       >
         <div className="space-y-4">
           <Card className="rounded-3xl border border-ink-10 shadow-card-sm">
             <CardHeader className="pb-2">
-              <CardTitle className="text-lg font-extrabold">Hero refresh interval</CardTitle>
+              <CardTitle className="text-lg font-extrabold">{t('operations:events.refreshTitle')}</CardTitle>
               <CardDescription>
-                Sent as <span className="font-mono text-ink">refresh_minutes</span> with every config update (Laravel
-                validation).
+                <Trans
+                  ns="operations"
+                  i18nKey="events.refreshDescription"
+                  components={{ mono: <span className="font-mono text-ink" /> }}
+                />
               </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="flex max-w-md flex-col gap-2">
                 <label className="text-[11px] font-bold uppercase tracking-wide text-ink-40" htmlFor="featured-refresh">
-                  Minutes between refreshes
+                  {t('operations:events.refreshLabel')}
                 </label>
                 <input
                   id="featured-refresh"
@@ -156,7 +165,7 @@ export function FeaturedEventsPage() {
                     setRefreshDraft(clamped);
                   }}
                 />
-                <p className="text-[12px] leading-relaxed text-ink-50">Range 1–10080. Typical values: 15–120 minutes.</p>
+                <p className="text-[12px] leading-relaxed text-ink-50">{t('operations:events.refreshHint')}</p>
               </div>
             </CardContent>
           </Card>
@@ -166,11 +175,10 @@ export function FeaturedEventsPage() {
               <CardContent className="space-y-4 p-6">
                 <div className="flex items-center gap-3 text-coral">
                   <Wand2 size={22} strokeWidth={2} aria-hidden />
-                  <p className="text-lg font-extrabold text-ink">Algorithm (default)</p>
+                  <p className="text-lg font-extrabold text-ink">{t('operations:events.modeAlgorithm')}</p>
                 </div>
                 <p className="text-[14px] font-medium leading-relaxed text-ink-60">
-                  Uses conversion velocity, geo demand, and inventory risk to rotate features (illustrative). Honors the
-                  refresh interval above.
+                  {t('operations:events.modeAlgorithmDescription')}
                 </p>
                 <Button
                   type="button"
@@ -178,7 +186,7 @@ export function FeaturedEventsPage() {
                   loading={setState.isLoading}
                   onClick={() => void saveFeatured({ mode: 'algorithm', manualEventIds: manual })}
                 >
-                  Use algorithmic rotation
+                  {t('operations:events.useAlgorithm')}
                 </Button>
               </CardContent>
             </Card>
@@ -187,10 +195,10 @@ export function FeaturedEventsPage() {
               <CardContent className="space-y-4 p-6">
                 <div className="flex items-center gap-3 text-coral">
                   <Sparkles size={22} strokeWidth={2} aria-hidden />
-                  <p className="text-lg font-extrabold text-ink">Manual override</p>
+                  <p className="text-lg font-extrabold text-ink">{t('operations:events.modeManual')}</p>
                 </div>
                 <p className="text-[14px] font-medium leading-relaxed text-ink-60">
-                  Pins the curated checklist below. Use for launches, takeovers, and partner commitments.
+                  {t('operations:events.modeManualDescription')}
                 </p>
                 <Button
                   type="button"
@@ -198,7 +206,7 @@ export function FeaturedEventsPage() {
                   loading={setState.isLoading}
                   onClick={() => void saveFeatured({ mode: 'manual_override', manualEventIds: manual })}
                 >
-                  Lock manual list
+                  {t('operations:events.lockManual')}
                 </Button>
               </CardContent>
             </Card>
@@ -208,40 +216,40 @@ export function FeaturedEventsPage() {
 
       <AdminSection
         divider
-        eyebrow="Curation"
-        title="Pinned events"
-        description="Tick the events that belong in the hero rail. Changing pins saves in manual mode and includes the refresh interval."
+        eyebrow={t('operations:events.curationEyebrow')}
+        title={t('operations:events.curationTitle')}
+        description={t('operations:events.curationDescription')}
       >
         <Card className="rounded-3xl border border-ink-10 shadow-card-md">
           <CardHeader>
-            <CardTitle className="text-xl font-extrabold">Manual shortlist</CardTitle>
-            <CardDescription>Cards mirror the operator experience elsewhere — rich visuals reduce mis-picks.</CardDescription>
+            <CardTitle className="text-xl font-extrabold">{t('operations:events.shortlistTitle')}</CardTitle>
+            <CardDescription>{t('operations:events.shortlistDescription')}</CardDescription>
           </CardHeader>
           <CardContent>
             <ListFiltersBar
               searchValue={search}
               onSearchChange={setSearch}
-              searchPlaceholder="Search events to pin…"
+              searchPlaceholder={t('operations:events.pinSearchPlaceholder')}
               className="mb-6"
             >
               <select className={filterSelectClassName()} value={status} onChange={(e) => setStatus(e.target.value as typeof status)}>
-                <option value="all">All statuses</option>
-                <option value="active">Active</option>
-                <option value="ended">Ended</option>
-                <option value="cancelled">Cancelled</option>
-                <option value="archived">Archived</option>
+                <option value="all">{t('operations:events.allStatuses')}</option>
+                <option value="active">{t('operations:events.status.active')}</option>
+                <option value="ended">{t('operations:events.status.ended')}</option>
+                <option value="cancelled">{t('operations:events.status.cancelled')}</option>
+                <option value="archived">{t('operations:events.status.archived')}</option>
               </select>
               <select className={filterSelectClassName()} value={category} onChange={(e) => setCategory(e.target.value)}>
-                <option value="all">All categories</option>
-                {categories.map((c) => (
-                  <option key={c} value={c}>
-                    {c}
+                <option value="all">{t('operations:events.allCategories')}</option>
+                {categories.map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
                   </option>
                 ))}
               </select>
             </ListFiltersBar>
             {filtered.length === 0 ? (
-              <p className="text-sm font-semibold text-ink-60">No events match your search and filters.</p>
+              <p className="text-sm font-semibold text-ink-60">{t('operations:events.noMatches')}</p>
             ) : null}
             <div className="grid gap-6 lg:grid-cols-2">
               {filtered.map((e) => {
@@ -261,13 +269,13 @@ export function FeaturedEventsPage() {
                         }}
                         className="h-4 w-4 accent-coral"
                       />
-                      Pin
+                      {t('operations:events.pin')}
                     </label>
                   </div>
                 );
               })}
             </div>
-            {setState.isLoading ? <p className="mt-4 text-[12px] font-bold text-ink-40">Saving…</p> : null}
+            {setState.isLoading ? <p className="mt-4 text-[12px] font-bold text-ink-40">{t('operations:events.saving')}</p> : null}
           </CardContent>
         </Card>
       </AdminSection>

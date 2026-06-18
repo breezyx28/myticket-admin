@@ -5,6 +5,17 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>MyTicket — Admin</title>
+    <script>
+      (function () {
+        try {
+          var locale = localStorage.getItem('myticket_admin_locale') || 'en';
+          if (locale !== 'en' && locale !== 'ar') locale = 'en';
+          document.documentElement.lang = locale;
+          document.documentElement.dir = locale === 'ar' ? 'rtl' : 'ltr';
+          document.title = locale === 'ar' ? 'MyTicket — الإدارة' : 'MyTicket — Admin';
+        } catch (e) {}
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

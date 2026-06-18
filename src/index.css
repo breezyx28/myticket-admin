@@ -81,6 +81,9 @@
     font-family: var(--font-sans);
     @apply font-sans;
   }
+  html[lang='ar'] {
+    font-family: 'Noto Sans Arabic', 'Plus Jakarta Sans', system-ui, sans-serif;
+  }
   body {
     margin: 0;
     min-height: 100dvh;

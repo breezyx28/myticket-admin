@@ -1,0 +1,160 @@
+{
+  "analytics": {
+    "eyebrow": "Insights",
+    "title": "Analytics",
+    "subtitle": "Financial totals use <1>GET /api/v1/admin/analytics/financial?range=…</1>. Charts fill when the API returns time series or category breakdown; otherwise an empty state is shown. Leaderboards use <2>GET …/analytics/leaderboards</2>.",
+    "financialWindow": "Financial window",
+    "apiWindow": "API window:",
+    "since": "since",
+    "stats": {
+      "platformRevenue": "Platform revenue (mapped)",
+      "feesCollected": "Fees collected",
+      "refunds": "Refunds",
+      "payoutsPending": "Payouts pending",
+      "ordersPaidCount": "Orders paid (count)",
+      "ordersPaidAmount": "Orders paid (amount)"
+    },
+    "range": {
+      "24h": "24 hours",
+      "1d": "1 day",
+      "7d": "7 days",
+      "30d": "30 days",
+      "90d": "90 days"
+    },
+    "revenueTrend": {
+      "title": "Revenue trend ({{range}})",
+      "description": "Daily series when provided by the API.",
+      "empty": "No revenue-by-day series in this response."
+    },
+    "revenueByCategory": {
+      "title": "Revenue by category",
+      "description": "Populated when the API returns a breakdown array.",
+      "empty": "No category breakdown in this response."
+    },
+    "chart": {
+      "revenueSar": "Revenue SAR"
+    },
+    "usersByRole": {
+      "title": "Users by role",
+      "description": "Derived from <1>GET /dashboard/counters</1> when the API returns only flat totals (role split may be partial until the backend adds breakdown fields).",
+      "guest": "Guest",
+      "talent": "Talent",
+      "vendor": "Vendor",
+      "organizer": "Organizer"
+    },
+    "eventsByStatus": {
+      "title": "Events by status",
+      "description": "Mock-only — same note as users by role.",
+      "active": "Active",
+      "ended": "Ended",
+      "cancelled": "Cancelled",
+      "archived": "Archived"
+    },
+    "leaderboards": {
+      "topEventsTitle": "Top events (GMV)",
+      "topOrganizersTitle": "Top organizers (GMV)",
+      "generated": "Generated {{date}}",
+      "noEvents": "No events in this leaderboard response.",
+      "noOrganizers": "No organizer rows in this response.",
+      "columns": {
+        "code": "Code",
+        "id": "Id",
+        "title": "Title",
+        "revenueGross": "Revenue gross",
+        "status": "Status",
+        "organizer": "Organizer",
+        "name": "Name"
+      }
+    }
+  },
+  "activity": {
+    "eyebrow": "Insights",
+    "title": "Activity & audit",
+    "subtitle": "<1>GET /api/v1/admin/admin-actions</1> lists the action catalog; <2>POST /api/v1/admin/admin-actions</2> records a row (see guide — body uses <3>action_kind</3>, not arbitrary keys). <4>GET …/audit-logs</4> and <5>GET …/audit-logs/{id}</5> for detail (IP, user-agent, changes when the API provides them).",
+    "catalogTitle": "Admin actions catalog",
+    "searchActions": "Search key, label, category…",
+    "columns": {
+      "key": "Key",
+      "label": "Label",
+      "category": "Category",
+      "description": "Description"
+    },
+    "recordAction": {
+      "title": "Record admin action (POST)",
+      "description": "JSON body must match the server contract: required <1>action_kind</1> (enum), optional <2>target_type</2>, <3>target_id</3>, <4>summary</4>, <5>metadata</5>. Open the guide if you are unsure.",
+      "howThisWorks": "How this works",
+      "submit": "POST to /admin-actions"
+    },
+    "notify": {
+      "jsonRootMustBeObject": "Root JSON value must be an object.",
+      "invalidJson": "Invalid JSON.",
+      "actionSent": "Action request sent.",
+      "actionFailed": "Action request failed."
+    },
+    "auditLog": {
+      "title": "Audit log",
+      "search": "Search id, summary, actor, resource…",
+      "columns": {
+        "time": "Time",
+        "summary": "Summary",
+        "actor": "Actor",
+        "resource": "Resource",
+        "detail": "Detail"
+      },
+      "hide": "Hide",
+      "view": "View",
+      "loadingDetail": "Loading detail…",
+      "detailError": "Could not load audit detail.",
+      "ip": "IP",
+      "userAgent": "User agent",
+      "noChanges": "No structured changes on this entry."
+    }
+  },
+  "guide": {
+    "closeAria": "Close guide",
+    "title": "Recording work on the activity timeline",
+    "subtitle": "POST <1>/api/v1/admin/admin-actions</1> — append a narrative row for audit, separate from domain endpoints that change real state.",
+    "gotIt": "Got it",
+    "inOneSentence": {
+      "heading": "In one sentence",
+      "body": "Each POST appends one row to <1>admin_actions</1>: which admin (from your session) performed which <2>kind</2> of action, optionally pointed at a target, with a short <3>summary</3> and optional structured <4>metadata</4>."
+    },
+    "whoIsAdmin": {
+      "heading": "Who is the admin?",
+      "body": "<1>admin_user_id</1> is taken from the authenticated admin. Do <2>not</2> send it in the JSON body."
+    },
+    "laravelVsDb": {
+      "heading": "Laravel vs database (important)",
+      "p1": "The API only validates <1>action_kind</1> as <2>required string</2> — there is <3>no</3> PHP whitelist of allowed values.",
+      "p2": "The <1>admin_actions</1> table stores <2>action_kind</2> as a MySQL <3>ENUM</3> with a <4>fixed list</4>. If you send any other string, PHP may accept the request but the insert can fail at the DB layer (often a <5>500</5>).",
+      "p3": "Practical rule: only use one of the allowed enum values below. Free-form kinds (e.g. <1>manual_phone_call</1>) need a schema change on the server."
+    },
+    "allowedKinds": {
+      "heading": "Allowed action_kind values",
+      "description": "Pick the value that best matches the story; put nuance in <1>summary</1> / <2>metadata</2>."
+    },
+    "fields": {
+      "heading": "Fields the handler reads",
+      "actionKind": "Required. Must be one of the enum values above (DB-enforced), even though Laravel only checks “string”.",
+      "targetType": "Optional. Free text for your audit trail (e.g. <1>user</1>, <2>event</2>), max <3>80</3> characters in the DB. The API does not verify the target exists.",
+      "targetId": "Optional unsigned integer (or omit / null).",
+      "summary": "Optional narrative, max <1>500</1> characters — use this for the human-readable story.",
+      "metadata": "Optional JSON object (your own keys/shapes), as long as it serializes to valid JSON and fits storage. Extra top-level keys in the request body are <1>ignored</1> unless the backend is extended to read them."
+    },
+    "whenToUse": {
+      "heading": "When to use this",
+      "item1": "You already performed the real change via another endpoint, but want a clear line on the timeline.",
+      "item2": "You did offline / manual work (phone, legal review) that should still appear under admin activity.",
+      "footer": "New rows appear when you refresh <1>GET /api/v1/admin/admin-actions</1> (this page lists the catalog; your timeline / list view may differ by product wiring)."
+    },
+    "minimalBody": {
+      "heading": "Minimal valid body",
+      "json": "{\n  \"action_kind\": \"listing_moderate\",\n  \"summary\": \"Reviewed queue item offline with legal; no code change.\"\n}"
+    },
+    "richerExample": {
+      "heading": "Richer example (201 response)",
+      "description": "The API returns the created row under <1>data</1> (including <2>id</2>, <3>admin_user_id</3>, <4>created_at</4>, etc.).",
+      "json": "{\n  \"action_kind\": \"support_resolve\",\n  \"target_type\": \"user\",\n  \"target_id\": 441,\n  \"summary\": \"Called complainant about refund; agreed to partial credit. No ticket change required.\",\n  \"metadata\": {\n    \"channel\": \"phone\",\n    \"duration_minutes\": 12,\n    \"case_reference\": \"SC-2026-0142\",\n    \"follow_up\": \"none\"\n  }\n}"
+    }
+  }
+}

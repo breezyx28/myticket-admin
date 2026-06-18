@@ -4,24 +4,15 @@ import type { CategoryTaxonomyTab } from '@/schemas/categoryTaxonomy.schema';
 import { cn } from '@/lib/utils';
 import { useMemo } from 'react';
 import { Navigate, useSearchParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 
-const TABS: { id: CategoryTaxonomyTab; label: string; hint: string }[] = [
-  {
-    id: 'events',
-    label: 'Event categories',
-    hint: 'Discover filters, icons, colors',
-  },
-  {
-    id: 'talent',
-    label: 'Talent badges',
-    hint: 'Performer & talent profiles',
-  },
-  {
-    id: 'vendor',
-    label: 'Vendor services',
-    hint: 'Marketplace vendor badges',
-  },
-];
+const TAB_IDS: CategoryTaxonomyTab[] = ['events', 'talent', 'vendor'];
+
+const TAB_HINT_KEYS: Record<CategoryTaxonomyTab, string> = {
+  events: 'categories.tabs.eventsHint',
+  talent: 'categories.tabs.talentHint',
+  vendor: 'categories.tabs.vendorHint',
+};
 
 function parseTab(raw: string | null): CategoryTaxonomyTab {
   if (raw === 'talent' || raw === 'vendor' || raw === 'events') return raw;
@@ -29,6 +20,7 @@ function parseTab(raw: string | null): CategoryTaxonomyTab {
 }
 
 export function CategoriesHubPage() {
+  const { t } = useTranslation('operations');
   const [params, setParams] = useSearchParams();
   const tab = useMemo(() => parseTab(params.get('tab')), [params]);
 
@@ -40,37 +32,34 @@ export function CategoriesHubPage() {
     <div className="mx-auto max-w-[1400px] space-y-8">
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,0.65fr)] lg:items-end">
         <div>
-          <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-ink-40">Taxonomy</p>
-          <h1 className="mt-1 text-3xl font-extrabold tracking-tight text-ink md:text-4xl">Category catalogs</h1>
-          <p className="mt-3 max-w-[65ch] text-[15px] leading-relaxed text-ink-60">
-            Manage curated lists for events, talent badges, and vendor services. Organizer profile tags reuse event
-            categories via pivot tables — there is no separate organizer taxonomy CRUD.
-          </p>
+          <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-ink-40">{t('categories.eyebrow')}</p>
+          <h1 className="mt-1 text-3xl font-extrabold tracking-tight text-ink md:text-4xl">{t('categories.hubTitle')}</h1>
+          <p className="mt-3 max-w-[65ch] text-[15px] leading-relaxed text-ink-60">{t('categories.hubDescription')}</p>
         </div>
         <div className="rounded-3xl border border-ink-10 bg-white px-5 py-4 shadow-card-sm">
-          <p className="text-[11px] font-bold uppercase tracking-wide text-ink-40">API base</p>
+          <p className="text-[11px] font-bold uppercase tracking-wide text-ink-40">{t('categories.apiBase')}</p>
           <p className="mt-1 font-mono text-[13px] text-ink">/api/v1/admin/*-categories</p>
-          <p className="mt-2 text-[13px] text-ink-60">Paginated lists · PATCH for active toggle · 422 on delete in use</p>
+          <p className="mt-2 text-[13px] text-ink-60">{t('categories.apiHint')}</p>
         </div>
       </div>
 
       <div className="flex flex-col gap-3 border-b border-ink-10 pb-1 sm:flex-row sm:items-end sm:gap-6">
-        {TABS.map((t) => {
-          const active = tab === t.id;
+        {TAB_IDS.map((id) => {
+          const active = tab === id;
           return (
             <button
-              key={t.id}
+              key={id}
               type="button"
-              onClick={() => setTab(t.id)}
+              onClick={() => setTab(id)}
               className={cn(
                 'group text-left transition active:scale-[0.98]',
                 active ? 'border-b-2 border-coral pb-3' : 'border-b-2 border-transparent pb-3 hover:border-ink-10',
               )}
             >
               <p className={cn('text-[15px] font-extrabold', active ? 'text-ink' : 'text-ink-60 group-hover:text-ink')}>
-                {t.label}
+                {t(`categories.tabs.${id}`)}
               </p>
-              <p className="mt-0.5 text-[12px] text-ink-40">{t.hint}</p>
+              <p className="mt-0.5 text-[12px] text-ink-40">{t(TAB_HINT_KEYS[id])}</p>
             </button>
           );
         })}

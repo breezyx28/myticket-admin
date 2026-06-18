@@ -1,6 +1,7 @@
 import { ListFiltersBar } from '@/components/admin/ListFiltersBar';
 import { RowActionsMenu } from '@/components/admin/RowActionsMenu';
 import { filterSelectClassName } from '@/lib/adminFilters';
+import { getApiErrorMessage } from '@/lib/apiError';
 import { listingModerationStatusBadgeClass } from '@/lib/listingModerationStatusUi';
 import { cn } from '@/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -16,8 +17,10 @@ import {
   useReleaseListingModerationMutation,
 } from '@/services/adminApi';
 import { useMemo, useState } from 'react';
+import { Trans, useTranslation } from 'react-i18next';
 
 export function ListingsPage() {
+  const { t } = useTranslation(['trust', 'common', 'errors']);
   const { data, isLoading } = useGetListingModerationQuery();
   const [markReviewed, markState] = useMarkListingModerationReviewedMutation();
   const [claim, claimState] = useClaimListingModerationMutation();
@@ -53,65 +56,72 @@ export function ListingsPage() {
     try {
       await exec();
       notifySuccess(okMsg);
-    } catch {
-      notifyError('Action failed.');
+    } catch (err) {
+      notifyError(getApiErrorMessage(err, t('errors:requestFailed')));
     }
   }
 
   return (
     <div className="space-y-6">
       <div>
-        <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-ink-40">Trust & safety</p>
-        <h1 className="text-3xl font-extrabold text-ink">Listing moderation</h1>
+        <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-ink-40">{t('trust:eyebrow')}</p>
+        <h1 className="text-3xl font-extrabold text-ink">{t('trust:listings.title')}</h1>
         <p className="mt-2 max-w-2xl text-[14px] text-ink-60">
-          Queue aligned to Postman: <span className="font-mono text-ink">claim</span>,{' '}
-          <span className="font-mono text-ink">release</span>, <span className="font-mono text-ink">approve</span>,{' '}
-          <span className="font-mono text-ink">reject</span>, and <span className="font-mono text-ink">escalate</span>.
+          <Trans
+            i18nKey="trust:listings.subtitle"
+            components={[
+              <span key="1" className="font-mono text-ink" />,
+              <span key="2" className="font-mono text-ink" />,
+              <span key="3" className="font-mono text-ink" />,
+              <span key="4" className="font-mono text-ink" />,
+              <span key="5" className="font-mono text-ink" />,
+            ]}
+          />
         </p>
       </div>
       <Card className="rounded-3xl border-ink-10 shadow-card-sm">
         <CardHeader>
-          <CardTitle className="text-lg">Queue</CardTitle>
+          <CardTitle className="text-lg">{t('trust:listings.queueTitle')}</CardTitle>
         </CardHeader>
         <CardContent>
           <ListFiltersBar
             searchValue={search}
             onSearchChange={setSearch}
-            searchPlaceholder="Search listing, owner, flag reason…"
+            searchPlaceholder={t('trust:listings.searchPlaceholder')}
             className="mb-4"
           >
             <select className={filterSelectClassName()} value={kind} onChange={(e) => setKind(e.target.value as typeof kind)}>
-              <option value="all">All kinds</option>
-              <option value="talent">Talent</option>
-              <option value="vendor">Vendor</option>
+              <option value="all">{t('trust:listings.filters.allKinds')}</option>
+              <option value="talent">{t('trust:listings.kind.talent')}</option>
+              <option value="vendor">{t('trust:listings.kind.vendor')}</option>
             </select>
             <select
               className={filterSelectClassName()}
               value={status}
               onChange={(e) => setStatus(e.target.value as typeof status)}
             >
-              <option value="all">All queue states</option>
-              <option value="queued">Queued</option>
-              <option value="claimed">Claimed</option>
-              <option value="actioned">Actioned</option>
-              <option value="rejected">Rejected</option>
-              <option value="escalated">Escalated</option>
+              <option value="all">{t('trust:listings.filters.allStates')}</option>
+              <option value="queued">{t('trust:listings.status.queued')}</option>
+              <option value="claimed">{t('trust:listings.status.claimed')}</option>
+              <option value="actioned">{t('trust:listings.status.actioned')}</option>
+              <option value="rejected">{t('trust:listings.status.rejected')}</option>
+              <option value="escalated">{t('trust:listings.status.escalated')}</option>
             </select>
           </ListFiltersBar>
-          {isLoading ? <p className="text-sm text-ink-60">Loading…</p> : null}
+          {isLoading ? <p className="text-sm text-ink-60">{t('common:loading')}</p> : null}
           {!isLoading && filtered.length === 0 ? (
-            <p className="mb-3 text-sm font-semibold text-ink-60">No listings match your search and filters.</p>
+            <p className="mb-3 text-sm font-semibold text-ink-60">{t('trust:listings.empty')}</p>
           ) : null}
           <div className="admin-table-scroll">
             <table className="w-full min-w-[960px] text-left text-[14px]">
               <thead className="text-[11px] font-bold uppercase tracking-wide text-ink-40">
                 <tr>
-                  <th className="px-4 py-3">Listing</th>
-                  <th className="px-4 py-3">Kind</th>
-                  <th className="px-4 py-3">Owner</th>
-                  <th className="px-4 py-3">Flag</th>
-                  <th className="px-4 py-3">Status</th>
-                  <th className="w-14 px-2 py-3 text-right" aria-label="Actions column" />
+                  <th className="px-4 py-3">{t('trust:listings.columns.listing')}</th>
+                  <th className="px-4 py-3">{t('trust:listings.columns.kind')}</th>
+                  <th className="px-4 py-3">{t('trust:listings.columns.owner')}</th>
+                  <th className="px-4 py-3">{t('trust:listings.columns.flag')}</th>
+                  <th className="px-4 py-3">{t('trust:listings.columns.status')}</th>
+                  <th className="w-14 px-2 py-3 text-right" aria-label={t('trust:listings.columns.actions')} />
                 </tr>
               </thead>
               <tbody>
@@ -132,7 +142,7 @@ export function ListingsPage() {
                           <p className="mt-1 line-clamp-2 max-w-md text-[12px] text-ink-50">{row.description}</p>
                         ) : null}
                       </td>
-                      <td className="px-4 py-3 capitalize text-ink-60">{row.kind}</td>
+                      <td className="px-4 py-3 text-ink-60">{t(`trust:listings.kind.${row.kind}`)}</td>
                       <td className="px-4 py-3 text-ink-60">{row.ownerEmail}</td>
                       <td className="max-w-[200px] px-4 py-3 text-[13px] text-ink-60">{row.flagReason}</td>
                       <td className="px-4 py-3">
@@ -142,47 +152,48 @@ export function ListingsPage() {
                             listingModerationStatusBadgeClass(row.status),
                           )}
                         >
-                          {row.status}
+                          {t(`trust:listings.status.${row.status}`)}
                         </span>
                       </td>
                       <td className="px-2 py-3 text-right align-middle">
                         <RowActionsMenu
-                          ariaLabel={`Actions for listing case ${row.id}`}
+                          ariaLabel={t('trust:listings.actions.forListing', { id: row.id })}
                           actions={[
                             {
                               key: 'claim',
-                              label: 'Claim',
+                              label: t('trust:listings.actions.claim'),
                               disabled: row.status !== 'queued' || mutLoading,
                               loading: rowBusy === 'claim',
-                              onSelect: () => run('Claimed.', () => claim(row.id).unwrap()),
+                              onSelect: () => run(t('trust:listings.notify.claimed'), () => claim(row.id).unwrap()),
                             },
                             {
                               key: 'release',
-                              label: 'Release',
+                              label: t('trust:listings.actions.release'),
                               disabled: row.status !== 'claimed' || mutLoading,
                               loading: rowBusy === 'release',
-                              onSelect: () => run('Released.', () => release(row.id).unwrap()),
+                              onSelect: () => run(t('trust:listings.notify.released'), () => release(row.id).unwrap()),
                             },
                             {
                               key: 'reject',
-                              label: 'Reject',
+                              label: t('trust:listings.actions.reject'),
                               disabled: mutLoading || !canClaimRelease,
                               loading: rowBusy === 'reject',
-                              onSelect: () => run('Rejected.', () => reject(row.id).unwrap()),
+                              onSelect: () => run(t('trust:listings.notify.rejected'), () => reject(row.id).unwrap()),
                             },
                             {
                               key: 'escalate',
-                              label: 'Escalate',
+                              label: t('trust:listings.actions.escalate'),
                               disabled: mutLoading || !canClaimRelease,
                               loading: rowBusy === 'escalate',
-                              onSelect: () => run('Escalated.', () => escalate(row.id).unwrap()),
+                              onSelect: () => run(t('trust:listings.notify.escalated'), () => escalate(row.id).unwrap()),
                             },
                             {
                               key: 'approve',
-                              label: 'Approve',
+                              label: t('trust:listings.actions.approve'),
                               disabled: !canClaimRelease || mutLoading,
                               loading: rowBusy === 'approve',
-                              onSelect: () => run('Approved / reviewed.', () => markReviewed(row.id).unwrap()),
+                              onSelect: () =>
+                                run(t('trust:listings.notify.approved'), () => markReviewed(row.id).unwrap()),
                             },
                           ]}
                         />

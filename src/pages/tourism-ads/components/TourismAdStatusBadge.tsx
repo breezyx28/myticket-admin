@@ -1,5 +1,6 @@
 import { cn } from '@/lib/utils';
 import type { TourismAdStatus } from '@/schemas/tourismAd.schema';
+import { useTranslation } from 'react-i18next';
 
 const styles: Record<TourismAdStatus, string> = {
   draft: 'bg-ink-5 text-ink-60 border border-ink-10',
@@ -10,16 +11,9 @@ const styles: Record<TourismAdStatus, string> = {
   archived: 'bg-ink-5 text-ink-40 border border-ink-10',
 };
 
-const labels: Record<TourismAdStatus, string> = {
-  draft: 'Draft',
-  pending_review: 'Pending review',
-  published: 'Published',
-  rejected: 'Rejected',
-  withdrawn: 'Withdrawn',
-  archived: 'Archived',
-};
-
 export function TourismAdStatusBadge({ status }: { status: TourismAdStatus }) {
+  const { t } = useTranslation('operations');
+
   return (
     <span
       className={cn(
@@ -27,7 +21,7 @@ export function TourismAdStatusBadge({ status }: { status: TourismAdStatus }) {
         styles[status],
       )}
     >
-      {labels[status]}
+      {t(`tourismAds.status.${status}`)}
     </span>
   );
 }

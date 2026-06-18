@@ -1,0 +1,37 @@
+{
+  "accountEyebrow": "الحساب",
+  "title": "ملفي الشخصي",
+  "subtitle": "حدّث كيف تظهر في لوحة الإدارة. رفع الصور وتغيير التفضيلات يستخدمان جلسة Sanctum الحالية — بدون معرّف مستخدم في جسم الطلب.",
+  "endpointsTitle": "نقاط النهاية",
+  "patchMe": "PATCH /api/v1/admin/me",
+  "postProfileImage": "POST /api/v1/admin/me/profile-image",
+  "identityTitle": "الهوية",
+  "identityDescription": "صورة الملف واسم العرض وبيانات الجلسة.",
+  "workEmail": "البريد الإلكتروني للعمل",
+  "workEmailHint": "للقراءة فقط لأغراض التدقيق.",
+  "displayName": "اسم العرض",
+  "timezone": "المنطقة الزمنية",
+  "timezones": {
+    "asiaRiyadh": "آسيا/الرياض (الرياض)",
+    "asiaDubai": "آسيا/دبي (دبي)",
+    "europeLondon": "أوروبا/لندن (لندن)",
+    "utc": "UTC"
+  },
+  "digestEmailTitle": "ملخص العمليات اليومي",
+  "digestEmailDescription": "ملخص صباحي للطوابير والمدفوعات وعلامات المخاطر.",
+  "savePreferences": "حفظ التفضيلات",
+  "notifySaved": "تم حفظ الملف الشخصي.",
+  "notifySaveFailed": "تعذر حفظ الملف الشخصي. تأكد من وجود PATCH /api/v1/admin/me في API.",
+  "defaultAdminName": "مسؤول",
+  "avatar": {
+    "title": "صورة الملف الشخصي",
+    "description": "يُرفع إلى <mono>POST /api/v1/admin/me/profile-image</mono>. JPEG أو PNG أو GIF أو WebP حتى 4 ميجابايت.",
+    "replacePhoto": "استبدال الصورة",
+    "uploadPhoto": "رفع صورة",
+    "invalidType": "استخدم JPEG أو PNG أو GIF أو WebP.",
+    "tooLarge": "يجب أن تكون الصورة 4 ميجابايت أو أقل.",
+    "notifyUpdated": "تم تحديث صورة الملف الشخصي.",
+    "notifyUploadFailed": "تعذر رفع صورة الملف الشخصي.",
+    "syncedTo": "تمت المزامنة مع {{profiles}} ملفات شخصية."
+  }
+}

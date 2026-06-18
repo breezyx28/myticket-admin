@@ -1,0 +1,40 @@
+{
+  "groups": {
+    "overview": "نظرة عامة",
+    "approvals": "الموافقات",
+    "operations": "العمليات",
+    "platform": "المنصة",
+    "insights": "التحليلات",
+    "trust": "الثقة والسلامة",
+    "support": "الدعم"
+  },
+  "items": {
+    "overview": "نظرة عامة",
+    "roleApplications": "طلبات الأدوار",
+    "talentProfiles": "ملفات المواهب",
+    "vendorProfiles": "ملفات الموردين",
+    "organizerProfiles": "ملفات المنظمين",
+    "tourismAds": "إعلانات السياحة",
+    "users": "المستخدمون",
+    "orders": "الطلبات",
+    "refunds": "المبالغ المستردة",
+    "auctions": "المزادات",
+    "scanners": "الماسحات",
+    "events": "الفعاليات",
+    "categories": "التصنيفات",
+    "featured": "المميزة",
+    "myProfile": "ملفي الشخصي",
+    "fees": "الرسوم",
+    "refundBreakdowns": "تفصيل الاسترداد",
+    "payouts": "المدفوعات",
+    "financeCompliance": "الامتثال المالي",
+    "notifications": "الإشعارات",
+    "systemStatus": "حالة النظام",
+    "analytics": "التحليلات",
+    "activityAudit": "النشاط والتدقيق",
+    "listings": "القوائم",
+    "ratings": "التقييمات",
+    "support": "الدعم",
+    "complaints": "الشكاوى"
+  }
+}

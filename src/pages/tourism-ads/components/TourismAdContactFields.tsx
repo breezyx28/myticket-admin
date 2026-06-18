@@ -1,4 +1,5 @@
 import type { TourismAdContact } from '@/schemas/tourismAd.schema';
+import { useTranslation } from 'react-i18next';
 
 type Props = {
   value: TourismAdContact;
@@ -7,29 +8,26 @@ type Props = {
   errors?: Partial<Record<keyof TourismAdContact | 'root', string>>;
 };
 
-const fields: { key: keyof TourismAdContact; label: string; placeholder: string }[] = [
-  { key: 'phone', label: 'Phone', placeholder: '+966500000000' },
-  { key: 'email', label: 'Email', placeholder: 'contact@example.com' },
-  { key: 'website', label: 'Website', placeholder: 'https://example.com' },
-  { key: 'whatsapp', label: 'WhatsApp', placeholder: '+966500000000' },
-];
+const fieldKeys: (keyof TourismAdContact)[] = ['phone', 'email', 'website', 'whatsapp'];
 
 export function TourismAdContactFields({ value, onChange, disabled, errors }: Props) {
+  const { t } = useTranslation('operations');
+
   return (
     <div className="grid gap-4 sm:grid-cols-2">
-      {fields.map((field) => (
-        <label key={field.key} className="flex flex-col gap-1 text-[12px] font-semibold text-ink-60">
-          {field.label}
+      {fieldKeys.map((key) => (
+        <label key={key} className="flex flex-col gap-1 text-[12px] font-semibold text-ink-60">
+          {t(`tourismAds.contactLabels.${key}`)}
           <input
             type="text"
             disabled={disabled}
-            value={value[field.key] ?? ''}
-            onChange={(e) => onChange({ ...value, [field.key]: e.target.value || undefined })}
-            placeholder={field.placeholder}
+            value={value[key] ?? ''}
+            onChange={(e) => onChange({ ...value, [key]: e.target.value || undefined })}
+            placeholder={t(`tourismAds.contactPlaceholders.${key}`)}
             className="h-11 rounded-xl border border-ink-10 bg-white px-3 text-[14px] font-normal text-ink disabled:opacity-50"
           />
-          {errors?.[field.key] ? (
-            <span className="text-[12px] font-semibold text-coral">{errors[field.key]}</span>
+          {errors?.[key] ? (
+            <span className="text-[12px] font-semibold text-coral">{errors[key]}</span>
           ) : null}
         </label>
       ))}

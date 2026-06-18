@@ -1,0 +1,89 @@
+{
+  "eyebrow": "الثقة والسلامة",
+  "notifyActionFailed": "فشل الإجراء.",
+  "listings": {
+    "title": "إشراف القوائم",
+    "subtitle": "قائمة انتظار متوافقة مع Postman: <1>claim</1> و<2>release</2> و<3>approve</3> و<4>reject</4> و<5>escalate</5>.",
+    "queueTitle": "قائمة الانتظار",
+    "searchPlaceholder": "بحث في القائمة والمالك وسبب الإبلاغ…",
+    "empty": "لا توجد قوائم تطابق البحث والفلاتر.",
+    "columns": {
+      "listing": "القائمة",
+      "kind": "النوع",
+      "owner": "المالك",
+      "flag": "الإبلاغ",
+      "status": "الحالة",
+      "actions": "عمود الإجراءات"
+    },
+    "filters": {
+      "allKinds": "كل الأنواع",
+      "allStates": "كل حالات الانتظار"
+    },
+    "kind": {
+      "talent": "موهبة",
+      "vendor": "مورّد"
+    },
+    "status": {
+      "queued": "في الانتظار",
+      "claimed": "مُطالب بها",
+      "actioned": "تم الإجراء",
+      "rejected": "مرفوضة",
+      "escalated": "مُصعّدة"
+    },
+    "actions": {
+      "claim": "مطالبة",
+      "release": "إطلاق",
+      "reject": "رفض",
+      "escalate": "تصعيد",
+      "approve": "موافقة",
+      "forListing": "إجراءات لحالة القائمة {{id}}"
+    },
+    "notify": {
+      "claimed": "تمت المطالبة.",
+      "released": "تم الإطلاق.",
+      "rejected": "تم الرفض.",
+      "escalated": "تم التصعيد.",
+      "approved": "تمت الموافقة / المراجعة."
+    }
+  },
+  "ratings": {
+    "title": "الإشراف على التقييمات",
+    "subtitle": "قراءة من <1>GET /api/v1/admin/ratings</1>؛ الإخفاء والاستعادة والحذف تتوافق مع طلبات POST في Postman لكل معرّف تقييم.",
+    "recentTitle": "التقييمات الأخيرة",
+    "searchPlaceholder": "بحث في الهدف والمؤلف والتعليق…",
+    "empty": "لا توجد تقييمات تطابق البحث والفلاتر.",
+    "columns": {
+      "target": "الهدف",
+      "author": "المؤلف",
+      "stars": "النجوم",
+      "state": "الحالة",
+      "comment": "التعليق",
+      "actions": "عمود الإجراءات"
+    },
+    "filters": {
+      "allStars": "كل التقييمات",
+      "stars5": "5 نجوم فقط",
+      "stars4Plus": "4+ نجوم",
+      "stars3Plus": "3+ نجوم",
+      "stars2Plus": "2+ نجوم",
+      "stars1Plus": "1+ نجوم",
+      "allModeration": "كل حالات الإشراف"
+    },
+    "moderationState": {
+      "visible": "ظاهر",
+      "hidden": "مخفي",
+      "deleted": "محذوف"
+    },
+    "actions": {
+      "hide": "إخفاء",
+      "restore": "استعادة",
+      "delete": "حذف",
+      "forRating": "إجراءات للتقييم {{id}}"
+    },
+    "notify": {
+      "hidden": "تم إخفاء التقييم.",
+      "restored": "تمت استعادة التقييم.",
+      "deleted": "تم وضع علامة محذوف على التقييم."
+    }
+  }
+}

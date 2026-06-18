@@ -1,14 +1,5 @@
 import { WEEKDAY_KEYS, type OpeningHours } from '@/schemas/tourismAd.schema';
-
-const DAY_LABELS: Record<(typeof WEEKDAY_KEYS)[number], string> = {
-  mon: 'Monday',
-  tue: 'Tuesday',
-  wed: 'Wednesday',
-  thu: 'Thursday',
-  fri: 'Friday',
-  sat: 'Saturday',
-  sun: 'Sunday',
-};
+import { useTranslation } from 'react-i18next';
 
 type Props = {
   value: OpeningHours;
@@ -17,6 +8,8 @@ type Props = {
 };
 
 export function OpeningHoursEditor({ value, onChange, disabled }: Props) {
+  const { t } = useTranslation('operations');
+
   return (
     <div className="space-y-3">
       {WEEKDAY_KEYS.map((day) => {
@@ -26,9 +19,9 @@ export function OpeningHoursEditor({ value, onChange, disabled }: Props) {
             key={day}
             className="grid gap-3 rounded-2xl border border-ink-10 bg-surface-tint/40 p-4 sm:grid-cols-[120px_1fr_1fr_auto]"
           >
-            <p className="text-[13px] font-bold text-ink">{DAY_LABELS[day]}</p>
+            <p className="text-[13px] font-bold text-ink">{t(`tourismAds.weekdays.${day}`)}</p>
             <label className="flex flex-col gap-1 text-[12px] font-semibold text-ink-60">
-              Opens
+              {t('tourismAds.opens')}
               <input
                 type="time"
                 disabled={disabled || row.closed}
@@ -38,7 +31,7 @@ export function OpeningHoursEditor({ value, onChange, disabled }: Props) {
               />
             </label>
             <label className="flex flex-col gap-1 text-[12px] font-semibold text-ink-60">
-              Closes
+              {t('tourismAds.closes')}
               <input
                 type="time"
                 disabled={disabled || row.closed}
@@ -62,7 +55,7 @@ export function OpeningHoursEditor({ value, onChange, disabled }: Props) {
                 }
                 className="size-4 rounded border-ink-20"
               />
-              Closed
+              {t('tourismAds.closed')}
             </label>
           </div>
         );

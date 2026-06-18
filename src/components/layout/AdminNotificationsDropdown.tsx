@@ -1,4 +1,5 @@
 import { filterAdminOperationalNotifications } from '@/lib/adminNotificationKinds';
+import { formatDate } from '@/lib/localeFormat';
 import { cn } from '@/lib/utils';
 import type { AdminRecentNotificationRow } from '@/schemas/adminNotifications.schema';
 import { useGetNotificationsRecentQuery } from '@/services/adminApi';
@@ -14,22 +15,24 @@ import {
   type CSSProperties,
   type RefObject,
 } from 'react';
+import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
 import { Link } from 'react-router-dom';
 
 const DROPDOWN_LIMIT = 10;
 
-function formatNotificationTime(iso: string): string {
+function formatNotificationTime(iso: string, t: TFunction<'common'>): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return iso;
   const diffMs = Date.now() - d.getTime();
   const mins = Math.floor(diffMs / 60_000);
-  if (mins < 1) return 'Just now';
-  if (mins < 60) return `${mins}m ago`;
+  if (mins < 1) return t('time.justNow');
+  if (mins < 60) return t('time.minutesAgo', { count: mins });
   const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}h ago`;
+  if (hrs < 24) return t('time.hoursAgo', { count: hrs });
   const days = Math.floor(hrs / 24);
-  if (days < 7) return `${days}d ago`;
-  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  if (days < 7) return t('time.daysAgo', { count: days });
+  return formatDate(d, undefined, { month: 'short', day: 'numeric' });
 }
 
 function channelLabel(channel?: string): string {
@@ -51,6 +54,7 @@ type NotificationsPanelProps = {
 };
 
 function NotificationRow({ row, onNavigate }: { row: AdminRecentNotificationRow; onNavigate: () => void }) {
+  const { t } = useTranslation('common');
   const unread = row.read === false;
   const channel = channelLabel(row.channel);
   const className = cn(
@@ -62,12 +66,12 @@ function NotificationRow({ row, onNavigate }: { row: AdminRecentNotificationRow;
       <div className="flex items-start justify-between gap-2">
         <p className={cn('text-[13px] leading-snug text-ink', unread && 'font-bold')}>{row.title}</p>
         {unread ? (
-          <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-coral" aria-label="Unread" />
+          <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-coral" aria-label={t('unread')} />
         ) : null}
       </div>
       {row.body ? <p className="mt-0.5 line-clamp-2 text-[12px] text-ink-60">{row.body}</p> : null}
       <div className="mt-1.5 flex flex-wrap items-center gap-2 text-[11px] font-medium text-ink-40">
-        <span>{formatNotificationTime(row.createdAt)}</span>
+        <span>{formatNotificationTime(row.createdAt, t)}</span>
         {channel ? (
           <>
             <span aria-hidden>·</span>
@@ -103,6 +107,8 @@ function NotificationsPanel({
   onRetry,
   onClose,
 }: NotificationsPanelProps) {
+  const { t } = useTranslation('common');
+
   return (
     <div
       ref={panelRef}
@@ -112,13 +118,13 @@ function NotificationsPanel({
       style={style}
     >
       <div className="flex items-center justify-between border-b border-ink-10 px-4 py-3">
-        <p className="text-[13px] font-bold text-ink">Notifications</p>
+        <p className="text-[13px] font-bold text-ink">{t('notifications.title')}</p>
         <Link
           to="/settings/notifications"
           onClick={onClose}
           className="text-[12px] font-semibold text-coral hover:underline"
         >
-          Settings
+          {t('settings')}
         </Link>
       </div>
 
@@ -133,19 +139,19 @@ function NotificationsPanel({
 
         {isError ? (
           <div className="px-4 py-6 text-center">
-            <p className="text-[13px] text-ink-60">Could not load notifications.</p>
+            <p className="text-[13px] text-ink-60">{t('notifications.loadError')}</p>
             <button
               type="button"
               onClick={onRetry}
               className="mt-2 text-[12px] font-semibold text-coral hover:underline"
             >
-              Try again
+              {t('tryAgain')}
             </button>
           </div>
         ) : null}
 
         {!isLoading && !isError && items.length === 0 ? (
-          <p className="px-4 py-8 text-center text-[13px] text-ink-60">No recent notifications.</p>
+          <p className="px-4 py-8 text-center text-[13px] text-ink-60">{t('notifications.empty')}</p>
         ) : null}
 
         {!isLoading && !isError && items.length > 0 ? (
@@ -165,7 +171,7 @@ function NotificationsPanel({
           onClick={onClose}
           className="block text-center text-[12px] font-semibold text-ink-60 transition-colors hover:text-ink"
         >
-          View all notifications
+          {t('notifications.viewAll')}
         </Link>
       </div>
     </div>
@@ -177,6 +183,7 @@ type AdminNotificationsDropdownProps = {
 };
 
 export function AdminNotificationsDropdown({ className }: AdminNotificationsDropdownProps) {
+  const { t } = useTranslation('common');
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
   const btnRef = useRef<HTMLButtonElement>(null);
@@ -254,7 +261,7 @@ export function AdminNotificationsDropdown({ className }: AdminNotificationsDrop
         ref={btnRef}
         id={btnId}
         type="button"
-        aria-label="Notifications"
+        aria-label={t('notifications.title')}
         aria-expanded={open}
         aria-haspopup="menu"
         onClick={() => setOpen((v) => !v)}

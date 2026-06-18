@@ -1,0 +1,64 @@
+{
+  "home": {
+    "eyebrow": "Dashboard",
+    "title": "Platform snapshot",
+    "subtitle": "Operational counters from <1>GET /api/v1/admin/dashboard/counters</1> — same underlying signals as summary, formatted for executive scanning.",
+    "countersError": "Could not load dashboard counters from the API.",
+    "loadingCounters": "Loading counters…",
+    "eventsError": "Could not load events from the API.",
+    "noEvents": "No events returned.",
+    "browseCatalog": "Browse full catalog →",
+    "pendingActionsError": "Could not load pending actions from the API.",
+    "noPendingActions": "No pending actions in the queue."
+  },
+  "sections": {
+    "operations": {
+      "eyebrow": "Operations",
+      "title": "Dashboard counters",
+      "description": "Users, events, support, moderation, roles, and payouts — aligned to the admin API handoff."
+    },
+    "reliability": {
+      "eyebrow": "Reliability",
+      "title": "Operational health",
+      "description": "Live status from GET /api/v1/admin/health when API read mode is enabled."
+    },
+    "catalog": {
+      "eyebrow": "Live catalog",
+      "title": "Spotlight events",
+      "description": "Recent events from GET /api/v1/admin/events."
+    },
+    "queues": {
+      "eyebrow": "Queues",
+      "title": "Pending actions",
+      "description": "Grouped buckets from GET /api/v1/admin/dashboard/pending-actions."
+    }
+  },
+  "counters": {
+    "usersTotal": "Users (total)",
+    "usersSuspended": "Users suspended",
+    "eventsPendingApproval": "Events pending approval",
+    "eventsPublished": "Events published",
+    "supportCasesOpenPipeline": "Support cases (open pipeline)",
+    "listingModerationQueuedOrInReview": "Listing moderation (queued / in review)",
+    "roleApplicationsSubmitted": "Role applications submitted",
+    "payoutsHeld": "Payouts held",
+    "tourismAdsPendingReview": "Tourism ads (pending review)"
+  },
+  "health": {
+    "apiAvailability": "API availability",
+    "checkedAt": "Checked {{date}}",
+    "adminHealthEndpoint": "Admin health endpoint",
+    "unavailable": "Health check unavailable.",
+    "supportPipeline": "Support pipeline",
+    "supportPipelineDescription": "Open cases from dashboard counters",
+    "openSupportInbox": "Open support inbox →",
+    "riskQueue": "Risk queue",
+    "riskQueueDescription": "Trust & safety backlog",
+    "openListingsModeration": "Open listings moderation →"
+  },
+  "pending": {
+    "highPriority": "High priority",
+    "standard": "Standard",
+    "openWorkflow": "Open workflow"
+  }
+}

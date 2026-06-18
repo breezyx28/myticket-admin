@@ -1,6 +1,8 @@
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useTourismAdsRealtime } from '@/hooks/useTourismAdsRealtime';
+import { getCurrentLocale } from '@/i18n';
+import { formatDateTime } from '@/lib/localeFormat';
 import { notifyError, notifySuccess } from '@/lib/notify';
 import { cn } from '@/lib/utils';
 import {
@@ -20,27 +22,20 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { ArrowLeft, ExternalLink, MapPin } from 'lucide-react';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
+import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router-dom';
 import { OpeningHoursEditor } from './components/OpeningHoursEditor';
 import { TourismAdStatusBadge } from './components/TourismAdStatusBadge';
 
 type RejectForm = RejectTourismAdInput;
 
-const DAY_LABELS: Record<(typeof WEEKDAY_KEYS)[number], string> = {
-  mon: 'Mon',
-  tue: 'Tue',
-  wed: 'Wed',
-  thu: 'Thu',
-  fri: 'Fri',
-  sat: 'Sat',
-  sun: 'Sun',
-};
-
 function mapsUrl(lat: string, lng: string) {
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${lat},${lng}`)}`;
 }
 
 export function TourismAdDetailPage() {
+  const { t } = useTranslation('operations');
+  const locale = getCurrentLocale();
   useTourismAdsRealtime();
   const { id = '' } = useParams();
   const { data: ad, isLoading, isError } = useGetTourismAdQuery(id, { skip: !id });
@@ -61,58 +56,58 @@ export function TourismAdDetailPage() {
   async function onApprove() {
     try {
       await approve(id).unwrap();
-      notifySuccess('Tourism ad approved and published.');
+      notifySuccess(t('tourismAds.notify.approved'));
     } catch {
-      notifyError('Approve failed.');
+      notifyError(t('tourismAds.notify.approveFailed'));
     }
   }
 
   async function onReject(values: RejectForm) {
     try {
       await reject({ id, reason: values.reason }).unwrap();
-      notifySuccess('Tourism ad rejected.');
+      notifySuccess(t('tourismAds.notify.rejected'));
       setShowReject(false);
       rejectForm.reset();
     } catch {
-      notifyError('Reject failed.');
+      notifyError(t('tourismAds.notify.rejectFailed'));
     }
   }
 
   async function onArchive() {
     try {
       await archive(id).unwrap();
-      notifySuccess('Tourism ad archived.');
+      notifySuccess(t('tourismAds.notify.archived'));
     } catch {
-      notifyError('Archive failed.');
+      notifyError(t('tourismAds.notify.archiveFailed'));
     }
   }
 
   async function onPin() {
     try {
       await pin({ id }).unwrap();
-      notifySuccess('Pinned to carousel.');
+      notifySuccess(t('tourismAds.notify.pinned'));
     } catch {
-      notifyError('Pin failed.');
+      notifyError(t('tourismAds.notify.pinDetailFailed'));
     }
   }
 
   async function onUnpin() {
     try {
       await unpin(id).unwrap();
-      notifySuccess('Unpinned from carousel.');
+      notifySuccess(t('tourismAds.notify.unpinned'));
     } catch {
-      notifyError('Unpin failed.');
+      notifyError(t('tourismAds.notify.unpinDetailFailed'));
     }
   }
 
-  if (isLoading) return <p className="text-sm text-ink-60">Loading tourism ad…</p>;
+  if (isLoading) return <p className="text-sm text-ink-60">{t('tourismAds.loading')}</p>;
   if (isError || !ad) {
     return (
       <div className="space-y-4">
         <Link to="/tourism-ads" className="inline-flex items-center gap-1 text-[13px] font-semibold text-ink-60">
-          <ArrowLeft size={14} /> Back to tourism ads
+          <ArrowLeft size={14} /> {t('tourismAds.backLink')}
         </Link>
-        <p className="text-coral">Tourism ad not found.</p>
+        <p className="text-coral">{t('tourismAds.notFound')}</p>
       </div>
     );
   }
@@ -123,7 +118,7 @@ export function TourismAdDetailPage() {
   return (
     <div className="space-y-6">
       <Link to="/tourism-ads" className="inline-flex items-center gap-1 text-[13px] font-semibold text-ink-60">
-        <ArrowLeft size={14} /> Back to tourism ads
+        <ArrowLeft size={14} /> {t('tourismAds.backLink')}
       </Link>
 
       <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
@@ -140,7 +135,7 @@ export function TourismAdDetailPage() {
 
           <Card className="rounded-3xl border-ink-10 shadow-card-sm">
             <CardHeader>
-              <CardTitle className="text-lg">Description</CardTitle>
+              <CardTitle className="text-lg">{t('tourismAds.sections.description')}</CardTitle>
             </CardHeader>
             <CardContent>
               <p className="whitespace-pre-wrap text-[15px] leading-relaxed text-ink-60">{ad.description}</p>
@@ -149,7 +144,7 @@ export function TourismAdDetailPage() {
 
           <Card className="rounded-3xl border-ink-10 shadow-card-sm">
             <CardHeader>
-              <CardTitle className="text-lg">Services</CardTitle>
+              <CardTitle className="text-lg">{t('tourismAds.sections.services')}</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="flex flex-wrap gap-2">
@@ -167,7 +162,7 @@ export function TourismAdDetailPage() {
 
           <Card className="rounded-3xl border-ink-10 shadow-card-sm">
             <CardHeader>
-              <CardTitle className="text-lg">Gallery</CardTitle>
+              <CardTitle className="text-lg">{t('tourismAds.sections.gallery')}</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -198,10 +193,12 @@ export function TourismAdDetailPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex flex-wrap gap-2 text-[12px] font-bold uppercase tracking-wide text-ink-60">
-                <span className="rounded-full bg-ink-5 px-3 py-1">Source: {ad.source}</span>
+                <span className="rounded-full bg-ink-5 px-3 py-1">
+                  {t('tourismAds.source', { source: t(`tourismAds.sourceType.${ad.source}`) })}
+                </span>
                 {ad.isPinned ? (
                   <span className="rounded-full bg-coral/15 px-3 py-1 text-coral">
-                    Carousel #{ad.carouselPosition ?? 0}
+                    {t('tourismAds.carouselPosition', { position: ad.carouselPosition ?? 0 })}
                   </span>
                 ) : null}
               </div>
@@ -216,15 +213,33 @@ export function TourismAdDetailPage() {
               </a>
 
               <div className="space-y-2 border-t border-ink-10 pt-4 text-[13px] text-ink-60">
-                {ad.contact.phone ? <p>Phone: {ad.contact.phone}</p> : null}
-                {ad.contact.email ? <p>Email: {ad.contact.email}</p> : null}
-                {ad.contact.website ? <p>Website: {ad.contact.website}</p> : null}
-                {ad.contact.whatsapp ? <p>WhatsApp: {ad.contact.whatsapp}</p> : null}
+                {ad.contact.phone ? (
+                  <p>
+                    {t('tourismAds.contactLabels.phone')}: {ad.contact.phone}
+                  </p>
+                ) : null}
+                {ad.contact.email ? (
+                  <p>
+                    {t('tourismAds.contactLabels.email')}: {ad.contact.email}
+                  </p>
+                ) : null}
+                {ad.contact.website ? (
+                  <p>
+                    {t('tourismAds.contactLabels.website')}: {ad.contact.website}
+                  </p>
+                ) : null}
+                {ad.contact.whatsapp ? (
+                  <p>
+                    {t('tourismAds.contactLabels.whatsapp')}: {ad.contact.whatsapp}
+                  </p>
+                ) : null}
               </div>
 
               {ad.mediaLinks.length > 0 ? (
                 <div className="space-y-1 border-t border-ink-10 pt-4">
-                  <p className="text-[11px] font-bold uppercase tracking-wide text-ink-40">Media links</p>
+                  <p className="text-[11px] font-bold uppercase tracking-wide text-ink-40">
+                    {t('tourismAds.sections.mediaLinks')}
+                  </p>
                   {ad.mediaLinks.map((m) => (
                     <a
                       key={`${m.platform}-${m.url}`}
@@ -241,22 +256,36 @@ export function TourismAdDetailPage() {
 
               {(ad.user || ad.createdBy) && (
                 <div className="border-t border-ink-10 pt-4 text-[13px] text-ink-60">
-                  <p className="text-[11px] font-bold uppercase tracking-wide text-ink-40">Submitter</p>
+                  <p className="text-[11px] font-bold uppercase tracking-wide text-ink-40">
+                    {t('tourismAds.submitter')}
+                  </p>
                   <p className="font-semibold text-ink">
-                    {ad.user?.fullName ?? ad.createdBy?.fullName ?? 'Unknown'}
+                    {ad.user?.fullName ?? ad.createdBy?.fullName ?? t('tourismAds.unknown')}
                   </p>
                   <p>{ad.user?.email ?? ad.createdBy?.email}</p>
                   {ad.submittedAt ? (
-                    <p className="mt-1 text-[12px]">Submitted {new Date(ad.submittedAt).toLocaleString()}</p>
+                    <p className="mt-1 text-[12px]">
+                      {t('tourismAds.submittedAt', {
+                        date: formatDateTime(ad.submittedAt, locale),
+                      })}
+                    </p>
                   ) : null}
                 </div>
               )}
 
               {ad.reviewedBy || ad.reviewedAt ? (
                 <div className="border-t border-ink-10 pt-4 text-[13px] text-ink-60">
-                  <p className="text-[11px] font-bold uppercase tracking-wide text-ink-40">Review</p>
-                  {ad.reviewedBy ? <p>By {ad.reviewedBy.fullName ?? ad.reviewedBy.email}</p> : null}
-                  {ad.reviewedAt ? <p>{new Date(ad.reviewedAt).toLocaleString()}</p> : null}
+                  <p className="text-[11px] font-bold uppercase tracking-wide text-ink-40">
+                    {t('tourismAds.review')}
+                  </p>
+                  {ad.reviewedBy ? (
+                    <p>
+                      {t('tourismAds.reviewedBy', {
+                        name: ad.reviewedBy.fullName ?? ad.reviewedBy.email ?? t('tourismAds.unknown'),
+                      })}
+                    </p>
+                  ) : null}
+                  {ad.reviewedAt ? <p>{formatDateTime(ad.reviewedAt, locale)}</p> : null}
                   {ad.rejectionReason ? (
                     <p className="mt-2 rounded-xl bg-coral/10 px-3 py-2 text-coral">{ad.rejectionReason}</p>
                   ) : null}
@@ -267,7 +296,7 @@ export function TourismAdDetailPage() {
 
           <Card className="rounded-3xl border-ink-10 shadow-card-sm">
             <CardHeader>
-              <CardTitle className="text-lg">Opening hours</CardTitle>
+              <CardTitle className="text-lg">{t('tourismAds.sections.openingHours')}</CardTitle>
             </CardHeader>
             <CardContent>
               {readOnly ? (
@@ -276,9 +305,11 @@ export function TourismAdDetailPage() {
                     const row = ad.openingHours[day];
                     return (
                       <div key={day} className="rounded-xl bg-surface-tint/50 px-3 py-2">
-                        <span className="font-bold text-ink">{DAY_LABELS[day]}</span>
+                        <span className="font-bold text-ink">{t(`tourismAds.weekdaysShort.${day}`)}</span>
                         <span className="ml-2 text-ink-60">
-                          {row.closed ? 'Closed' : `${row.opens} – ${row.closes}`}
+                          {row.closed
+                            ? t('tourismAds.closed')
+                            : t('tourismAds.hoursRange', { opens: row.opens, closes: row.closes })}
                         </span>
                       </div>
                     );
@@ -288,38 +319,38 @@ export function TourismAdDetailPage() {
                 <OpeningHoursEditor value={ad.openingHours} onChange={() => {}} disabled />
               )}
               {!readOnly ? (
-                <p className="mt-3 text-[12px] text-ink-60">Edit hours on the create form or via PATCH when wired.</p>
+                <p className="mt-3 text-[12px] text-ink-60">{t('tourismAds.editHoursHint')}</p>
               ) : null}
             </CardContent>
           </Card>
 
           <Card className="rounded-3xl border-ink-10 shadow-card-sm">
             <CardHeader>
-              <CardTitle className="text-lg">Actions</CardTitle>
+              <CardTitle className="text-lg">{t('tourismAds.sections.actions')}</CardTitle>
             </CardHeader>
             <CardContent className="flex flex-wrap gap-2">
               {ad.status === 'pending_review' ? (
                 <>
                   <Button variant="secondary" loading={approving} disabled={busy} onClick={onApprove}>
-                    Approve
+                    {t('tourismAds.approve')}
                   </Button>
                   <Button variant="outline" disabled={busy} onClick={() => setShowReject((v) => !v)}>
-                    Reject
+                    {t('tourismAds.reject')}
                   </Button>
                 </>
               ) : null}
               {ad.status === 'published' ? (
                 <>
                   <Button variant="outline" loading={archiving} disabled={busy} onClick={onArchive}>
-                    Archive
+                    {t('tourismAds.archive')}
                   </Button>
                   {ad.isPinned ? (
                     <Button variant="ghost" loading={unpinning} disabled={busy} onClick={onUnpin}>
-                      Unpin
+                      {t('tourismAds.unpin')}
                     </Button>
                   ) : (
                     <Button variant="ghost" loading={pinning} disabled={busy} onClick={onPin}>
-                      Pin to carousel
+                      {t('tourismAds.pinToCarousel')}
                     </Button>
                   )}
                 </>
@@ -329,7 +360,7 @@ export function TourismAdDetailPage() {
               <CardContent className="border-t border-ink-10 pt-4">
                 <form onSubmit={rejectForm.handleSubmit(onReject)} className="space-y-3">
                   <label className="flex flex-col gap-1 text-[12px] font-semibold text-ink-60">
-                    Rejection reason
+                    {t('tourismAds.rejectionReason')}
                     <textarea
                       {...rejectForm.register('reason')}
                       rows={3}
@@ -345,7 +376,7 @@ export function TourismAdDetailPage() {
                     </p>
                   ) : null}
                   <Button type="submit" variant="danger" loading={rejecting} disabled={busy}>
-                    Confirm reject
+                    {t('tourismAds.confirmReject')}
                   </Button>
                 </form>
               </CardContent>

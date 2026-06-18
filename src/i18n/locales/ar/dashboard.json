@@ -1,0 +1,64 @@
+{
+  "home": {
+    "eyebrow": "لوحة التحكم",
+    "title": "لمحة عن المنصة",
+    "subtitle": "عدادات تشغيلية من <1>GET /api/v1/admin/dashboard/counters</1> — نفس الإشارات الأساسية للملخص، منسقة للمراجعة التنفيذية.",
+    "countersError": "تعذر تحميل عدادات لوحة التحكم من واجهة برمجة التطبيقات.",
+    "loadingCounters": "جارٍ تحميل العدادات…",
+    "eventsError": "تعذر تحميل الفعاليات من واجهة برمجة التطبيقات.",
+    "noEvents": "لم يتم إرجاع أي فعاليات.",
+    "browseCatalog": "تصفح الكتالوج الكامل ←",
+    "pendingActionsError": "تعذر تحميل الإجراءات المعلقة من واجهة برمجة التطبيقات.",
+    "noPendingActions": "لا توجد إجراءات معلقة في قائمة الانتظار."
+  },
+  "sections": {
+    "operations": {
+      "eyebrow": "العمليات",
+      "title": "عدادات لوحة التحكم",
+      "description": "المستخدمون والفعاليات والدعم والإشراف والأدوار والمدفوعات — متوافقة مع وثائق واجهة برمجة تطبيقات الإدارة."
+    },
+    "reliability": {
+      "eyebrow": "الموثوقية",
+      "title": "الصحة التشغيلية",
+      "description": "الحالة المباشرة من GET /api/v1/admin/health عند تفعيل وضع قراءة API."
+    },
+    "catalog": {
+      "eyebrow": "الكتالوج المباشر",
+      "title": "فعاليات مميزة",
+      "description": "أحدث الفعاليات من GET /api/v1/admin/events."
+    },
+    "queues": {
+      "eyebrow": "قوائم الانتظار",
+      "title": "الإجراءات المعلقة",
+      "description": "مجموعات من GET /api/v1/admin/dashboard/pending-actions."
+    }
+  },
+  "counters": {
+    "usersTotal": "المستخدمون (الإجمالي)",
+    "usersSuspended": "المستخدمون الموقوفون",
+    "eventsPendingApproval": "فعاليات بانتظار الموافقة",
+    "eventsPublished": "الفعاليات المنشورة",
+    "supportCasesOpenPipeline": "حالات الدعم (خط المعالجة المفتوح)",
+    "listingModerationQueuedOrInReview": "إشراف القوائم (في الانتظار / قيد المراجعة)",
+    "roleApplicationsSubmitted": "طلبات الأدوار المقدمة",
+    "payoutsHeld": "المدفوعات المحجوزة",
+    "tourismAdsPendingReview": "إعلانات السياحة (بانتظار المراجعة)"
+  },
+  "health": {
+    "apiAvailability": "توفر واجهة برمجة التطبيقات",
+    "checkedAt": "تم الفحص {{date}}",
+    "adminHealthEndpoint": "نقطة نهاية صحة الإدارة",
+    "unavailable": "فحص الصحة غير متاح.",
+    "supportPipeline": "خط معالجة الدعم",
+    "supportPipelineDescription": "الحالات المفتوحة من عدادات لوحة التحكم",
+    "openSupportInbox": "فتح صندوق الدعم ←",
+    "riskQueue": "قائمة المخاطر",
+    "riskQueueDescription": "تراكم الثقة والسلامة",
+    "openListingsModeration": "فتح إشراف القوائم ←"
+  },
+  "pending": {
+    "highPriority": "أولوية عالية",
+    "standard": "عادي",
+    "openWorkflow": "فتح سير العمل"
+  }
+}

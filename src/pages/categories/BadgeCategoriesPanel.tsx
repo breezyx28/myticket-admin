@@ -3,8 +3,10 @@ import { RowActionsMenu, type RowMenuAction } from '@/components/admin/RowAction
 import { Button } from '@/components/ui/Button';
 import { filterSelectClassName } from '@/lib/adminFilters';
 import { getApiErrorMessage } from '@/lib/apiError';
+import { getCurrentLocale } from '@/i18n';
 import { rowMatchesSearch } from '@/lib/listQuery';
 import { notifyError, notifySuccess } from '@/lib/notify';
+import { pickLocalizedField } from '@/lib/pickLocalizedField';
 import { CategoryPaginationBar } from '@/pages/categories/CategoryPaginationBar';
 import { suggestUniqueCategorySlug } from '@/schemas/api/adminMappers';
 import {
@@ -23,6 +25,7 @@ import {
   useUpsertVendorServiceCategoryMutation,
 } from '@/services/adminApi';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { Trans, useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
@@ -37,19 +40,9 @@ type BadgeCategoriesPanelProps = {
   kind: 'talent' | 'vendor';
 };
 
-function statusBadge(active: boolean) {
-  return active ? (
-    <span className="inline-flex rounded-full border border-mint/40 bg-mint/20 px-2.5 py-0.5 text-[11px] font-extrabold uppercase tracking-wide text-ink">
-      Active
-    </span>
-  ) : (
-    <span className="inline-flex rounded-full border border-amber/40 bg-amber/15 px-2.5 py-0.5 text-[11px] font-extrabold uppercase tracking-wide text-amber">
-      Inactive
-    </span>
-  );
-}
-
 export function BadgeCategoriesPanel({ kind }: BadgeCategoriesPanelProps) {
+  const { t } = useTranslation(['operations', 'common']);
+  const locale = getCurrentLocale();
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [activeFilter, setActiveFilter] = useState<'all' | 'active' | 'inactive'>('all');
@@ -104,14 +97,37 @@ export function BadgeCategoriesPanel({ kind }: BadgeCategoriesPanelProps) {
   const directoryPath = kind === 'talent' ? '/approvals/talent' : '/approvals/vendors';
   const filterHint =
     kind === 'talent'
-      ? 'GET /profiles/talents?category_slug=…'
-      : 'GET /profiles/vendors?category_slug=…';
+      ? t('operations:categories.badgePanel.filterHintTalent')
+      : t('operations:categories.badgePanel.filterHintVendor');
+  const descriptionKey =
+    kind === 'talent' ? 'categories.badgePanel.descriptionTalent' : 'categories.badgePanel.descriptionVendor';
+  const deleteConfirmKey =
+    kind === 'talent'
+      ? 'categories.badgePanel.deleteConfirmTalent'
+      : 'categories.badgePanel.deleteConfirmVendor';
+  const directoryLabel =
+    kind === 'talent'
+      ? t('operations:categories.badgePanel.openTalentDirectory')
+      : t('operations:categories.badgePanel.openVendorDirectory');
+
+  function statusBadge(active: boolean) {
+    return active ? (
+      <span className="inline-flex rounded-full border border-mint/40 bg-mint/20 px-2.5 py-0.5 text-[11px] font-extrabold uppercase tracking-wide text-ink">
+        {t('operations:categories.status.active')}
+      </span>
+    ) : (
+      <span className="inline-flex rounded-full border border-amber/40 bg-amber/15 px-2.5 py-0.5 text-[11px] font-extrabold uppercase tracking-wide text-amber">
+        {t('operations:categories.status.inactive')}
+      </span>
+    );
+  }
 
   function rowActions(row: BadgeCategory): RowMenuAction[] {
+    const localizedName = pickLocalizedField({ en: row.nameEn, ar: row.nameAr }, locale, row.slug);
     return [
       {
         key: 'edit',
-        label: 'Edit',
+        label: t('operations:categories.actions.edit'),
         onSelect: () => {
           setEditingId(row.id);
           editForm.reset({
@@ -124,40 +140,35 @@ export function BadgeCategoriesPanel({ kind }: BadgeCategoriesPanelProps) {
       },
       {
         key: 'toggle',
-        label: row.active ? 'Deactivate' : 'Activate',
+        label: row.active ? t('operations:categories.actions.deactivate') : t('operations:categories.actions.activate'),
         loading: toggleState.isLoading && toggleState.originalArgs?.id === row.id,
         onSelect: async () => {
           try {
             await toggleActive({ id: row.id, active: !row.active }).unwrap();
-            notifySuccess(row.active ? 'Category deactivated.' : 'Category activated.');
+            notifySuccess(
+              row.active
+                ? t('operations:categories.badgePanel.notifyDeactivated')
+                : t('operations:categories.badgePanel.notifyActivated'),
+            );
           } catch (err) {
-            notifyError(getApiErrorMessage(err, 'Could not update category status.'));
+            notifyError(getApiErrorMessage(err, t('operations:categories.badgePanel.notifyToggleFailed')));
           }
         },
       },
       {
         key: 'delete',
-        label: 'Delete',
+        label: t('operations:categories.actions.delete'),
         danger: true,
         loading: deleteState.isLoading && deleteState.originalArgs === row.id,
         onSelect: async () => {
-          if (
-            !window.confirm(
-              `Delete "${row.nameEn}" (${row.slug})? Profiles or applications still using it will block deletion.`,
-            )
-          ) {
+          if (!window.confirm(t(`operations:${deleteConfirmKey}`, { name: localizedName, slug: row.slug }))) {
             return;
           }
           try {
             await deleteCategory(row.id).unwrap();
-            notifySuccess('Category deleted.');
+            notifySuccess(t('operations:categories.badgePanel.notifyDeleted'));
           } catch (err) {
-            notifyError(
-              getApiErrorMessage(
-                err,
-                'Could not delete category. Reassign profiles or applications first.',
-              ),
-            );
+            notifyError(getApiErrorMessage(err, t('operations:categories.badgePanel.notifyDeleteFailed')));
           }
         },
       },
@@ -168,14 +179,20 @@ export function BadgeCategoriesPanel({ kind }: BadgeCategoriesPanelProps) {
     <div className="space-y-6">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <p className="max-w-[65ch] text-[14px] leading-relaxed text-ink-60">
-          Curated badge taxonomy via <span className="font-mono text-ink">{apiBase}</span>. Rows marked{' '}
-          <span className="font-semibold text-ink">Custom</span> were created by users on the main app.
+          <Trans
+            ns="operations"
+            i18nKey={descriptionKey}
+            components={{
+              api: <span className="font-mono text-ink">{apiBase}</span>,
+              strong: <span className="font-semibold text-ink" />,
+            }}
+          />
         </p>
         <Link
           to={directoryPath}
           className="shrink-0 rounded-2xl border border-ink-10 bg-white px-4 py-3 text-[13px] font-bold text-coral shadow-card-sm transition hover:border-coral/30"
         >
-          Open {kind === 'talent' ? 'talent' : 'vendor'} directory
+          {directoryLabel}
         </Link>
       </div>
 
@@ -184,41 +201,43 @@ export function BadgeCategoriesPanel({ kind }: BadgeCategoriesPanelProps) {
           <ListFiltersBar
             searchValue={search}
             onSearchChange={setSearch}
-            searchPlaceholder="Search slug, names, id…"
+            searchPlaceholder={t('operations:categories.filters.searchBadge')}
           >
             <select
               className={filterSelectClassName()}
               value={activeFilter}
               onChange={(e) => setActiveFilter(e.target.value as typeof activeFilter)}
             >
-              <option value="all">All statuses</option>
-              <option value="active">Active only</option>
-              <option value="inactive">Inactive only</option>
+              <option value="all">{t('operations:categories.filters.allStatuses')}</option>
+              <option value="active">{t('operations:categories.filters.activeOnly')}</option>
+              <option value="inactive">{t('operations:categories.filters.inactiveOnly')}</option>
             </select>
             <Button type="button" variant="dark" size="sm" onClick={() => setShowCreate((v) => !v)}>
-              {showCreate ? 'Close form' : 'New category'}
+              {showCreate ? t('operations:categories.actions.closeForm') : t('operations:categories.actions.newCategory')}
             </Button>
           </ListFiltersBar>
         </div>
 
         {showCreate ? (
           <div className="border-b border-ink-10 bg-surface-tint/50 px-5 py-5 md:px-6">
-            <p className="mb-4 text-[11px] font-bold uppercase tracking-wide text-ink-40">Create category</p>
+            <p className="mb-4 text-[11px] font-bold uppercase tracking-wide text-ink-40">
+              {t('operations:categories.badgePanel.createTitle')}
+            </p>
             <form
               className="grid gap-3 md:grid-cols-2 xl:grid-cols-4"
               onSubmit={addForm.handleSubmit(async (values) => {
                 try {
                   await upsert({ body: values }).unwrap();
-                  notifySuccess('Category created.');
+                  notifySuccess(t('operations:categories.badgePanel.notifyCreated'));
                   addForm.reset(defaultValues);
                   setShowCreate(false);
                 } catch (err) {
-                  notifyError(getApiErrorMessage(err, 'Could not create category.'));
+                  notifyError(getApiErrorMessage(err, t('operations:categories.badgePanel.notifyCreateFailed')));
                 }
               })}
             >
               <label className="block space-y-2">
-                <span className="text-[12px] font-semibold text-ink-60">Slug</span>
+                <span className="text-[12px] font-semibold text-ink-60">{t('operations:categories.fields.slug')}</span>
                 <input
                   className="w-full rounded-xl border border-ink-10 px-3 py-2 font-mono text-[13px]"
                   {...addForm.register('slug')}
@@ -235,19 +254,19 @@ export function BadgeCategoriesPanel({ kind }: BadgeCategoriesPanelProps) {
                     )
                   }
                 >
-                  Suggest from English name
+                  {t('operations:categories.actions.suggestSlug')}
                 </Button>
               </label>
               <label className="block space-y-2">
-                <span className="text-[12px] font-semibold text-ink-60">Name (EN)</span>
+                <span className="text-[12px] font-semibold text-ink-60">{t('operations:categories.fields.nameEn')}</span>
                 <input className="w-full rounded-xl border border-ink-10 px-3 py-2 text-[13px]" {...addForm.register('nameEn')} />
               </label>
               <label className="block space-y-2">
-                <span className="text-[12px] font-semibold text-ink-60">Name (AR)</span>
+                <span className="text-[12px] font-semibold text-ink-60">{t('operations:categories.fields.nameAr')}</span>
                 <input className="w-full rounded-xl border border-ink-10 px-3 py-2 text-[13px]" {...addForm.register('nameAr')} />
               </label>
               <label className="block space-y-2">
-                <span className="text-[12px] font-semibold text-ink-60">Display order</span>
+                <span className="text-[12px] font-semibold text-ink-60">{t('operations:categories.fields.displayOrder')}</span>
                 <input
                   type="number"
                   min={0}
@@ -264,7 +283,7 @@ export function BadgeCategoriesPanel({ kind }: BadgeCategoriesPanelProps) {
               </label>
               <div className="flex items-end md:col-span-2 xl:col-span-4">
                 <Button type="submit" variant="dark" loading={upsertState.isLoading}>
-                  Create
+                  {t('operations:categories.actions.create')}
                 </Button>
               </div>
             </form>
@@ -282,8 +301,8 @@ export function BadgeCategoriesPanel({ kind }: BadgeCategoriesPanelProps) {
 
           {!query.isLoading && filtered.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-ink-10 px-6 py-10 text-center">
-              <p className="font-bold text-ink">No categories on this page</p>
-              <p className="mt-2 text-[13px] text-ink-60">Adjust filters or create a new badge.</p>
+              <p className="font-bold text-ink">{t('operations:categories.badgePanel.empty')}</p>
+              <p className="mt-2 text-[13px] text-ink-60">{t('operations:categories.badgePanel.emptyHint')}</p>
             </div>
           ) : null}
 
@@ -292,12 +311,12 @@ export function BadgeCategoriesPanel({ kind }: BadgeCategoriesPanelProps) {
               <table className="w-full min-w-[920px] text-left text-[14px]">
                 <thead className="text-[11px] font-bold uppercase tracking-wide text-ink-40">
                   <tr>
-                    <th className="px-4 py-3">Order</th>
-                    <th className="px-4 py-3">Slug</th>
-                    <th className="px-4 py-3">Labels</th>
-                    <th className="px-4 py-3">Origin</th>
-                    <th className="px-4 py-3">Status</th>
-                    <th className="px-4 py-3 text-right">Actions</th>
+                    <th className="px-4 py-3">{t('operations:categories.columns.order')}</th>
+                    <th className="px-4 py-3">{t('operations:categories.columns.slug')}</th>
+                    <th className="px-4 py-3">{t('operations:categories.columns.labels')}</th>
+                    <th className="px-4 py-3">{t('operations:categories.columns.origin')}</th>
+                    <th className="px-4 py-3">{t('operations:categories.columns.status')}</th>
+                    <th className="px-4 py-3 text-right">{t('operations:categories.columns.actions')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -310,27 +329,27 @@ export function BadgeCategoriesPanel({ kind }: BadgeCategoriesPanelProps) {
                             onSubmit={editForm.handleSubmit(async (values) => {
                               try {
                                 await upsert({ id: row.id, body: values }).unwrap();
-                                notifySuccess('Category updated.');
+                                notifySuccess(t('operations:categories.badgePanel.notifyUpdated'));
                                 setEditingId(null);
                               } catch (err) {
-                                notifyError(getApiErrorMessage(err, 'Could not save category.'));
+                                notifyError(getApiErrorMessage(err, t('operations:categories.badgePanel.notifySaveFailed')));
                               }
                             })}
                           >
                             <label className="block space-y-2">
-                              <span className="text-[12px] font-semibold text-ink-60">Slug</span>
+                              <span className="text-[12px] font-semibold text-ink-60">{t('operations:categories.fields.slug')}</span>
                               <input className="w-full rounded-xl border border-ink-10 px-3 py-2 font-mono text-[13px]" {...editForm.register('slug')} />
                             </label>
                             <label className="block space-y-2">
-                              <span className="text-[12px] font-semibold text-ink-60">Name (EN)</span>
+                              <span className="text-[12px] font-semibold text-ink-60">{t('operations:categories.fields.nameEn')}</span>
                               <input className="w-full rounded-xl border border-ink-10 px-3 py-2 text-[13px]" {...editForm.register('nameEn')} />
                             </label>
                             <label className="block space-y-2">
-                              <span className="text-[12px] font-semibold text-ink-60">Name (AR)</span>
+                              <span className="text-[12px] font-semibold text-ink-60">{t('operations:categories.fields.nameAr')}</span>
                               <input className="w-full rounded-xl border border-ink-10 px-3 py-2 text-[13px]" {...editForm.register('nameAr')} />
                             </label>
                             <label className="block space-y-2">
-                              <span className="text-[12px] font-semibold text-ink-60">Display order</span>
+                              <span className="text-[12px] font-semibold text-ink-60">{t('operations:categories.fields.displayOrder')}</span>
                               <input
                                 type="number"
                                 min={0}
@@ -347,10 +366,10 @@ export function BadgeCategoriesPanel({ kind }: BadgeCategoriesPanelProps) {
                             </label>
                             <div className="flex gap-2 xl:col-span-4">
                               <Button type="submit" size="sm" variant="dark" loading={upsertState.isLoading}>
-                                Save
+                                {t('operations:categories.actions.save')}
                               </Button>
                               <Button type="button" size="sm" variant="ghost" onClick={() => setEditingId(null)}>
-                                Cancel
+                                {t('operations:categories.actions.cancel')}
                               </Button>
                             </div>
                           </form>
@@ -358,29 +377,37 @@ export function BadgeCategoriesPanel({ kind }: BadgeCategoriesPanelProps) {
                       </tr>
                     ) : (
                       <tr key={row.id} className="border-t border-ink-10 transition hover:bg-surface-tint">
-                        <td className="px-4 py-3 font-mono text-[13px] text-ink-60">{row.displayOrder ?? '—'}</td>
+                        <td className="px-4 py-3 font-mono text-[13px] text-ink-60">{row.displayOrder ?? t('common:none')}</td>
                         <td className="px-4 py-3 font-mono text-[13px] font-semibold text-ink">{row.slug}</td>
                         <td className="px-4 py-3">
-                          <p className="font-semibold text-ink">{row.nameEn}</p>
-                          <p className="text-[13px] text-ink-60" dir="rtl">
-                            {row.nameAr}
+                          <p className="font-semibold text-ink">
+                            {pickLocalizedField({ en: row.nameEn, ar: row.nameAr }, locale)}
                           </p>
                         </td>
                         <td className="px-4 py-3">
                           {row.isCustom ? (
                             <span className="inline-flex rounded-full border border-coral/30 bg-coral/10 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-coral">
-                              Custom
+                              {t('operations:categories.badgePanel.originCustom')}
                             </span>
                           ) : (
-                            <span className="text-[12px] font-semibold text-ink-60">Curated</span>
+                            <span className="text-[12px] font-semibold text-ink-60">
+                              {t('operations:categories.badgePanel.originCurated')}
+                            </span>
                           )}
                           {row.createdByUserId ? (
-                            <p className="mt-1 font-mono text-[11px] text-ink-40">user #{row.createdByUserId}</p>
+                            <p className="mt-1 font-mono text-[11px] text-ink-40">
+                              {t('operations:categories.badgePanel.userCreated', { id: row.createdByUserId })}
+                            </p>
                           ) : null}
                         </td>
                         <td className="px-4 py-3">{statusBadge(row.active)}</td>
                         <td className="px-4 py-3 text-right">
-                          <RowActionsMenu ariaLabel={`Actions for ${row.nameEn}`} actions={rowActions(row)} />
+                          <RowActionsMenu
+                            ariaLabel={t('operations:categories.badgePanel.actionsFor', {
+                              name: pickLocalizedField({ en: row.nameEn, ar: row.nameAr }, locale),
+                            })}
+                            actions={rowActions(row)}
+                          />
                         </td>
                       </tr>
                     ),
@@ -401,7 +428,8 @@ export function BadgeCategoriesPanel({ kind }: BadgeCategoriesPanelProps) {
           />
 
           <p className="mt-4 text-[12px] text-ink-40">
-            Filter directory: <span className="font-mono text-ink-60">{filterHint}</span>
+            {t('operations:categories.badgePanel.filterDirectory')}{' '}
+            <span className="font-mono text-ink-60">{filterHint}</span>
           </p>
         </div>
       </div>

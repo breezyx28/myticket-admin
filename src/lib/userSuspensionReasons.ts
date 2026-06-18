@@ -1,13 +1,13 @@
-/** Preset suspension reasons for admin user actions (select or customize). */
-export const USER_SUSPENSION_PRESET_REASONS = [
-  'Fraud investigation',
-  'Terms of service violation',
-  'Payment dispute or chargeback abuse',
-  'Harassment or abusive behavior',
-  'Spam or automated activity',
-  'Identity verification failed',
+/** Preset suspension reason translation keys (operations namespace). */
+export const USER_SUSPENSION_PRESET_REASON_KEYS = [
+  'suspensionReason.fraudInvestigation',
+  'suspensionReason.termsViolation',
+  'suspensionReason.paymentDispute',
+  'suspensionReason.harassment',
+  'suspensionReason.spam',
+  'suspensionReason.identityVerificationFailed',
 ] as const;
 
-export type UserSuspensionPresetReason = (typeof USER_SUSPENSION_PRESET_REASONS)[number];
+export type UserSuspensionPresetReasonKey = (typeof USER_SUSPENSION_PRESET_REASON_KEYS)[number];
 
 export const USER_SUSPENSION_CUSTOM_OPTION = '__custom__' as const;

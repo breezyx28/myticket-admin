@@ -1,0 +1,40 @@
+{
+  "groups": {
+    "overview": "Overview",
+    "approvals": "Approvals",
+    "operations": "Operations",
+    "platform": "Platform",
+    "insights": "Insights",
+    "trust": "Trust & safety",
+    "support": "Support"
+  },
+  "items": {
+    "overview": "Overview",
+    "roleApplications": "Role applications",
+    "talentProfiles": "Talent profiles",
+    "vendorProfiles": "Vendor profiles",
+    "organizerProfiles": "Organizer profiles",
+    "tourismAds": "Tourism ads",
+    "users": "Users",
+    "orders": "Orders",
+    "refunds": "Refunds",
+    "auctions": "Auctions",
+    "scanners": "Scanners",
+    "events": "Events",
+    "categories": "Categories",
+    "featured": "Featured",
+    "myProfile": "My profile",
+    "fees": "Fees",
+    "refundBreakdowns": "Refund breakdowns",
+    "payouts": "Payouts",
+    "financeCompliance": "Finance compliance",
+    "notifications": "Notifications",
+    "systemStatus": "System status",
+    "analytics": "Analytics",
+    "activityAudit": "Activity & audit",
+    "listings": "Listings",
+    "ratings": "Ratings",
+    "support": "Support",
+    "complaints": "Complaints"
+  }
+}

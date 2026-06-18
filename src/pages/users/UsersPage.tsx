@@ -2,7 +2,9 @@ import { ListFiltersBar } from '@/components/admin/ListFiltersBar';
 import { RowActionsMenu, type RowMenuAction } from '@/components/admin/RowActionsMenu';
 import { SuspendUserDialog } from '@/components/users/SuspendUserDialog';
 import { Button } from '@/components/ui/Button';
+import { getCurrentLocale } from '@/i18n';
 import { filterSelectClassName } from '@/lib/adminFilters';
+import { formatDate } from '@/lib/localeFormat';
 import { notifyError, notifySuccess } from '@/lib/notify';
 import { cn } from '@/lib/utils';
 import type { AdminUserRow } from '@/schemas/user.schema';
@@ -14,19 +16,10 @@ import {
 } from '@/services/adminApi';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
+import { Trans, useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 
-const ROLE_OPTIONS: Array<{ value: 'all' | AdminUserRow['role']; label: string }> = [
-  { value: 'all', label: 'All roles' },
-  { value: 'guest', label: 'Guest' },
-  { value: 'talent', label: 'Talent' },
-  { value: 'vendor', label: 'Vendor' },
-  { value: 'organizer', label: 'Organizer' },
-  { value: 'scanner', label: 'Scanner' },
-  { value: 'admin', label: 'Admin' },
-];
-
-function roleBadge(role: AdminUserRow['role']) {
+function roleBadge(role: AdminUserRow['role'], t: (key: string) => string) {
   const styles: Record<AdminUserRow['role'], string> = {
     guest: 'bg-ink-5 text-ink-60 border-ink-10',
     talent: 'bg-mint/20 text-ink border-mint/40',
@@ -42,29 +35,29 @@ function roleBadge(role: AdminUserRow['role']) {
         styles[role],
       )}
     >
-      {role}
+      {t(`roles.${role}`)}
     </span>
   );
 }
 
-function accountStatusBadge(row: AdminUserRow) {
+function accountStatusBadge(row: AdminUserRow, t: (key: string) => string) {
   if (row.suspended) {
     return (
       <span className="inline-flex rounded-full border border-coral/40 bg-coral/15 px-2.5 py-0.5 text-[11px] font-extrabold uppercase tracking-wide text-coral">
-        Suspended
+        {t('userStatus.suspended')}
       </span>
     );
   }
   if (row.isActive === false) {
     return (
       <span className="inline-flex rounded-full border border-amber/40 bg-amber/15 px-2.5 py-0.5 text-[11px] font-extrabold uppercase tracking-wide text-amber">
-        Inactive
+        {t('userStatus.inactive')}
       </span>
     );
   }
   return (
     <span className="inline-flex rounded-full border border-mint/40 bg-mint/20 px-2.5 py-0.5 text-[11px] font-extrabold uppercase tracking-wide text-ink">
-      Active
+      {t('userStatus.active')}
     </span>
   );
 }
@@ -74,6 +67,8 @@ function canManageUser(row: AdminUserRow) {
 }
 
 export function UsersPage() {
+  const { t } = useTranslation(['operations', 'common']);
+  const locale = getCurrentLocale();
   const navigate = useNavigate();
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
@@ -82,6 +77,19 @@ export function UsersPage() {
   const [suspended, setSuspended] = useState<'all' | 'yes' | 'no'>('all');
   const [suspendTarget, setSuspendTarget] = useState<AdminUserRow | null>(null);
   const [busyUserId, setBusyUserId] = useState<string | null>(null);
+
+  const roleOptions: Array<{ value: 'all' | AdminUserRow['role']; label: string }> = useMemo(
+    () => [
+      { value: 'all', label: t('operations:roles.all') },
+      { value: 'guest', label: t('operations:roles.guest') },
+      { value: 'talent', label: t('operations:roles.talent') },
+      { value: 'vendor', label: t('operations:roles.vendor') },
+      { value: 'organizer', label: t('operations:roles.organizer') },
+      { value: 'scanner', label: t('operations:roles.scanner') },
+      { value: 'admin', label: t('operations:roles.admin') },
+    ],
+    [t],
+  );
 
   useEffect(() => {
     const timer = window.setTimeout(() => setDebouncedSearch(search.trim()), 300);
@@ -126,7 +134,7 @@ export function UsersPage() {
     const actions: RowMenuAction[] = [
       {
         key: 'view',
-        label: 'View profile',
+        label: t('operations:users.viewProfile'),
         onSelect: () => {
           void navigate(`/users/${encodeURIComponent(row.id)}`);
         },
@@ -136,7 +144,7 @@ export function UsersPage() {
     if (manageable && !row.suspended) {
       actions.push({
         key: 'suspend',
-        label: 'Suspend',
+        label: t('operations:users.suspend'),
         danger: true,
         loading,
         onSelect: () => setSuspendTarget(row),
@@ -146,15 +154,15 @@ export function UsersPage() {
     if (manageable && row.suspended) {
       actions.push({
         key: 'unsuspend',
-        label: 'Unsuspend',
+        label: t('operations:users.unsuspend'),
         loading: loading || unsuspendState.isLoading,
         onSelect: async () => {
           await runRowAction(row.id, async () => {
             try {
               await unsuspend(row.id).unwrap();
-              notifySuccess('User unsuspended.');
+              notifySuccess(t('operations:users.notifyUnsuspended'));
             } catch {
-              notifyError('Unsuspend failed.');
+              notifyError(t('operations:users.notifyUnsuspendFailed'));
             }
           });
         },
@@ -164,7 +172,7 @@ export function UsersPage() {
     if (manageable) {
       actions.push({
         key: 'impersonate',
-        label: 'Impersonate',
+        label: t('operations:users.impersonate'),
         loading: loading || impersonateState.isLoading,
         onSelect: async () => {
           await runRowAction(row.id, async () => {
@@ -177,12 +185,12 @@ export function UsersPage() {
                 'token' in payload &&
                 typeof payload.token === 'string'
               ) {
-                notifySuccess('Impersonation token issued (valid for 30 minutes).');
+                notifySuccess(t('operations:users.notifyImpersonationToken'));
               } else {
-                notifySuccess('Impersonation request completed.');
+                notifySuccess(t('operations:users.notifyImpersonationDone'));
               }
             } catch {
-              notifyError('Impersonation failed.');
+              notifyError(t('operations:users.notifyImpersonationFailed'));
             }
           });
         },
@@ -196,22 +204,34 @@ export function UsersPage() {
     <div className="mx-auto max-w-[1400px] space-y-8">
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,0.8fr)] lg:items-end">
         <div>
-          <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-ink-40">Directory</p>
-          <h1 className="mt-1 text-3xl font-extrabold tracking-tight text-ink md:text-4xl">Users</h1>
+          <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-ink-40">
+            {t('operations:directory')}
+          </p>
+          <h1 className="mt-1 text-3xl font-extrabold tracking-tight text-ink md:text-4xl">
+            {t('operations:users.title')}
+          </h1>
           <p className="mt-3 max-w-[65ch] text-[15px] leading-relaxed text-ink-60">
-            Paginated accounts from{' '}
-            <span className="font-mono text-[13px] text-ink">GET /api/v1/admin/users</span> — suspend,
-            unsuspend, or impersonate without leaving the directory.
+            <Trans
+              ns="operations"
+              i18nKey="users.subtitle"
+              components={{ mono: <span className="font-mono text-[13px] text-ink" /> }}
+            />
           </p>
         </div>
         {data ? (
           <div className="rounded-3xl border border-ink-10 bg-white px-5 py-4 shadow-card-sm">
-            <p className="text-[11px] font-bold uppercase tracking-wide text-ink-40">Directory total</p>
+            <p className="text-[11px] font-bold uppercase tracking-wide text-ink-40">
+              {t('operations:users.directoryTotal')}
+            </p>
             <p className="mt-1 font-mono text-3xl font-black tracking-tight text-ink">
-              {data.total.toLocaleString()}
+              {data.total.toLocaleString(locale === 'ar' ? 'ar-SA' : 'en-US')}
             </p>
             <p className="mt-1 text-[13px] text-ink-60">
-              Page {data.currentPage} of {totalPages} · {data.perPage} per page
+              {t('operations:users.pageMeta', {
+                page: data.currentPage,
+                total: totalPages,
+                perPage: data.perPage,
+              })}
             </p>
           </div>
         ) : null}
@@ -222,14 +242,14 @@ export function UsersPage() {
           <ListFiltersBar
             searchValue={search}
             onSearchChange={setSearch}
-            searchPlaceholder="Search name, email, phone, id…"
+            searchPlaceholder={t('operations:users.searchPlaceholder')}
           >
             <select
               className={filterSelectClassName()}
               value={role}
               onChange={(e) => setRole(e.target.value as typeof role)}
             >
-              {ROLE_OPTIONS.map((opt) => (
+              {roleOptions.map((opt) => (
                 <option key={opt.value} value={opt.value}>
                   {opt.label}
                 </option>
@@ -240,9 +260,9 @@ export function UsersPage() {
               value={suspended}
               onChange={(e) => setSuspended(e.target.value as typeof suspended)}
             >
-              <option value="all">Status: any</option>
-              <option value="no">Active only</option>
-              <option value="yes">Suspended only</option>
+              <option value="all">{t('operations:userStatus.any')}</option>
+              <option value="no">{t('operations:userStatus.activeOnly')}</option>
+              <option value="yes">{t('operations:userStatus.suspendedOnly')}</option>
             </select>
           </ListFiltersBar>
         </div>
@@ -258,16 +278,14 @@ export function UsersPage() {
 
           {isError ? (
             <p className="rounded-2xl bg-coral/10 px-4 py-3 text-[14px] font-semibold text-coral">
-              Could not load users from the API.
+              {t('operations:users.loadError')}
             </p>
           ) : null}
 
           {!isLoading && !isError && (data?.items.length ?? 0) === 0 ? (
             <div className="rounded-2xl border border-dashed border-ink-10 px-6 py-12 text-center">
-              <p className="text-lg font-bold text-ink">No users match</p>
-              <p className="mt-2 text-[14px] text-ink-60">
-                Adjust filters or search terms, then try again.
-              </p>
+              <p className="text-lg font-bold text-ink">{t('operations:users.emptyTitle')}</p>
+              <p className="mt-2 text-[14px] text-ink-60">{t('operations:users.emptyHint')}</p>
             </div>
           ) : null}
 
@@ -276,12 +294,12 @@ export function UsersPage() {
               <table className="w-full min-w-[980px] text-left text-[14px]">
                 <thead className="text-[11px] font-bold uppercase tracking-wide text-ink-40">
                   <tr>
-                    <th className="px-4 py-3">User</th>
-                    <th className="px-4 py-3">Contact</th>
-                    <th className="px-4 py-3">Role</th>
-                    <th className="px-4 py-3">Status</th>
-                    <th className="px-4 py-3">Joined</th>
-                    <th className="px-4 py-3 text-right">Actions</th>
+                    <th className="px-4 py-3">{t('operations:users.colUser')}</th>
+                    <th className="px-4 py-3">{t('operations:users.colContact')}</th>
+                    <th className="px-4 py-3">{t('operations:users.colRole')}</th>
+                    <th className="px-4 py-3">{t('operations:users.colStatus')}</th>
+                    <th className="px-4 py-3">{t('operations:users.colJoined')}</th>
+                    <th className="px-4 py-3 text-right">{t('common:actions')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -302,10 +320,12 @@ export function UsersPage() {
                           <p className="mt-0.5 font-mono text-[12px] text-ink-60">{row.phone}</p>
                         ) : null}
                       </td>
-                      <td className="px-4 py-3">{roleBadge(row.role)}</td>
-                      <td className="px-4 py-3">{accountStatusBadge(row)}</td>
+                      <td className="px-4 py-3">{roleBadge(row.role, (key) => t(`operations:${key}`))}</td>
+                      <td className="px-4 py-3">
+                        {accountStatusBadge(row, (key) => t(`operations:${key}`))}
+                      </td>
                       <td className="px-4 py-3 font-mono text-[13px] text-ink-60">
-                        {row.joinedAt ? new Date(row.joinedAt).toLocaleDateString() : '—'}
+                        {row.joinedAt ? formatDate(row.joinedAt, locale) : t('common:none')}
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center justify-end gap-2">
@@ -313,9 +333,12 @@ export function UsersPage() {
                             to={`/users/${encodeURIComponent(row.id)}`}
                             className="hidden rounded-xl border border-ink-10 px-3 py-1.5 text-[12px] font-bold text-coral transition hover:border-coral/40 hover:bg-coral/5 sm:inline-flex"
                           >
-                            View
+                            {t('common:view')}
                           </Link>
-                          <RowActionsMenu ariaLabel={`Actions for ${row.displayName}`} actions={rowActions(row)} />
+                          <RowActionsMenu
+                            ariaLabel={t('operations:actionsFor', { name: row.displayName })}
+                            actions={rowActions(row)}
+                          />
                         </div>
                       </td>
                     </tr>
@@ -328,8 +351,12 @@ export function UsersPage() {
           {data && data.total > 0 ? (
             <div className="mt-6 flex flex-col gap-3 border-t border-ink-10 pt-4 sm:flex-row sm:items-center sm:justify-between">
               <p className="font-mono text-[13px] text-ink-60">
-                Showing {data.items.length} of {data.total.toLocaleString()} · page {data.currentPage} /{' '}
-                {totalPages}
+                {t('operations:users.pagination', {
+                  shown: data.items.length,
+                  total: data.total.toLocaleString(locale === 'ar' ? 'ar-SA' : 'en-US'),
+                  page: data.currentPage,
+                  totalPages,
+                })}
               </p>
               <div className="flex gap-2">
                 <Button
@@ -339,7 +366,7 @@ export function UsersPage() {
                   onClick={() => setPage((p) => Math.max(1, p - 1))}
                 >
                   <ChevronLeft className="h-4 w-4" aria-hidden />
-                  Previous
+                  {t('operations:previous')}
                 </Button>
                 <Button
                   variant="outline"
@@ -347,7 +374,7 @@ export function UsersPage() {
                   disabled={page >= totalPages || isFetching}
                   onClick={() => setPage((p) => p + 1)}
                 >
-                  Next
+                  {t('common:next')}
                   <ChevronRight className="h-4 w-4" aria-hidden />
                 </Button>
               </div>
@@ -358,17 +385,17 @@ export function UsersPage() {
 
       <SuspendUserDialog
         open={suspendTarget !== null}
-        userLabel={suspendTarget?.displayName ?? 'this user'}
+        userLabel={suspendTarget?.displayName ?? t('operations:users.thisUser')}
         loading={suspendState.isLoading}
         onClose={() => setSuspendTarget(null)}
         onConfirm={async (values) => {
           if (!suspendTarget) return;
           try {
             await suspend({ id: suspendTarget.id, body: values }).unwrap();
-            notifySuccess('User suspended.');
+            notifySuccess(t('operations:users.notifySuspended'));
             setSuspendTarget(null);
           } catch {
-            notifyError('Suspension failed.');
+            notifyError(t('operations:users.notifySuspendFailed'));
           }
         }}
       />

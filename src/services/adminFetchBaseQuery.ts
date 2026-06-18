@@ -1,4 +1,5 @@
 import { getApiBaseUrl } from '@/config/env';
+import { buildApiHeaders } from '@/lib/apiHeaders';
 import { clearPersistedSession, getAccessToken, getRefreshToken, updateSessionTokens } from '@/lib/authSession';
 import { parseAdminRefreshToken } from '@/schemas/api/auth.dto';
 import type { BaseQueryApi, BaseQueryFn, FetchArgs } from '@reduxjs/toolkit/query';
@@ -7,9 +8,8 @@ import { fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 export const adminFetchBaseQuery = fetchBaseQuery({
   baseUrl: getApiBaseUrl(),
   prepareHeaders: (headers) => {
-    const t = getAccessToken();
-    if (t) headers.set('Authorization', `Bearer ${t}`);
-    headers.set('Accept', 'application/json');
+    const merged = buildApiHeaders(headers);
+    merged.forEach((value, key) => headers.set(key, value));
     return headers;
   },
 });
@@ -25,10 +25,7 @@ async function tryRefreshAccess(api: BaseQueryApi): Promise<boolean> {
 
   const res = await fetch(`${base}/api/v1/admin/auth/refresh`, {
     method: 'POST',
-    headers: {
-      Accept: 'application/json',
-      Authorization: `Bearer ${bearer}`,
-    },
+    headers: buildApiHeaders(undefined, { bearer }),
   });
   if (!res.ok) {
     clearPersistedSession();
@@ -65,11 +62,7 @@ export async function postAdminLogout(): Promise<void> {
   try {
     await fetch(`${base}/api/v1/admin/auth/logout`, {
       method: 'POST',
-      headers: {
-        Accept: 'application/json',
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
+      headers: buildApiHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({}),
     });
   } catch {

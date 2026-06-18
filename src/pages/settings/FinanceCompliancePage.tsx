@@ -1,5 +1,7 @@
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { getCurrentLocale } from '@/i18n';
+import { formatDateTime } from '@/lib/localeFormat';
 import { notifyError, notifySuccess } from '@/lib/notify';
 import {
   useApproveOrganizerKycDocumentMutation,
@@ -8,12 +10,15 @@ import {
   useRejectOrganizerKycDocumentMutation,
 } from '@/services/adminApi';
 import { skipToken } from '@reduxjs/toolkit/query';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { Trans, useTranslation } from 'react-i18next';
 
 const inputClass =
   'mt-1.5 w-full rounded-xl border border-ink-10 px-4 py-3 text-[14px] outline-none focus:border-coral focus:ring-2 focus:ring-coral/30';
 
 export function FinanceCompliancePage() {
+  const { t } = useTranslation(['settings', 'common', 'nav']);
+  const locale = getCurrentLocale();
   const [orgKycId, setOrgKycId] = useState('org-riyadh-nights');
   const kycQ = useGetOrganizerKycQuery(orgKycId.trim() ? orgKycId.trim() : skipToken);
   const [approveDoc] = useApproveOrganizerKycDocumentMutation();
@@ -21,24 +26,24 @@ export function FinanceCompliancePage() {
   const [createAdj] = useCreateFeeAdjustmentMutation();
   const [adjOrg, setAdjOrg] = useState('org-riyadh-nights');
   const [adjAmount, setAdjAmount] = useState('250');
-  const [adjReason, setAdjReason] = useState('Manual platform fee correction after dispute resolution.');
+  const [adjReason, setAdjReason] = useState('');
   const [adjRef, setAdjRef] = useState('');
   const [busyDoc, setBusyDoc] = useState<string | null>(null);
   const [adjBusy, setAdjBusy] = useState(false);
 
   const hintIds = useMemo(() => ['org-riyadh-nights', 'org-desert-sound'], []);
 
-  async function runDocAction(
-    docId: string,
-    okMsg: string,
-    exec: () => Promise<unknown>
-  ) {
+  useEffect(() => {
+    setAdjReason(t('settings:financeCompliance.defaultReason'));
+  }, [t]);
+
+  async function runDocAction(docId: string, okMsg: string, exec: () => Promise<unknown>) {
     setBusyDoc(docId);
     try {
       await exec();
       notifySuccess(okMsg);
     } catch {
-      notifyError('Action failed.');
+      notifyError(t('settings:notifyActionFailed'));
     } finally {
       setBusyDoc(null);
     }
@@ -49,7 +54,7 @@ export function FinanceCompliancePage() {
     try {
       const amountSar = Number(adjAmount);
       if (!Number.isFinite(amountSar)) {
-        notifyError('Amount must be a number.');
+        notifyError(t('settings:financeCompliance.notifyAmountInvalid'));
         return;
       }
       await createAdj({
@@ -58,9 +63,9 @@ export function FinanceCompliancePage() {
         reason: adjReason.trim(),
         reference: adjRef.trim() || undefined,
       }).unwrap();
-      notifySuccess('Fee adjustment submitted.');
+      notifySuccess(t('settings:financeCompliance.notifyAdjustmentSubmitted'));
     } catch {
-      notifyError('Could not submit fee adjustment.');
+      notifyError(t('settings:financeCompliance.notifyAdjustmentFailed'));
     } finally {
       setAdjBusy(false);
     }
@@ -69,20 +74,23 @@ export function FinanceCompliancePage() {
   return (
     <div className="space-y-8">
       <div>
-        <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-ink-40">Platform</p>
-        <h1 className="text-3xl font-extrabold text-ink">Finance compliance</h1>
+        <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-ink-40">
+          {t('nav:groups.platform')}
+        </p>
+        <h1 className="text-3xl font-extrabold text-ink">{t('settings:financeCompliance.title')}</h1>
         <p className="mt-2 max-w-2xl text-[14px] text-ink-60">
-          Postman-aligned tools:{' '}
-          <span className="font-mono text-ink">POST /api/v1/admin/finance/fee-adjustments</span>,{' '}
-          <span className="font-mono text-ink">{`GET …/finance/organizers/{id}/kyc`}</span>, and document{' '}
-          <span className="font-mono text-ink">…/approve</span> / <span className="font-mono text-ink">…/reject</span>.
-          Mock data uses organizer ids <span className="font-mono text-ink">{hintIds.join(' · ')}</span>.
+          <Trans
+            ns="settings"
+            i18nKey="financeCompliance.subtitle"
+            values={{ ids: hintIds.join(' · ') }}
+            components={{ mono: <span className="font-mono text-ink" /> }}
+          />
         </p>
       </div>
 
       <Card className="rounded-3xl border-ink-10 shadow-card-sm">
         <CardHeader>
-          <CardTitle className="text-lg">Fee adjustment</CardTitle>
+          <CardTitle className="text-lg">{t('settings:financeCompliance.feeAdjustmentTitle')}</CardTitle>
         </CardHeader>
         <CardContent>
           <form
@@ -93,11 +101,15 @@ export function FinanceCompliancePage() {
             }}
           >
             <label className="block">
-              <span className="text-[12px] font-semibold text-ink-60">Organizer id</span>
+              <span className="text-[12px] font-semibold text-ink-60">
+                {t('settings:financeCompliance.organizerIdLabel')}
+              </span>
               <input className={`font-mono ${inputClass}`} value={adjOrg} onChange={(e) => setAdjOrg(e.target.value)} />
             </label>
             <label className="block">
-              <span className="text-[12px] font-semibold text-ink-60">Amount (SAR)</span>
+              <span className="text-[12px] font-semibold text-ink-60">
+                {t('settings:financeCompliance.amountLabel')}
+              </span>
               <input
                 type="number"
                 step="0.01"
@@ -107,7 +119,9 @@ export function FinanceCompliancePage() {
               />
             </label>
             <label className="block">
-              <span className="text-[12px] font-semibold text-ink-60">Reason</span>
+              <span className="text-[12px] font-semibold text-ink-60">
+                {t('settings:financeCompliance.reasonLabel')}
+              </span>
               <textarea
                 rows={3}
                 className={inputClass}
@@ -116,11 +130,13 @@ export function FinanceCompliancePage() {
               />
             </label>
             <label className="block">
-              <span className="text-[12px] font-semibold text-ink-60">Reference (optional)</span>
+              <span className="text-[12px] font-semibold text-ink-60">
+                {t('settings:financeCompliance.referenceLabel')}
+              </span>
               <input className={inputClass} value={adjRef} onChange={(e) => setAdjRef(e.target.value)} />
             </label>
             <Button type="submit" disabled={adjBusy} loading={adjBusy}>
-              Submit adjustment
+              {t('settings:financeCompliance.submitAdjustment')}
             </Button>
           </form>
         </CardContent>
@@ -128,39 +144,43 @@ export function FinanceCompliancePage() {
 
       <Card className="rounded-3xl border-ink-10 shadow-card-sm">
         <CardHeader>
-          <CardTitle className="text-lg">Organizer KYC</CardTitle>
+          <CardTitle className="text-lg">{t('settings:financeCompliance.kycTitle')}</CardTitle>
         </CardHeader>
         <CardContent>
           <label className="mb-4 block max-w-md">
-            <span className="text-[12px] font-semibold text-ink-60">Organizer id</span>
+            <span className="text-[12px] font-semibold text-ink-60">
+              {t('settings:financeCompliance.organizerIdLabel')}
+            </span>
             <input
               className={`font-mono ${inputClass}`}
               value={orgKycId}
               onChange={(e) => setOrgKycId(e.target.value)}
             />
           </label>
-          {kycQ.isLoading ? <p className="text-sm text-ink-60">Loading…</p> : null}
+          {kycQ.isLoading ? <p className="text-sm text-ink-60">{t('common:loading')}</p> : null}
           {kycQ.isError ? (
-            <p className="mb-3 text-sm font-semibold text-coral">Could not load KYC (check id or API response).</p>
+            <p className="mb-3 text-sm font-semibold text-coral">{t('settings:financeCompliance.kycLoadFailed')}</p>
           ) : null}
           {kycQ.data ? (
             <div className="space-y-3">
               <p className="text-[14px] text-ink-60">
-                <span className="font-semibold text-ink">{kycQ.data.organizerName ?? 'Organizer'}</span>
+                <span className="font-semibold text-ink">
+                  {kycQ.data.organizerName ?? t('settings:financeCompliance.organizerFallback')}
+                </span>
                 <span className="font-mono text-[13px] text-ink-40"> · {kycQ.data.organizerId}</span>
               </p>
               {kycQ.data.documents.length === 0 ? (
-                <p className="text-sm text-ink-60">No documents returned for this organizer.</p>
+                <p className="text-sm text-ink-60">{t('settings:financeCompliance.noDocuments')}</p>
               ) : (
                 <div className="admin-table-scroll">
                   <table className="w-full min-w-[640px] text-left text-[14px]">
                     <thead className="text-[11px] font-bold uppercase tracking-wide text-ink-40">
                       <tr>
-                        <th className="px-4 py-3">Document</th>
-                        <th className="px-4 py-3">Type</th>
-                        <th className="px-4 py-3">Status</th>
-                        <th className="px-4 py-3">Uploaded</th>
-                        <th className="px-4 py-3">Actions</th>
+                        <th className="px-4 py-3">{t('settings:financeCompliance.columns.document')}</th>
+                        <th className="px-4 py-3">{t('settings:financeCompliance.columns.type')}</th>
+                        <th className="px-4 py-3">{t('settings:financeCompliance.columns.status')}</th>
+                        <th className="px-4 py-3">{t('settings:financeCompliance.columns.uploaded')}</th>
+                        <th className="px-4 py-3">{t('common:actions')}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -170,10 +190,10 @@ export function FinanceCompliancePage() {
                             <p className="font-medium text-ink">{doc.label ?? doc.id}</p>
                             <p className="font-mono text-[12px] text-ink-60">{doc.id}</p>
                           </td>
-                          <td className="px-4 py-3 text-ink-60">{doc.docType ?? '—'}</td>
+                          <td className="px-4 py-3 text-ink-60">{doc.docType ?? t('common:none')}</td>
                           <td className="px-4 py-3 capitalize text-ink-60">{doc.status}</td>
                           <td className="px-4 py-3 font-mono text-[13px] text-ink-60">
-                            {doc.uploadedAt ? new Date(doc.uploadedAt).toLocaleString() : '—'}
+                            {doc.uploadedAt ? formatDateTime(doc.uploadedAt, locale) : t('common:none')}
                           </td>
                           <td className="px-4 py-3">
                             <div className="flex flex-wrap gap-1.5">
@@ -186,12 +206,12 @@ export function FinanceCompliancePage() {
                                     disabled={busyDoc !== null}
                                     loading={busyDoc === doc.id}
                                     onClick={() =>
-                                      void runDocAction(doc.id, 'Document approved.', () =>
+                                      void runDocAction(doc.id, t('settings:financeCompliance.notifyDocApproved'), () =>
                                         approveDoc({ organizerId: kycQ.data!.organizerId, docId: doc.id }).unwrap()
                                       )
                                     }
                                   >
-                                    Approve
+                                    {t('settings:payouts.approve')}
                                   </Button>
                                   <Button
                                     type="button"
@@ -200,8 +220,8 @@ export function FinanceCompliancePage() {
                                     disabled={busyDoc !== null}
                                     loading={busyDoc === doc.id}
                                     onClick={() => {
-                                      const reason = window.prompt('Optional rejection reason') ?? undefined;
-                                      void runDocAction(doc.id, 'Document rejected.', () =>
+                                      const reason = window.prompt(t('settings:financeCompliance.rejectReasonPrompt')) ?? undefined;
+                                      void runDocAction(doc.id, t('settings:financeCompliance.notifyDocRejected'), () =>
                                         rejectDoc({
                                           organizerId: kycQ.data!.organizerId,
                                           docId: doc.id,
@@ -210,7 +230,7 @@ export function FinanceCompliancePage() {
                                       );
                                     }}
                                   >
-                                    Reject
+                                    {t('settings:payouts.reject')}
                                   </Button>
                                 </>
                               ) : null}

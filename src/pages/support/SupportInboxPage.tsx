@@ -8,22 +8,24 @@ import type { SupportThread } from '@/schemas/support.schema';
 import { useGetSupportThreadsQuery } from '@/services/adminApi';
 import { Link } from 'react-router-dom';
 import { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 export function SupportInboxPage() {
+  const { t } = useTranslation(['support', 'common']);
   const { data, isLoading } = useGetSupportThreadsQuery();
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState<'all' | SupportThread['status']>('all');
 
   const filtered = useMemo(() => {
-    return (data ?? []).filter((t) => {
-      if (status !== 'all' && t.status !== status) return false;
+    return (data ?? []).filter((thread) => {
+      if (status !== 'all' && thread.status !== status) return false;
       return rowMatchesSearch(search, [
-        t.subject,
-        t.userEmail,
-        t.requesterDisplayName,
-        t.preview,
-        t.id,
-        t.code,
+        thread.subject,
+        thread.userEmail,
+        thread.requesterDisplayName,
+        thread.preview,
+        thread.id,
+        thread.code,
       ]);
     });
   }, [data, search, status]);
@@ -31,21 +33,19 @@ export function SupportInboxPage() {
   return (
     <div className="space-y-6">
       <div>
-        <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-ink-40">Support</p>
-        <h1 className="text-3xl font-extrabold text-ink">Inbox</h1>
-        <p className="mt-2 max-w-2xl text-[14px] text-ink-60">
-          Centralized support cases from the API — assign, resolve, and reply from this inbox.
-        </p>
+        <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-ink-40">{t('support:eyebrow')}</p>
+        <h1 className="text-3xl font-extrabold text-ink">{t('support:inbox.title')}</h1>
+        <p className="mt-2 max-w-2xl text-[14px] text-ink-60">{t('support:inbox.subtitle')}</p>
       </div>
       <Card className="rounded-3xl border-ink-10 shadow-card-sm">
         <CardHeader>
-          <CardTitle className="text-lg">Open threads</CardTitle>
+          <CardTitle className="text-lg">{t('support:inbox.openThreads')}</CardTitle>
         </CardHeader>
         <CardContent>
           <ListFiltersBar
             searchValue={search}
             onSearchChange={setSearch}
-            searchPlaceholder="Search subject, code, requester, preview…"
+            searchPlaceholder={t('support:inbox.searchPlaceholder')}
             className="mb-4"
           >
             <select
@@ -53,29 +53,29 @@ export function SupportInboxPage() {
               value={status}
               onChange={(e) => setStatus(e.target.value as typeof status)}
             >
-              <option value="all">All statuses</option>
-              <option value="open">Open</option>
-              <option value="in_progress">In progress</option>
-              <option value="resolved">Resolved</option>
+              <option value="all">{t('support:inbox.allStatuses')}</option>
+              <option value="open">{t('support:status.open')}</option>
+              <option value="in_progress">{t('support:status.in_progress')}</option>
+              <option value="resolved">{t('support:status.resolved')}</option>
             </select>
           </ListFiltersBar>
-          {isLoading ? <p className="text-sm text-ink-60">Loading…</p> : null}
+          {isLoading ? <p className="text-sm text-ink-60">{t('common:loading')}</p> : null}
           {!isLoading && filtered.length === 0 ? (
-            <p className="mb-3 text-sm font-semibold text-ink-60">No threads match your search and filters.</p>
+            <p className="mb-3 text-sm font-semibold text-ink-60">{t('support:inbox.empty')}</p>
           ) : null}
           <div className="space-y-2">
-            {filtered.map((t) => (
+            {filtered.map((thread) => (
               <Link
-                key={t.id}
-                to={`/support/${t.id}`}
+                key={thread.id}
+                to={`/support/${thread.id}`}
                 className="block rounded-2xl border border-ink-10 px-4 py-3 transition-colors hover:border-coral/40 hover:bg-surface-tint"
               >
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div className="min-w-0 space-y-0.5">
-                    <p className="font-semibold text-ink">{t.subject}</p>
-                    {t.code ? (
+                    <p className="font-semibold text-ink">{thread.subject}</p>
+                    {thread.code ? (
                       <p className="text-[11px] font-mono font-semibold uppercase tracking-wide text-ink-40">
-                        {t.code}
+                        {thread.code}
                       </p>
                     ) : null}
                   </div>
@@ -83,30 +83,30 @@ export function SupportInboxPage() {
                     <span
                       className={cn(
                         'rounded-full px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide',
-                        supportStatusBadgeClass(t.status),
+                        supportStatusBadgeClass(thread.status),
                       )}
                     >
-                      {t.status.replace('_', ' ')}
+                      {t(`support:status.${thread.status}`)}
                     </span>
-                    {t.priority ? (
+                    {thread.priority ? (
                       <span
                         className={cn(
                           'rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide',
-                          supportPriorityBadgeClass(t.priority),
+                          supportPriorityBadgeClass(thread.priority),
                         )}
                       >
-                        {t.priority}
+                        {t(`support:priority.${thread.priority}`)}
                       </span>
                     ) : null}
                   </div>
                 </div>
                 <div className="mt-1 space-y-0.5 text-[13px] text-ink-60">
-                  {t.requesterDisplayName ? (
-                    <p className="font-semibold text-ink">{t.requesterDisplayName}</p>
+                  {thread.requesterDisplayName ? (
+                    <p className="font-semibold text-ink">{thread.requesterDisplayName}</p>
                   ) : null}
-                  <p className={t.requesterDisplayName ? 'text-ink-50' : ''}>{t.userEmail}</p>
+                  <p className={thread.requesterDisplayName ? 'text-ink-50' : ''}>{thread.userEmail}</p>
                 </div>
-                <p className="mt-1 line-clamp-2 text-[13px] text-ink-40">{t.preview}</p>
+                <p className="mt-1 line-clamp-2 text-[13px] text-ink-40">{thread.preview}</p>
               </Link>
             ))}
           </div>

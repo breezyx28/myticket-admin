@@ -46,7 +46,7 @@ export const updateSupportStatusSchema = z.object({
 export type UpdateSupportStatusInput = z.infer<typeof updateSupportStatusSchema>;
 
 export const supportReplySchema = z.object({
-  body: z.string().trim().min(1, 'Enter a reply'),
+  body: z.string().trim().min(1, 'validation.supportReplyRequired'),
 });
 
 export type SupportReplyInput = z.infer<typeof supportReplySchema>;

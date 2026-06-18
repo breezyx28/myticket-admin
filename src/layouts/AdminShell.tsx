@@ -1,36 +1,42 @@
-import { NAV_GROUPS } from '@/config/nav';
+import { AdminNotificationsDropdown } from '@/components/layout/AdminNotificationsDropdown';
+import { I18nRefetchOnLanguageChange } from '@/components/layout/I18nRefetchOnLanguageChange';
+import { LanguageSwitcher } from '@/components/layout/LanguageSwitcher';
 import { Button } from '@/components/ui/Button';
 import { useAdminRealtime } from '@/hooks/useAdminRealtime';
 import { useAuth } from '@/hooks/useAuth';
+import { useNavGroups } from '@/hooks/useNavItems';
 import { getAccessToken } from '@/lib/authSession';
 import { shouldUseMockReads } from '@/services/adminReadMode';
 import { cn } from '@/lib/utils';
-import { AdminNotificationsDropdown } from '@/components/layout/AdminNotificationsDropdown';
 import { LayoutDashboard, LogOut, Menu, Ticket, UserCircle, X } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 import { NavLink, Outlet } from 'react-router-dom';
-
-function dataSourceBadge(): string {
-  const token = getAccessToken();
-  if (!token) return 'Demo session';
-  if (shouldUseMockReads()) return 'Mock reads';
-  return 'API reads';
-}
 
 export function AdminShell({ children }: { children?: ReactNode }) {
   const { user, signOut } = useAuth();
   const [open, setOpen] = useState(false);
+  const navGroups = useNavGroups();
+  const { t } = useTranslation('common');
   useAdminRealtime({ userId: user?.id ?? null });
+
+  function dataSourceBadge(): string {
+    const token = getAccessToken();
+    if (!token) return t('demoSession');
+    if (shouldUseMockReads()) return t('mockReads');
+    return t('apiReads');
+  }
 
   return (
     <div className="min-h-dvh bg-surface-page text-ink">
+      <I18nRefetchOnLanguageChange />
       <header className="sticky top-0 z-50 h-[72px] border-b border-ink-10 bg-white/90 shadow-[0_8px_24px_rgba(0,0,0,0.04)] backdrop-blur-md">
         <div className="mx-auto flex h-full max-w-full items-center justify-between px-4 md:px-6 lg:px-8">
           <div className="flex items-center gap-3">
             <button
               type="button"
               className="inline-flex rounded-full border border-ink-10 p-2 md:hidden"
-              aria-label="Open menu"
+              aria-label={t('openMenu')}
               onClick={() => setOpen(true)}
             >
               <Menu size={20} strokeWidth={2} />
@@ -40,34 +46,38 @@ export function AdminShell({ children }: { children?: ReactNode }) {
                 <Ticket size={18} strokeWidth={2} className="text-ink" />
               </span>
               <span className="leading-tight">
-                MyTicket <span className="text-coral">Admin</span>
+                {t('appName')} <span className="text-coral">{t('appNameAdmin')}</span>
               </span>
             </NavLink>
             <span className="hidden rounded-full border border-ink-10 bg-ink-5 px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-ink-60 lg:inline-flex">
-              Control center
+              {t('controlCenter')}
             </span>
             <span className="hidden rounded-full bg-mint/30 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-ink md:inline-flex">
               {dataSourceBadge()}
             </span>
           </div>
-          <AdminNotificationsDropdown className="md:hidden" />
+          <div className="flex items-center gap-2">
+            <LanguageSwitcher className="hidden sm:inline-flex" compact />
+            <AdminNotificationsDropdown className="md:hidden" />
+          </div>
           <div className="hidden items-center gap-2 md:flex">
+            <LanguageSwitcher />
             <NavLink
               to="/"
               className="inline-flex h-10 items-center gap-2 rounded-full border border-ink-10 bg-white px-4 text-[13px] font-semibold text-ink-60 transition-colors hover:bg-ink-5 hover:text-ink"
             >
               <LayoutDashboard size={16} strokeWidth={2} />
-              Overview
+              {t('overview')}
             </NavLink>
             <NavLink
               to="/profile"
               className="inline-flex h-10 items-center gap-2 rounded-full border border-ink-10 bg-white px-4 text-[13px] font-semibold text-ink-60 transition-colors hover:bg-ink-5 hover:text-ink"
             >
               <UserCircle size={16} strokeWidth={2} />
-              Profile
+              {t('profile')}
             </NavLink>
             <AdminNotificationsDropdown />
-            <div className="ml-1 flex items-center gap-2.5 rounded-2xl border border-ink-10 bg-white px-3 py-1.5">
+            <div className="ms-1 flex items-center gap-2.5 rounded-2xl border border-ink-10 bg-white px-3 py-1.5">
               {user?.avatarUrl ? (
                 <img
                   src={user.avatarUrl}
@@ -81,13 +91,13 @@ export function AdminShell({ children }: { children?: ReactNode }) {
               )}
               <div className="min-w-0">
                 <p className="max-w-[220px] truncate text-[12px] font-semibold text-ink">{user?.email}</p>
-                <p className="text-[10px] font-bold uppercase tracking-wide text-ink-40">Administrator</p>
+                <p className="text-[10px] font-bold uppercase tracking-wide text-ink-40">{t('administrator')}</p>
               </div>
             </div>
             <Button type="button" variant="outline" size="sm" onClick={() => signOut()}>
               <span className="inline-flex items-center gap-2">
                 <LogOut size={16} strokeWidth={2} />
-                Sign out
+                {t('signOut')}
               </span>
             </Button>
           </div>
@@ -97,24 +107,24 @@ export function AdminShell({ children }: { children?: ReactNode }) {
       <div className="flex">
         <aside
           className={cn(
-            'fixed inset-y-0 left-0 z-40 w-[86%] max-w-[320px] bg-white/95 p-6 transition-transform',
-            'md:top-[72px] md:z-30 md:w-72 md:max-w-none md:translate-x-0 md:overflow-y-auto md:border-r md:border-ink-10 md:bg-white md:p-5 md:pt-6',
-            open ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
+            'fixed inset-y-0 start-0 z-40 w-[86%] max-w-[320px] bg-white/95 p-6 transition-transform',
+            'md:top-[72px] md:z-30 md:w-72 md:max-w-none md:translate-x-0 md:overflow-y-auto md:border-e md:border-ink-10 md:bg-white md:p-5 md:pt-6',
+            open ? 'translate-x-0' : '-translate-x-full rtl:translate-x-full md:translate-x-0',
           )}
         >
           <div className="mb-6 flex items-center justify-between md:hidden">
-            <p className="text-sm font-bold">Menu</p>
+            <p className="text-sm font-bold">{t('menu')}</p>
             <button
               type="button"
               className="rounded-full p-2 hover:bg-ink-5"
-              aria-label="Close menu"
+              aria-label={t('closeMenu')}
               onClick={() => setOpen(false)}
             >
               <X size={20} />
             </button>
           </div>
           <div className="space-y-8">
-            {NAV_GROUPS.map((group) => (
+            {navGroups.map((group) => (
               <div key={group.title}>
                 <p className="mb-2 px-2 text-[10px] font-bold uppercase tracking-[0.16em] text-ink-40">
                   {group.title}
@@ -129,7 +139,7 @@ export function AdminShell({ children }: { children?: ReactNode }) {
                       className={({ isActive }) =>
                         cn(
                           'flex items-center gap-3 rounded-2xl px-4 py-3 text-[14px] font-semibold transition-colors',
-                          isActive ? 'bg-ink text-white shadow-card-md' : 'text-ink-60 hover:bg-ink-5 hover:text-ink'
+                          isActive ? 'bg-ink text-white shadow-card-md' : 'text-ink-60 hover:bg-ink-5 hover:text-ink',
                         )
                       }
                     >
@@ -150,12 +160,12 @@ export function AdminShell({ children }: { children?: ReactNode }) {
               }}
               className="w-full rounded-full bg-ink py-3 text-sm font-semibold text-white"
             >
-              Sign out
+              {t('signOut')}
             </button>
           </div>
         </aside>
 
-        <main className="min-h-[calc(100dvh-72px)] flex-1 px-4 py-10 md:ml-72 md:px-8 lg:px-10">
+        <main className="min-h-[calc(100dvh-72px)] flex-1 px-4 py-10 md:ms-72 md:px-8 lg:px-10">
           <div className="mx-auto w-full max-w-[1280px]">{children ?? <Outlet />}</div>
         </main>
       </div>
@@ -164,7 +174,7 @@ export function AdminShell({ children }: { children?: ReactNode }) {
         <button
           type="button"
           className="fixed inset-0 z-30 bg-ink/40 md:hidden"
-          aria-label="Close overlay"
+          aria-label={t('closeOverlay')}
           onClick={() => setOpen(false)}
         />
       ) : null}

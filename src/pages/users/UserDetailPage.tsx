@@ -1,6 +1,8 @@
 import { SuspendUserDialog } from '@/components/users/SuspendUserDialog';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { getCurrentLocale } from '@/i18n';
+import { formatDate, formatDateTime } from '@/lib/localeFormat';
 import { notifyError, notifySuccess } from '@/lib/notify';
 import { cn } from '@/lib/utils';
 import type { AdminUserDetail } from '@/schemas/user.schema';
@@ -10,10 +12,11 @@ import {
   useSuspendUserMutation,
   useUnsuspendUserMutation,
 } from '@/services/adminApi';
-import { Link, useParams } from 'react-router-dom';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { Link, useParams } from 'react-router-dom';
 
-function roleBadge(role: AdminUserDetail['role']) {
+function roleBadge(role: AdminUserDetail['role'], t: (key: string) => string) {
   const styles: Record<AdminUserDetail['role'], string> = {
     guest: 'bg-ink-5 text-ink-60 border-ink-10',
     talent: 'bg-mint/20 text-ink border-mint/40',
@@ -29,7 +32,7 @@ function roleBadge(role: AdminUserDetail['role']) {
         styles[role],
       )}
     >
-      {role}
+      {t(`roles.${role}`)}
     </span>
   );
 }
@@ -39,6 +42,8 @@ function canManageUser(user: AdminUserDetail) {
 }
 
 export function UserDetailPage() {
+  const { t } = useTranslation(['operations', 'common']);
+  const locale = getCurrentLocale();
   const { id = '' } = useParams();
   const q = useGetUserQuery(id, { skip: !id });
   const [suspend, suspendState] = useSuspendUserMutation();
@@ -58,9 +63,9 @@ export function UserDetailPage() {
   if (!q.data) {
     return (
       <div className="mx-auto max-w-[1400px] rounded-3xl border border-ink-10 bg-white p-8">
-        <p className="font-semibold text-ink">User not found.</p>
+        <p className="font-semibold text-ink">{t('operations:users.notFound')}</p>
         <Link to="/users" className="mt-4 inline-block text-coral hover:underline">
-          Back to users
+          {t('operations:users.backToUsers')}
         </Link>
       </div>
     );
@@ -68,33 +73,36 @@ export function UserDetailPage() {
 
   const u = q.data;
   const manageable = canManageUser(u);
+  const ot = (key: string) => t(`operations:${key}`);
 
   return (
     <div className="mx-auto max-w-[1400px] space-y-8">
       <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
         <div>
           <Link to="/users" className="text-[13px] font-semibold text-coral hover:underline">
-            ← Users
+            {t('operations:users.backLink')}
           </Link>
           <div className="mt-3 flex flex-wrap items-center gap-3">
             <h1 className="text-3xl font-extrabold tracking-tight text-ink md:text-4xl">{u.displayName}</h1>
-            {roleBadge(u.role)}
+            {roleBadge(u.role, ot)}
             {u.suspended ? (
               <span className="rounded-full border border-coral/40 bg-coral/15 px-2.5 py-0.5 text-[11px] font-extrabold uppercase tracking-wide text-coral">
-                Suspended
+                {t('operations:userStatus.suspended')}
               </span>
             ) : u.isActive === false ? (
               <span className="rounded-full border border-amber/40 bg-amber/15 px-2.5 py-0.5 text-[11px] font-extrabold uppercase tracking-wide text-amber">
-                Inactive
+                {t('operations:userStatus.inactive')}
               </span>
             ) : (
               <span className="rounded-full border border-mint/40 bg-mint/20 px-2.5 py-0.5 text-[11px] font-extrabold uppercase tracking-wide text-ink">
-                Active
+                {t('operations:userStatus.active')}
               </span>
             )}
           </div>
           <p className="mt-2 text-[14px] text-ink-60">{u.email}</p>
-          <p className="mt-1 font-mono text-[12px] text-ink-40">User #{u.id}</p>
+          <p className="mt-1 font-mono text-[12px] text-ink-40">
+            {t('operations:users.userId', { id: u.id })}
+          </p>
         </div>
 
         {manageable ? (
@@ -113,16 +121,16 @@ export function UserDetailPage() {
                     'token' in payload &&
                     typeof payload.token === 'string'
                   ) {
-                    notifySuccess('Impersonation token issued (valid for 30 minutes).');
+                    notifySuccess(t('operations:users.notifyImpersonationToken'));
                   } else {
-                    notifySuccess('Impersonation request completed.');
+                    notifySuccess(t('operations:users.notifyImpersonationDone'));
                   }
                 } catch {
-                  notifyError('Impersonation failed.');
+                  notifyError(t('operations:users.notifyImpersonationFailed'));
                 }
               }}
             >
-              Impersonate
+              {t('operations:users.impersonate')}
             </Button>
             {u.suspended ? (
               <Button
@@ -132,23 +140,23 @@ export function UserDetailPage() {
                 onClick={async () => {
                   try {
                     await unsuspend(u.id).unwrap();
-                    notifySuccess('User unsuspended.');
+                    notifySuccess(t('operations:users.notifyUnsuspended'));
                   } catch {
-                    notifyError('Unsuspend failed.');
+                    notifyError(t('operations:users.notifyUnsuspendFailed'));
                   }
                 }}
               >
-                Unsuspend
+                {t('operations:users.unsuspend')}
               </Button>
             ) : (
               <Button type="button" variant="danger" onClick={() => setSuspendOpen(true)}>
-                Suspend
+                {t('operations:users.suspend')}
               </Button>
             )}
           </div>
         ) : (
           <p className="rounded-2xl border border-ink-10 bg-surface-tint px-4 py-3 text-[13px] text-ink-60">
-            Admin accounts cannot be suspended or impersonated from this panel.
+            {t('operations:users.adminNoManage')}
           </p>
         )}
       </div>
@@ -156,40 +164,52 @@ export function UserDetailPage() {
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
         <Card className="rounded-3xl border-ink-10 shadow-card-sm">
           <CardHeader>
-            <CardTitle className="text-lg">Account</CardTitle>
+            <CardTitle className="text-lg">{t('operations:users.account')}</CardTitle>
           </CardHeader>
           <CardContent className="grid gap-3 text-[14px] sm:grid-cols-2">
             <div>
-              <p className="text-[11px] font-bold uppercase tracking-wide text-ink-40">Phone</p>
-              <p className="mt-1 font-mono text-ink">{u.phone ?? '—'}</p>
+              <p className="text-[11px] font-bold uppercase tracking-wide text-ink-40">
+                {t('operations:users.phone')}
+              </p>
+              <p className="mt-1 font-mono text-ink">{u.phone ?? t('common:none')}</p>
             </div>
             <div>
-              <p className="text-[11px] font-bold uppercase tracking-wide text-ink-40">Joined</p>
+              <p className="text-[11px] font-bold uppercase tracking-wide text-ink-40">
+                {t('operations:users.joined')}
+              </p>
               <p className="mt-1 text-ink">
-                {u.joinedAt ? new Date(u.joinedAt).toLocaleDateString() : '—'}
+                {u.joinedAt ? formatDate(u.joinedAt, locale) : t('common:none')}
               </p>
             </div>
             <div>
-              <p className="text-[11px] font-bold uppercase tracking-wide text-ink-40">Email verified</p>
+              <p className="text-[11px] font-bold uppercase tracking-wide text-ink-40">
+                {t('operations:users.emailVerified')}
+              </p>
               <p className="mt-1 text-ink">
-                {u.emailVerifiedAt ? new Date(u.emailVerifiedAt).toLocaleString() : 'No'}
+                {u.emailVerifiedAt ? formatDateTime(u.emailVerifiedAt, locale) : t('common:no')}
               </p>
             </div>
             <div>
-              <p className="text-[11px] font-bold uppercase tracking-wide text-ink-40">Phone verified</p>
+              <p className="text-[11px] font-bold uppercase tracking-wide text-ink-40">
+                {t('operations:users.phoneVerified')}
+              </p>
               <p className="mt-1 text-ink">
-                {u.phoneVerifiedAt ? new Date(u.phoneVerifiedAt).toLocaleString() : 'No'}
+                {u.phoneVerifiedAt ? formatDateTime(u.phoneVerifiedAt, locale) : t('common:no')}
               </p>
             </div>
             <div>
-              <p className="text-[11px] font-bold uppercase tracking-wide text-ink-40">Last login</p>
+              <p className="text-[11px] font-bold uppercase tracking-wide text-ink-40">
+                {t('operations:users.lastLogin')}
+              </p>
               <p className="mt-1 text-ink">
-                {u.lastLoginAt ? new Date(u.lastLoginAt).toLocaleString() : 'Never'}
+                {u.lastLoginAt ? formatDateTime(u.lastLoginAt, locale) : t('operations:never')}
               </p>
             </div>
             <div>
-              <p className="text-[11px] font-bold uppercase tracking-wide text-ink-40">Last login IP</p>
-              <p className="mt-1 font-mono text-[13px] text-ink">{u.lastLoginIp ?? '—'}</p>
+              <p className="text-[11px] font-bold uppercase tracking-wide text-ink-40">
+                {t('operations:users.lastLoginIp')}
+              </p>
+              <p className="mt-1 font-mono text-[13px] text-ink">{u.lastLoginIp ?? t('common:none')}</p>
             </div>
           </CardContent>
         </Card>
@@ -197,7 +217,7 @@ export function UserDetailPage() {
         <div className="grid gap-4 sm:grid-cols-3 lg:grid-cols-1">
           <Card className="rounded-3xl border-ink-10 shadow-card-sm">
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm">Tickets purchased</CardTitle>
+              <CardTitle className="text-sm">{t('operations:users.ticketsPurchased')}</CardTitle>
             </CardHeader>
             <CardContent>
               <p className="font-mono text-3xl font-black tracking-tight text-ink">{u.ticketsPurchased}</p>
@@ -205,7 +225,7 @@ export function UserDetailPage() {
           </Card>
           <Card className="rounded-3xl border-ink-10 shadow-card-sm">
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm">Bookings</CardTitle>
+              <CardTitle className="text-sm">{t('operations:users.bookings')}</CardTitle>
             </CardHeader>
             <CardContent>
               <p className="font-mono text-3xl font-black tracking-tight text-ink">{u.bookingsCount}</p>
@@ -213,7 +233,7 @@ export function UserDetailPage() {
           </Card>
           <Card className="rounded-3xl border-ink-10 shadow-card-sm">
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm">Ratings given</CardTitle>
+              <CardTitle className="text-sm">{t('operations:users.ratingsGiven')}</CardTitle>
             </CardHeader>
             <CardContent>
               <p className="font-mono text-3xl font-black tracking-tight text-ink">{u.ratingGivenCount}</p>
@@ -225,26 +245,36 @@ export function UserDetailPage() {
       {u.suspended ? (
         <Card className="rounded-3xl border-coral/30 bg-coral/5 shadow-card-sm">
           <CardHeader>
-            <CardTitle className="text-lg text-coral">Suspension details</CardTitle>
+            <CardTitle className="text-lg text-coral">{t('operations:users.suspensionDetails')}</CardTitle>
           </CardHeader>
           <CardContent className="grid gap-3 text-[14px] sm:grid-cols-2">
             <div>
-              <p className="text-[11px] font-bold uppercase tracking-wide text-ink-40">Reason</p>
-              <p className="mt-1 text-ink">{u.suspensionReason ?? '—'}</p>
+              <p className="text-[11px] font-bold uppercase tracking-wide text-ink-40">
+                {t('operations:users.reason')}
+              </p>
+              <p className="mt-1 text-ink">{u.suspensionReason ?? t('common:none')}</p>
             </div>
             <div>
-              <p className="text-[11px] font-bold uppercase tracking-wide text-ink-40">Permanent</p>
-              <p className="mt-1 text-ink">{u.suspensionIsPermanent ? 'Yes' : 'No'}</p>
-            </div>
-            <div>
-              <p className="text-[11px] font-bold uppercase tracking-wide text-ink-40">Suspended at</p>
+              <p className="text-[11px] font-bold uppercase tracking-wide text-ink-40">
+                {t('operations:users.permanent')}
+              </p>
               <p className="mt-1 text-ink">
-                {u.suspendedAt ? new Date(u.suspendedAt).toLocaleString() : '—'}
+                {u.suspensionIsPermanent ? t('common:yes') : t('common:no')}
               </p>
             </div>
             <div>
-              <p className="text-[11px] font-bold uppercase tracking-wide text-ink-40">Suspended by</p>
-              <p className="mt-1 font-mono text-[13px] text-ink">{u.suspendedBy ?? '—'}</p>
+              <p className="text-[11px] font-bold uppercase tracking-wide text-ink-40">
+                {t('operations:users.suspendedAt')}
+              </p>
+              <p className="mt-1 text-ink">
+                {u.suspendedAt ? formatDateTime(u.suspendedAt, locale) : t('common:none')}
+              </p>
+            </div>
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-wide text-ink-40">
+                {t('operations:users.suspendedBy')}
+              </p>
+              <p className="mt-1 font-mono text-[13px] text-ink">{u.suspendedBy ?? t('common:none')}</p>
             </div>
           </CardContent>
         </Card>
@@ -258,10 +288,10 @@ export function UserDetailPage() {
         onConfirm={async (values) => {
           try {
             await suspend({ id: u.id, body: values }).unwrap();
-            notifySuccess('User suspended.');
+            notifySuccess(t('operations:users.notifySuspended'));
             setSuspendOpen(false);
           } catch {
-            notifyError('Suspension failed.');
+            notifyError(t('operations:users.notifySuspendFailed'));
           }
         }}
       />

@@ -2,6 +2,7 @@ import { Button } from '@/components/ui/Button';
 import { CATEGORY_PHOSPHOR_ICONS } from '@/components/category/phosphorCategoryPicklist';
 import { cn } from '@/lib/utils';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { Trans, useTranslation } from 'react-i18next';
 
 type PhosphorIconPickerModalProps = {
   open: boolean;
@@ -11,6 +12,7 @@ type PhosphorIconPickerModalProps = {
 };
 
 export function PhosphorIconPickerModal({ open, onClose, onSelect }: PhosphorIconPickerModalProps) {
+  const { t } = useTranslation(['operations', 'common']);
   const dialogRef = useRef<HTMLDialogElement>(null);
   const [query, setQuery] = useState('');
 
@@ -47,25 +49,29 @@ export function PhosphorIconPickerModal({ open, onClose, onSelect }: PhosphorIco
       <div className="flex max-h-[min(90vh,720px)] flex-col p-6" onClick={(e) => e.stopPropagation()}>
         <div className="flex flex-wrap items-start justify-between gap-4 border-b border-ink-10 pb-4">
           <div>
-            <p className="text-[11px] font-extrabold uppercase tracking-[0.16em] text-ink-40">Phosphor</p>
-            <h2 className="text-xl font-extrabold text-ink">Pick icon for category</h2>
+            <p className="text-[11px] font-extrabold uppercase tracking-[0.16em] text-ink-40">
+              {t('operations:categories.iconPicker.eyebrow')}
+            </p>
+            <h2 className="text-xl font-extrabold text-ink">{t('operations:categories.iconPicker.title')}</h2>
             <p className="mt-1 max-w-xl text-[13px] text-ink-60">
-              Names match <span className="font-mono text-ink">@phosphor-icons/react</span> exports (same as the main
-              website). The stored <span className="font-mono">icon_key</span> should be exactly the label under each
-              tile.
+              <Trans
+                ns="operations"
+                i18nKey="categories.iconPicker.description"
+                components={{ mono: <span className="font-mono text-ink" /> }}
+              />
             </p>
           </div>
           <Button type="button" variant="ghost" size="sm" onClick={onClose}>
-            Close
+            {t('common:close')}
           </Button>
         </div>
         <label className="mt-4 block">
-          <span className="text-[12px] font-bold text-ink-60">Filter by name</span>
+          <span className="text-[12px] font-bold text-ink-60">{t('operations:categories.iconPicker.filterLabel')}</span>
           <input
             className="mt-1.5 w-full rounded-xl border border-ink-10 px-3 py-2 font-mono text-[14px] outline-none focus:border-coral focus:ring-2 focus:ring-coral/30"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="e.g. MusicNotes or Ticket"
+            placeholder={t('operations:categories.iconPicker.filterPlaceholder')}
             autoFocus
           />
         </label>
@@ -92,7 +98,9 @@ export function PhosphorIconPickerModal({ open, onClose, onSelect }: PhosphorIco
             ))}
           </div>
           {filtered.length === 0 ? (
-            <p className="py-8 text-center text-sm font-semibold text-ink-60">No icons match that filter.</p>
+            <p className="py-8 text-center text-sm font-semibold text-ink-60">
+              {t('operations:categories.iconPicker.noMatch')}
+            </p>
           ) : null}
         </div>
       </div>

@@ -1,7 +1,8 @@
 import { ListFiltersBar } from '@/components/admin/ListFiltersBar';
-import { AdminActionsGuideDialog, DEFAULT_ADMIN_ACTION_POST_BODY } from '@/components/activity/AdminActionsGuideDialog';
+import { AdminActionsGuideDialog, getDefaultAdminActionPostBody } from '@/components/activity/AdminActionsGuideDialog';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { formatDateTime } from '@/lib/localeFormat';
 import { notifyError, notifySuccess } from '@/lib/notify';
 import { rowMatchesSearch } from '@/lib/listQuery';
 import {
@@ -13,11 +14,13 @@ import {
 import { CircleHelp } from 'lucide-react';
 import { skipToken } from '@reduxjs/toolkit/query';
 import { useMemo, useState } from 'react';
+import { Trans, useTranslation } from 'react-i18next';
 
 const inputClass =
   'mt-1.5 w-full rounded-xl border border-ink-10 px-4 py-3 font-mono text-[13px] outline-none focus:border-coral focus:ring-2 focus:ring-coral/30';
 
 export function ActivityAuditPage() {
+  const { t } = useTranslation(['insights', 'common']);
   const actionsQ = useGetAdminActionsQuery();
   const logsQ = useGetAuditLogsQuery();
   const [searchActions, setSearchActions] = useState('');
@@ -26,7 +29,8 @@ export function ActivityAuditPage() {
   const [guideOpen, setGuideOpen] = useState(false);
   const detailQ = useGetAuditLogQuery(selectedLogId ?? skipToken);
   const [execAction, execState] = useExecuteAdminActionMutation();
-  const [jsonBody, setJsonBody] = useState(DEFAULT_ADMIN_ACTION_POST_BODY);
+  const [jsonBody, setJsonBody] = useState(() => getDefaultAdminActionPostBody());
+  const empty = t('common:none');
 
   const filteredActions = useMemo(() => {
     return (actionsQ.data ?? []).filter((row) =>
@@ -49,38 +53,42 @@ export function ActivityAuditPage() {
   return (
     <div className="space-y-8">
       <div>
-        <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-ink-40">Insights</p>
-        <h1 className="text-3xl font-extrabold text-ink">Activity & audit</h1>
+        <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-ink-40">{t('insights:activity.eyebrow')}</p>
+        <h1 className="text-3xl font-extrabold text-ink">{t('insights:activity.title')}</h1>
         <p className="mt-2 max-w-2xl text-[14px] text-ink-60">
-          <span className="font-mono text-ink">GET /api/v1/admin/admin-actions</span> lists the action catalog;{' '}
-          <span className="font-mono text-ink">POST /api/v1/admin/admin-actions</span> records a row (see guide — body
-          uses <span className="font-mono text-ink">action_kind</span>, not arbitrary keys).{' '}
-          <span className="font-mono text-ink">GET …/audit-logs</span> and{' '}
-          <span className="font-mono text-ink">{`GET …/audit-logs/{id}`}</span> for detail (IP, user-agent, changes when
-          the API provides them).
+          <Trans
+            i18nKey="insights:activity.subtitle"
+            components={[
+              <span key="1" className="font-mono text-ink" />,
+              <span key="2" className="font-mono text-ink" />,
+              <span key="3" className="font-mono text-ink" />,
+              <span key="4" className="font-mono text-ink" />,
+              <span key="5" className="font-mono text-ink" />,
+            ]}
+          />
         </p>
       </div>
 
       <Card className="rounded-3xl border-ink-10 shadow-card-sm">
         <CardHeader>
-          <CardTitle className="text-lg">Admin actions catalog</CardTitle>
+          <CardTitle className="text-lg">{t('insights:activity.catalogTitle')}</CardTitle>
         </CardHeader>
         <CardContent>
           <ListFiltersBar
             searchValue={searchActions}
             onSearchChange={setSearchActions}
-            searchPlaceholder="Search key, label, category…"
+            searchPlaceholder={t('insights:activity.searchActions')}
             className="mb-4"
           />
-          {actionsQ.isLoading ? <p className="text-sm text-ink-60">Loading…</p> : null}
+          {actionsQ.isLoading ? <p className="text-sm text-ink-60">{t('common:loading')}</p> : null}
           <div className="admin-table-scroll">
             <table className="w-full min-w-[640px] text-left text-[14px]">
               <thead className="text-[11px] font-bold uppercase tracking-wide text-ink-40">
                 <tr>
-                  <th className="px-4 py-3">Key</th>
-                  <th className="px-4 py-3">Label</th>
-                  <th className="px-4 py-3">Category</th>
-                  <th className="px-4 py-3">Description</th>
+                  <th className="px-4 py-3">{t('insights:activity.columns.key')}</th>
+                  <th className="px-4 py-3">{t('insights:activity.columns.label')}</th>
+                  <th className="px-4 py-3">{t('insights:activity.columns.category')}</th>
+                  <th className="px-4 py-3">{t('insights:activity.columns.description')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -88,8 +96,8 @@ export function ActivityAuditPage() {
                   <tr key={row.id} className="border-t border-ink-10 hover:bg-surface-tint">
                     <td className="px-4 py-3 font-mono text-[13px] text-ink">{row.actionKey}</td>
                     <td className="px-4 py-3 font-medium text-ink">{row.label}</td>
-                    <td className="px-4 py-3 text-ink-60">{row.category ?? '—'}</td>
-                    <td className="max-w-md px-4 py-3 text-ink-60">{row.description ?? '—'}</td>
+                    <td className="px-4 py-3 text-ink-60">{row.category ?? empty}</td>
+                    <td className="max-w-md px-4 py-3 text-ink-60">{row.description ?? empty}</td>
                   </tr>
                 ))}
               </tbody>
@@ -99,12 +107,18 @@ export function ActivityAuditPage() {
           <div className="mt-8 border-t border-ink-10 pt-6">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div className="min-w-0">
-                <h3 className="text-[15px] font-bold text-ink">Record admin action (POST)</h3>
+                <h3 className="text-[15px] font-bold text-ink">{t('insights:activity.recordAction.title')}</h3>
                 <p className="mt-1 text-[13px] text-ink-60">
-                  JSON body must match the server contract: required <span className="font-mono text-ink">action_kind</span>{' '}
-                  (enum), optional <span className="font-mono text-ink">target_type</span>,{' '}
-                  <span className="font-mono text-ink">target_id</span>, <span className="font-mono text-ink">summary</span>,{' '}
-                  <span className="font-mono text-ink">metadata</span>. Open the guide if you are unsure.
+                  <Trans
+                    i18nKey="insights:activity.recordAction.description"
+                    components={[
+                      <span key="1" className="font-mono text-ink" />,
+                      <span key="2" className="font-mono text-ink" />,
+                      <span key="3" className="font-mono text-ink" />,
+                      <span key="4" className="font-mono text-ink" />,
+                      <span key="5" className="font-mono text-ink" />,
+                    ]}
+                  />
                 </p>
               </div>
               <Button
@@ -114,7 +128,7 @@ export function ActivityAuditPage() {
                 onClick={() => setGuideOpen(true)}
               >
                 <CircleHelp className="h-4 w-4 shrink-0" aria-hidden />
-                How this works
+                {t('insights:activity.recordAction.howThisWorks')}
               </Button>
             </div>
             <form
@@ -125,24 +139,24 @@ export function ActivityAuditPage() {
                 try {
                   parsed = JSON.parse(jsonBody) as Record<string, unknown>;
                   if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
-                    notifyError('Root JSON value must be an object.');
+                    notifyError(t('insights:activity.notify.jsonRootMustBeObject'));
                     return;
                   }
                 } catch {
-                  notifyError('Invalid JSON.');
+                  notifyError(t('insights:activity.notify.invalidJson'));
                   return;
                 }
                 try {
                   await execAction(parsed).unwrap();
-                  notifySuccess('Action request sent.');
+                  notifySuccess(t('insights:activity.notify.actionSent'));
                 } catch {
-                  notifyError('Action request failed.');
+                  notifyError(t('insights:activity.notify.actionFailed'));
                 }
               }}
             >
               <textarea rows={8} className={inputClass} value={jsonBody} onChange={(e) => setJsonBody(e.target.value)} />
               <Button type="submit" disabled={execState.isLoading} loading={execState.isLoading}>
-                POST to /admin-actions
+                {t('insights:activity.recordAction.submit')}
               </Button>
             </form>
           </div>
@@ -153,37 +167,37 @@ export function ActivityAuditPage() {
 
       <Card className="rounded-3xl border-ink-10 shadow-card-sm">
         <CardHeader>
-          <CardTitle className="text-lg">Audit log</CardTitle>
+          <CardTitle className="text-lg">{t('insights:activity.auditLog.title')}</CardTitle>
         </CardHeader>
         <CardContent>
           <ListFiltersBar
             searchValue={searchLogs}
             onSearchChange={setSearchLogs}
-            searchPlaceholder="Search id, summary, actor, resource…"
+            searchPlaceholder={t('insights:activity.auditLog.search')}
             className="mb-4"
           />
-          {logsQ.isLoading ? <p className="text-sm text-ink-60">Loading…</p> : null}
+          {logsQ.isLoading ? <p className="text-sm text-ink-60">{t('common:loading')}</p> : null}
           <div className="admin-table-scroll">
             <table className="w-full min-w-[800px] text-left text-[14px]">
               <thead className="text-[11px] font-bold uppercase tracking-wide text-ink-40">
                 <tr>
-                  <th className="px-4 py-3">Time</th>
-                  <th className="px-4 py-3">Summary</th>
-                  <th className="px-4 py-3">Actor</th>
-                  <th className="px-4 py-3">Resource</th>
-                  <th className="px-4 py-3">Detail</th>
+                  <th className="px-4 py-3">{t('insights:activity.auditLog.columns.time')}</th>
+                  <th className="px-4 py-3">{t('insights:activity.auditLog.columns.summary')}</th>
+                  <th className="px-4 py-3">{t('insights:activity.auditLog.columns.actor')}</th>
+                  <th className="px-4 py-3">{t('insights:activity.auditLog.columns.resource')}</th>
+                  <th className="px-4 py-3">{t('insights:activity.auditLog.columns.detail')}</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredLogs.map((row) => (
                   <tr key={row.id} className="border-t border-ink-10 hover:bg-surface-tint">
                     <td className="px-4 py-3 font-mono text-[13px] text-ink-60">
-                      {new Date(row.createdAt).toLocaleString()}
+                      {formatDateTime(row.createdAt)}
                     </td>
                     <td className="px-4 py-3 text-ink">{row.summary}</td>
-                    <td className="px-4 py-3 text-ink-60">{row.actorLabel ?? '—'}</td>
+                    <td className="px-4 py-3 text-ink-60">{row.actorLabel ?? empty}</td>
                     <td className="px-4 py-3 font-mono text-[12px] text-ink-60">
-                      {row.resourceType ?? '—'}
+                      {row.resourceType ?? empty}
                       {row.resourceId ? ` · ${row.resourceId}` : ''}
                     </td>
                     <td className="px-4 py-3">
@@ -193,7 +207,9 @@ export function ActivityAuditPage() {
                         variant={selectedLogId === row.id ? 'dark' : 'outline'}
                         onClick={() => setSelectedLogId(row.id === selectedLogId ? null : row.id)}
                       >
-                        {selectedLogId === row.id ? 'Hide' : 'View'}
+                        {selectedLogId === row.id
+                          ? t('insights:activity.auditLog.hide')
+                          : t('insights:activity.auditLog.view')}
                       </Button>
                     </td>
                   </tr>
@@ -203,10 +219,10 @@ export function ActivityAuditPage() {
           </div>
 
           {selectedLogId && detailQ.isLoading ? (
-            <p className="mt-4 text-sm text-ink-60">Loading detail…</p>
+            <p className="mt-4 text-sm text-ink-60">{t('insights:activity.auditLog.loadingDetail')}</p>
           ) : null}
           {selectedLogId && detailQ.isError ? (
-            <p className="mt-4 text-sm font-semibold text-coral">Could not load audit detail.</p>
+            <p className="mt-4 text-sm font-semibold text-coral">{t('insights:activity.auditLog.detailError')}</p>
           ) : null}
           {selectedLogId && detailQ.data ? (
             <div className="mt-6 rounded-2xl border border-ink-10 bg-ink-5 p-4">
@@ -214,12 +230,16 @@ export function ActivityAuditPage() {
               <p className="mt-1 text-[15px] font-semibold text-ink">{detailQ.data.summary}</p>
               <dl className="mt-3 grid gap-2 text-[13px] text-ink-60 sm:grid-cols-2">
                 <div>
-                  <dt className="font-bold uppercase tracking-wide text-ink-40">IP</dt>
-                  <dd className="font-mono text-ink">{detailQ.data.ip ?? '—'}</dd>
+                  <dt className="font-bold uppercase tracking-wide text-ink-40">
+                    {t('insights:activity.auditLog.ip')}
+                  </dt>
+                  <dd className="font-mono text-ink">{detailQ.data.ip ?? empty}</dd>
                 </div>
                 <div>
-                  <dt className="font-bold uppercase tracking-wide text-ink-40">User agent</dt>
-                  <dd className="break-all text-ink">{detailQ.data.userAgent ?? '—'}</dd>
+                  <dt className="font-bold uppercase tracking-wide text-ink-40">
+                    {t('insights:activity.auditLog.userAgent')}
+                  </dt>
+                  <dd className="break-all text-ink">{detailQ.data.userAgent ?? empty}</dd>
                 </div>
               </dl>
               {detailQ.data.changes && Object.keys(detailQ.data.changes).length > 0 ? (
@@ -227,7 +247,7 @@ export function ActivityAuditPage() {
                   {JSON.stringify(detailQ.data.changes, null, 2)}
                 </pre>
               ) : (
-                <p className="mt-4 text-[13px] text-ink-60">No structured changes on this entry.</p>
+                <p className="mt-4 text-[13px] text-ink-60">{t('insights:activity.auditLog.noChanges')}</p>
               )}
             </div>
           ) : null}

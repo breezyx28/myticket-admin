@@ -52,7 +52,7 @@ export const adminUserDetailSchema = adminUserRowSchema.extend({
 export type AdminUserDetail = z.infer<typeof adminUserDetailSchema>;
 
 export const suspendUserSchema = z.object({
-  reason: z.string().trim().min(3, 'Document why this account is suspended'),
+  reason: z.string().trim().min(3, 'validation.suspensionReasonMin'),
   permanent: z.boolean(),
 });
 

@@ -1,0 +1,89 @@
+{
+  "eyebrow": "الدعم",
+  "notifyActionFailed": "فشل الإجراء.",
+  "status": {
+    "open": "مفتوحة",
+    "in_progress": "قيد المعالجة",
+    "resolved": "محلولة"
+  },
+  "priority": {
+    "low": "منخفضة",
+    "normal": "عادية",
+    "high": "عالية",
+    "urgent": "عاجلة",
+    "suffix": "أولوية {{priority}}"
+  },
+  "inbox": {
+    "title": "صندوق الوارد",
+    "subtitle": "حالات دعم مركزية من واجهة برمجة التطبيقات — تعيين وحل والرد من هذا الصندوق.",
+    "openThreads": "المحادثات المفتوحة",
+    "searchPlaceholder": "بحث في الموضوع والرمز ومقدّم الطلب والمعاينة…",
+    "allStatuses": "كل الحالات",
+    "empty": "لا توجد محادثات تطابق البحث والفلاتر."
+  },
+  "thread": {
+    "loading": "جارٍ تحميل المحادثة…",
+    "notFound": "المحادثة غير موجودة.",
+    "backToInbox": "← العودة إلى صندوق الوارد",
+    "inbox": "← صندوق الوارد",
+    "authorAdmin": "أنت (مسؤول)",
+    "authorCustomer": "العميل",
+    "replyPlaceholder": "اكتب ردًا…",
+    "messageLabel": "الرسالة",
+    "sendMessage": "إرسال الرسالة",
+    "deskTitle": "مكتب الدعم",
+    "deskDescription": "حل أو تعيين أو إعادة فتح — نفس نقاط النهاية كما سابقًا.",
+    "resolvedTitle": "هذه الحالة محلولة.",
+    "resolutionNote": "ملاحظة الحل",
+    "reopenCase": "إعادة فتح الحالة",
+    "reopenHint": "يستخدم <1>POST …/support-cases/{id}/reopen</1>. قد تُرجع واجهة برمجة التطبيقات 422 إذا لم تكن الحالة محلولة.",
+    "updateStatus": "تحديث الحالة",
+    "statusLabel": "الحالة",
+    "resolutionNoteOptional": "ملاحظة الحل (اختياري)",
+    "saveStatus": "حفظ الحالة",
+    "notify": {
+      "replySent": "تم إرسال الرد.",
+      "replyFailed": "تعذر إرسال الرد.",
+      "reopened": "تمت إعادة فتح الحالة.",
+      "reopenFailed": "تعذر إعادة فتح الحالة.",
+      "statusUpdated": "تم تحديث حالة الدعم.",
+      "statusFailed": "تعذر تحديث الحالة."
+    }
+  },
+  "complaints": {
+    "title": "الشكاوى",
+    "subtitle": "<1>GET /api/v1/admin/complaints</1> مع إجراءات الفرز والحل والتصعيد المتوافقة مع مجموعة Postman.",
+    "queueTitle": "قائمة الانتظار",
+    "searchPlaceholder": "بحث في المعرّف والعنوان والفئة والمُبلّغ والهدف…",
+    "allStatuses": "كل الحالات",
+    "empty": "لا توجد شكاوى تطابق الفلاتر.",
+    "columns": {
+      "complaint": "الشكوى",
+      "category": "الفئة",
+      "reporter": "المُبلّغ",
+      "target": "الهدف",
+      "status": "الحالة",
+      "updated": "آخر تحديث",
+      "actions": "الإجراءات"
+    },
+    "status": {
+      "open": "مفتوحة",
+      "triaged": "مُفرزة",
+      "resolved": "محلولة",
+      "escalated": "مُصعّدة",
+      "unknown": "أخرى"
+    },
+    "actions": {
+      "triage": "فرز",
+      "resolve": "حل",
+      "escalate": "تصعيد"
+    },
+    "resolvePrompt": "ملاحظة حل اختيارية لجسم واجهة برمجة التطبيقات",
+    "defaultResolutionNote": "تم الحل عبر الإدارة.",
+    "notify": {
+      "triaged": "تم وضع علامة مُفرزة.",
+      "resolved": "تم حل الشكوى.",
+      "escalated": "تم تصعيد الشكوى."
+    }
+  }
+}

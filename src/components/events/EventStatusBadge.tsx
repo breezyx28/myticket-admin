@@ -1,4 +1,5 @@
 import { cn } from '@/lib/utils';
+import { useTranslation } from 'react-i18next';
 
 const apiStatusClass: Record<string, string> = {
   draft: 'border border-ink-10 bg-ink-5 text-ink-60',
@@ -17,9 +18,15 @@ const lifecycleClass: Record<string, string> = {
   archived: 'border border-ink-10 bg-white text-ink-40',
 };
 
-function formatStatusLabel(status: string): string {
-  return status.replace(/_/g, ' ');
-}
+const STATUS_KEYS = new Set([
+  'active',
+  'ended',
+  'cancelled',
+  'archived',
+  'draft',
+  'pending_approval',
+  'published',
+]);
 
 export function EventStatusBadge({
   status,
@@ -28,8 +35,11 @@ export function EventStatusBadge({
   status?: string;
   apiStatus?: string;
 }) {
+  const { t } = useTranslation('operations');
   const key = (apiStatus ?? status ?? 'unknown').toLowerCase();
-  const label = formatStatusLabel(apiStatus ?? status ?? 'unknown');
+  const label = STATUS_KEYS.has(key)
+    ? t(`events.status.${key}`)
+    : t('events.status.unknown');
   const tone = apiStatusClass[key] ?? lifecycleClass[key] ?? 'border border-ink-10 bg-ink-5 text-ink-60';
 
   return (

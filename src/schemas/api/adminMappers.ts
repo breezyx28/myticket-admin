@@ -1,4 +1,5 @@
 import { placeholderAssetUrl } from "@/config/env";
+import { tFallback, tMapperListError } from "@/lib/i18nMessage";
 import {
   adminProfileImageUploadSchema,
   type AdminProfileImageUploadResult,
@@ -211,6 +212,10 @@ function isRecord(v: unknown): v is Record<string, unknown> {
   return typeof v === "object" && v !== null && !Array.isArray(v);
 }
 
+function throwExpectedList(resourceKey: string, cause: unknown): never {
+  throw new ApiJsonError(tMapperListError(resourceKey), "expected_array", { cause });
+}
+
 function flattenPendingActionBuckets(container: Record<string, unknown>): unknown[] {
   const buckets = [
     container.events_pending_approval,
@@ -238,13 +243,7 @@ function extractPendingActionsPayload(raw: unknown): unknown[] {
     const nested = inner.items ?? inner.pending_actions ?? inner.pendingActions;
     if (Array.isArray(nested)) return nested;
   }
-  throw new ApiJsonError(
-    "Expected pending actions array or wrapped list",
-    "expected_array",
-    {
-      cause: raw,
-    },
-  );
+  throwExpectedList("pendingActions", raw);
 }
 
 function intNonNeg(n: number | undefined, fallback = 0): number {
@@ -530,12 +529,12 @@ function mapPendingActionRow(row: unknown): PendingAction {
     dueLabel = pickStr(o, "created_at") ?? "";
   } else if (o.location_name && (o.submitted_at || o.status === "pending_review")) {
     kind = "tourism_ad";
-    title = pickStr(o, "location_name") ?? "Tourism ad";
+    title = pickStr(o, "location_name") ?? tFallback("tourismAd");
     const user = isRecord(o.user) ? asObject(o.user) : {};
     subtitle =
       pickStr(user, "full_name", "email") ??
       pickStr(o, "source") ??
-      "Guest submission";
+      tFallback("guestSubmission");
     href = normalizeNotificationHref(pickStr(o, "href")) ?? `/tourism-ads/${id}`;
     priority = "high";
     dueLabel = pickStr(o, "submitted_at", "created_at") ?? "";
@@ -578,13 +577,7 @@ function extractRoleApplicationsPayload(raw: unknown): unknown[] {
       inner.applications;
     if (Array.isArray(nested)) return nested;
   }
-  throw new ApiJsonError(
-    "Expected role applications array or wrapped list",
-    "expected_array",
-    {
-      cause: raw,
-    },
-  );
+  throwExpectedList("roleApplications", raw);
 }
 
 export function mapRoleApplicationFromApi(raw: unknown): RoleApplication {
@@ -658,13 +651,7 @@ function extractTalentProfilesPayload(raw: unknown): unknown[] {
       inner.data;
     if (Array.isArray(nested)) return nested;
   }
-  throw new ApiJsonError(
-    "Expected talent profiles array or wrapped list",
-    "expected_array",
-    {
-      cause: raw,
-    },
-  );
+  throwExpectedList("talentProfiles", raw);
 }
 
 function parseGenres(o: Record<string, unknown>): string[] {
@@ -1206,13 +1193,7 @@ function extractProfileDirectoryPayload(raw: unknown): unknown[] {
       inner.results;
     if (Array.isArray(nested)) return nested;
   }
-  throw new ApiJsonError(
-    "Expected profile directory array or wrapped list",
-    "expected_array",
-    {
-      cause: raw,
-    },
-  );
+  throwExpectedList("profileDirectory", raw);
 }
 
 export function mapAdminProfileDirectoryRowFromApi(
@@ -1242,7 +1223,7 @@ export function mapAdminProfileDirectoryRowFromApi(
     const slug = pickStr(o, "slug");
     displayName = slug ? slug.replace(/-/g, " ") : idStr;
   }
-  if (!displayName) displayName = "Unnamed";
+  if (!displayName) displayName = tFallback("unnamed");
   const userIdNum = pickNum(o, "user_id", "userId");
   const linkedUserId =
     userIdNum !== undefined ? String(Math.trunc(userIdNum)) : undefined;
@@ -1354,11 +1335,7 @@ function extractUsersPayload(raw: unknown): unknown[] {
       inner.members;
     if (Array.isArray(nested)) return nested;
   }
-  throw new ApiJsonError(
-    "Expected users array or wrapped list",
-    "expected_array",
-    { cause: raw },
-  );
+  throwExpectedList("users", raw);
 }
 
 function extractUsersPaginatorMeta(raw: unknown) {
@@ -1497,11 +1474,7 @@ function extractEventsPayload(raw: unknown): unknown[] {
     const nested = inner.items ?? inner.events ?? inner.data ?? inner.results;
     if (Array.isArray(nested)) return nested;
   }
-  throw new ApiJsonError(
-    "Expected events array or wrapped list",
-    "expected_array",
-    { cause: raw },
-  );
+  throwExpectedList("events", raw);
 }
 
 function normalizeEventStatus(
@@ -1520,7 +1493,9 @@ function normalizeEventStatus(
 export function mapAdminEventRowFromApi(raw: unknown): AdminEventRow {
   const inner = unwrapApiJson(raw);
   const o = asObject(inner);
+  const categoryFromNested = mapEventCategorySummaryFromApi(o.category);
   const category =
+    categoryFromNested?.nameEn ??
     pickStr(o, "category", "category_name", "category_label") ??
     (isRecord(o.category)
       ? pickStr(asObject(o.category), "name", "title")
@@ -1561,7 +1536,7 @@ export function mapAdminEventRowFromApi(raw: unknown): AdminEventRow {
         "organizer",
         "organizer_title",
         "display_name",
-      ) ?? "Organization",
+      ) ?? tFallback("organization"),
     status: normalizeEventStatus(pickStr(o, "status", "lifecycle", "state")),
     startsAt:
       pickStr(o, "startsAt", "starts_at", "start_at", "start_time") ?? "",
@@ -1581,6 +1556,7 @@ export function mapAdminEventRowFromApi(raw: unknown): AdminEventRow {
     city: pickStr(o, "city", "venue_city") ?? "",
     coverImageUrl: cover,
     featured,
+    ...(categoryFromNested ? { categoryDetail: categoryFromNested } : {}),
   };
   return adminEventRowSchema.parse(candidate);
 }
@@ -1604,7 +1580,7 @@ function mapEventOrganizerFromApi(raw: unknown) {
     id,
     ...(pickStr(o, "code") ? { code: pickStr(o, "code") } : {}),
     displayName:
-      pickStr(o, "display_name", "displayName", "name", "company_name") ?? "Organizer",
+      pickStr(o, "display_name", "displayName", "name", "company_name") ?? tFallback("organizer"),
     ...(pickStr(o, "contact_email", "contactEmail", "email")
       ? { contactEmail: pickStr(o, "contact_email", "contactEmail", "email") }
       : {}),
@@ -1748,13 +1724,7 @@ function extractEventCategoriesPayload(raw: unknown): unknown[] {
     const block = asObject(raw.data);
     if (isLaravelPaginator(block)) return block.data as unknown[];
   }
-  throw new ApiJsonError(
-    "Expected event categories array or wrapped list",
-    "expected_array",
-    {
-      cause: raw,
-    },
-  );
+  throwExpectedList("eventCategories", raw);
 }
 
 function extractCategoryPaginatorMeta(raw: unknown, defaultPerPage = 50) {
@@ -1793,7 +1763,7 @@ export function mapEventCategoryFromApi(raw: unknown): EventCategory {
   const candidate = {
     id: idStr,
     slug: slugVal || slugifyCategoryBaseName(nameEn || idStr || "category"),
-    nameEn: nameEn || nameAr || slugVal || idStr || "Unnamed",
+    nameEn: nameEn || nameAr || slugVal || idStr || tFallback("unnamed"),
     nameAr: nameAr || nameEn || slugVal || "",
     iconKey: iconRaw ?? "",
     colorToken: colorRaw ?? "",
@@ -1838,11 +1808,7 @@ function extractBadgeCategoriesPayload(raw: unknown): unknown[] {
       inner.data;
     if (Array.isArray(nested)) return nested;
   }
-  throw new ApiJsonError(
-    "Expected badge categories array or wrapped list",
-    "expected_array",
-    { cause: raw },
-  );
+  throwExpectedList("badgeCategories", raw);
 }
 
 export function mapBadgeCategoryFromApi(raw: unknown): BadgeCategory {
@@ -1865,7 +1831,7 @@ export function mapBadgeCategoryFromApi(raw: unknown): BadgeCategory {
   const candidate = {
     id: idStr,
     slug: slugVal || slugifyCategoryBaseName(nameEn || idStr || "category"),
-    nameEn: nameEn || nameAr || slugVal || idStr || "Unnamed",
+    nameEn: nameEn || nameAr || slugVal || idStr || tFallback("unnamed"),
     nameAr: nameAr || nameEn || slugVal || "",
     active: pickBool(o, "active", "is_active") ?? false,
     ...(displayOrderRaw !== undefined
@@ -2056,13 +2022,7 @@ function extractSupportThreadsPayload(raw: unknown): unknown[] {
       inner.data;
     if (Array.isArray(nested)) return nested;
   }
-  throw new ApiJsonError(
-    "Expected support threads array or wrapped list",
-    "expected_array",
-    {
-      cause: raw,
-    },
-  );
+  throwExpectedList("supportThreads", raw);
 }
 
 function pickSupportCaseId(o: Record<string, unknown>): string {
@@ -2118,7 +2078,7 @@ function pickSupportRequesterLabel(o: Record<string, unknown>): string {
     pickNum(o, "user_id", "userId") ??
     (u ? pickNum(u, "id") : undefined);
   if (uid !== undefined) return `User #${Math.trunc(uid)}`;
-  return "Unknown requester";
+  return tFallback("unknownRequester");
 }
 
 export function mapSupportThreadFromApi(raw: unknown): SupportThread {
@@ -2247,13 +2207,7 @@ function extractListingModerationPayload(raw: unknown): unknown[] {
     const nested = inner.items ?? inner.queue ?? inner.entries ?? inner.data;
     if (Array.isArray(nested)) return nested;
   }
-  throw new ApiJsonError(
-    "Expected moderation queue array or wrapped list",
-    "expected_array",
-    {
-      cause: raw,
-    },
-  );
+  throwExpectedList("moderationQueue", raw);
 }
 
 function normalizeListingKind(
@@ -2306,7 +2260,7 @@ function pickListingOwnerLabel(o: Record<string, unknown>): string {
   if (email) return email;
   const uid = pickNum(o, "owner_user_id", "ownerUserId");
   if (uid !== undefined) return `Owner #${Math.trunc(uid)}`;
-  return "Unknown owner";
+  return tFallback("unknownOwner");
 }
 
 function pickListingTitle(o: Record<string, unknown>, idStr: string): string {
@@ -2371,11 +2325,7 @@ function extractRatingsPayload(raw: unknown): unknown[] {
     const nested = inner.items ?? inner.ratings ?? inner.reviews ?? inner.data;
     if (Array.isArray(nested)) return nested;
   }
-  throw new ApiJsonError(
-    "Expected ratings array or wrapped list",
-    "expected_array",
-    { cause: raw },
-  );
+  throwExpectedList("ratings", raw);
 }
 
 function normalizeRatingModerationState(
@@ -2415,7 +2365,7 @@ function formatRatingTargetLabel(o: Record<string, unknown>): string {
   const pretty =
     prettyRaw.length > 0
       ? prettyRaw.charAt(0).toUpperCase() + prettyRaw.slice(1)
-      : "Item";
+      : tFallback("item");
   return `${pretty} #${tidStr}`;
 }
 
@@ -2431,7 +2381,7 @@ function pickRatingAuthorLabel(o: Record<string, unknown>): string {
   if (email) return email;
   const uid = pickNum(o, "user_id", "userId");
   if (uid !== undefined) return `User #${Math.trunc(uid)}`;
-  return "Unknown reviewer";
+  return tFallback("unknownReviewer");
 }
 
 export function mapRatingRowFromApi(raw: unknown): RatingRow {
@@ -2645,11 +2595,7 @@ function extractOrdersPayload(raw: unknown): unknown[] {
       return block.data;
     }
   }
-  throw new ApiJsonError(
-    "Expected orders array or wrapped list",
-    "expected_array",
-    { cause: raw },
-  );
+  throwExpectedList("orders", raw);
 }
 
 function normalizeOrderStatus(raw: string | undefined): AdminOrderStatus {
@@ -2864,11 +2810,7 @@ function extractRefundsPayload(raw: unknown): unknown[] {
     const nested = inner.items ?? inner.refunds ?? inner.data ?? inner.results;
     if (Array.isArray(nested)) return nested;
   }
-  throw new ApiJsonError(
-    "Expected refunds array or wrapped list",
-    "expected_array",
-    { cause: raw },
-  );
+  throwExpectedList("refunds", raw);
 }
 
 function normalizeRefundStatus(raw: string | undefined): AdminRefundStatus {
@@ -3064,11 +3006,7 @@ function extractRefundBreakdownRows(raw: unknown): {
       o.categories;
     if (Array.isArray(nested)) return { rows: nested, totalFromRoot };
   }
-  throw new ApiJsonError(
-    "Expected refund breakdown rows or wrapped list",
-    "expected_array",
-    { cause: raw },
-  );
+  throwExpectedList("refundBreakdowns", raw);
 }
 
 export function mapRefundBreakdownRowFromApi(
@@ -3140,11 +3078,7 @@ function extractPayoutsPayload(raw: unknown): unknown[] {
     const nested = inner.items ?? inner.payouts ?? inner.data ?? inner.results;
     if (Array.isArray(nested)) return nested;
   }
-  throw new ApiJsonError(
-    "Expected payouts array or wrapped list",
-    "expected_array",
-    { cause: raw },
-  );
+  throwExpectedList("payouts", raw);
 }
 
 function normalizePayoutStatus(raw: string | undefined): PayoutStatus {
@@ -3243,11 +3177,7 @@ function extractAuctionsPayload(raw: unknown): unknown[] {
     const nested = inner.items ?? inner.auctions ?? inner.data ?? inner.results;
     if (Array.isArray(nested)) return nested;
   }
-  throw new ApiJsonError(
-    "Expected auctions array or wrapped list",
-    "expected_array",
-    { cause: raw },
-  );
+  throwExpectedList("auctions", raw);
 }
 
 function normalizeAuctionStatus(raw: string | undefined): AdminAuctionStatus {
@@ -3495,11 +3425,7 @@ function extractScannersPayload(raw: unknown): unknown[] {
     const nested = inner.items ?? inner.scanners ?? inner.data ?? inner.results;
     if (Array.isArray(nested)) return nested;
   }
-  throw new ApiJsonError(
-    "Expected scanners array or wrapped list",
-    "expected_array",
-    { cause: raw },
-  );
+  throwExpectedList("scanners", raw);
 }
 
 function normalizeScannerStatus(raw: string | undefined): AdminScannerStatus {
@@ -3615,11 +3541,7 @@ function extractScanLogsPayload(raw: unknown): unknown[] {
       inner.results;
     if (Array.isArray(nested)) return nested;
   }
-  throw new ApiJsonError(
-    "Expected scan logs array or wrapped list",
-    "expected_array",
-    { cause: raw },
-  );
+  throwExpectedList("scanLogs", raw);
 }
 
 function normalizeScanLogOutcome(raw: string | undefined): AdminScanLogOutcome {
@@ -4005,11 +3927,7 @@ function extractComplaintsPayload(raw: unknown): unknown[] {
       inner.records;
     if (Array.isArray(nested)) return nested;
   }
-  throw new ApiJsonError(
-    "Expected complaints array or wrapped list",
-    "expected_array",
-    { cause: raw },
-  );
+  throwExpectedList("complaints", raw);
 }
 
 function normalizeComplaintStatus(
@@ -4037,7 +3955,7 @@ export function mapAdminComplaintRowFromApi(raw: unknown): AdminComplaintRow {
     (typeof o.message === "string" && o.message.trim() !== ""
       ? o.message.trim().slice(0, 120)
       : "") ||
-    "Complaint";
+    tFallback("complaint");
   const createdAt =
     pickStr(o, "createdAt", "created_at", "submitted_at", "opened_at") ??
     new Date().toISOString();
@@ -4094,11 +4012,7 @@ function extractAdminActionsPayload(raw: unknown): unknown[] {
       inner.rows;
     if (Array.isArray(nested)) return nested;
   }
-  throw new ApiJsonError(
-    "Expected admin-actions array or wrapped list",
-    "expected_array",
-    { cause: raw },
-  );
+  throwExpectedList("adminActions", raw);
 }
 
 export function mapAdminActionRowFromApi(raw: unknown): AdminActionRow {
@@ -4160,11 +4074,7 @@ function extractAuditLogsPayload(raw: unknown): unknown[] {
       inner.rows;
     if (Array.isArray(nested)) return nested;
   }
-  throw new ApiJsonError(
-    "Expected audit-logs array or wrapped list",
-    "expected_array",
-    { cause: raw },
-  );
+  throwExpectedList("auditLogs", raw);
 }
 
 export function mapAdminAuditLogRowFromApi(raw: unknown): AdminAuditLogRow {
@@ -4184,7 +4094,7 @@ export function mapAdminAuditLogRowFromApi(raw: unknown): AdminAuditLogRow {
       "event",
     ) ||
     (typeof o.payload === "string" ? o.payload.slice(0, 160) : "") ||
-    "Audit entry";
+    tFallback("auditEntry");
   const createdAt =
     pickStr(
       o,
@@ -4286,11 +4196,7 @@ function extractRecentNotificationsPayload(raw: unknown): unknown[] {
       inner.rows;
     if (Array.isArray(nested)) return nested;
   }
-  throw new ApiJsonError(
-    "Expected recent notifications array or wrapped list",
-    "expected_array",
-    { cause: raw },
-  );
+  throwExpectedList("recentNotifications", raw);
 }
 
 /** Rows include a `data` payload — do not unwrap via the generic `{ data }` envelope helper. */
@@ -4328,7 +4234,7 @@ export function mapAdminRecentNotificationRowFromApi(
     (typeof o.body === "string" && o.body.trim() !== ""
       ? o.body.trim().slice(0, 120)
       : "") ||
-    "Notification";
+    tFallback("notification");
   const body = pickStr(o, "body", "message", "content", "text");
   const kind = pickStr(o, "kind", "notification_kind", "type") ?? undefined;
   const deliveryChannel = pickStr(o, "channel", "via", "medium", "delivery_channel");
@@ -4423,11 +4329,7 @@ function extractDeliveryLogsPayload(raw: unknown): unknown[] {
       inner.rows;
     if (Array.isArray(nested)) return nested;
   }
-  throw new ApiJsonError(
-    "Expected delivery log array or wrapped list",
-    "expected_array",
-    { cause: raw },
-  );
+  throwExpectedList("deliveryLog", raw);
 }
 
 function normalizeDeliveryStatus(
@@ -4717,7 +4619,7 @@ export function mapTourismAdFromApi(raw: unknown): TourismAd {
     ),
     status: parseTourismAdStatus(pickStr(o, "status")),
     locationName:
-      pickStr(o, "locationName", "location_name") ?? "Untitled location",
+      pickStr(o, "locationName", "location_name") ?? tFallback("untitledLocation"),
     latitude: String(pickStr(o, "latitude") ?? pickNum(o, "latitude") ?? "0"),
     longitude: String(pickStr(o, "longitude") ?? pickNum(o, "longitude") ?? "0"),
     description: pickStr(o, "description") ?? "",
@@ -4771,11 +4673,7 @@ function extractTourismAdsRows(raw: unknown): unknown[] {
       if (Array.isArray(dataObj.data)) return dataObj.data;
     }
   }
-  throw new ApiJsonError(
-    "Expected tourism ads array or wrapped paginator",
-    "expected_array",
-    { cause: raw },
-  );
+  throwExpectedList("tourismAds", raw);
 }
 
 function extractTourismAdsPaginatorMeta(raw: unknown) {

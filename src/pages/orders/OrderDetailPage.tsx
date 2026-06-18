@@ -1,17 +1,17 @@
 import { Button } from '@/components/ui/Button';
 import { cn } from '@/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { getCurrentLocale } from '@/i18n';
+import { formatSarCompact } from '@/lib/formatSar';
+import { formatDateTime } from '@/lib/localeFormat';
 import { notifyError, notifySuccess } from '@/lib/notify';
-import type { AdminOrderDetail } from '@/schemas/order.schema';
+import type { AdminOrderDetail, AdminOrderStatus } from '@/schemas/order.schema';
 import { useForceRefundOrderMutation, useGetOrderQuery } from '@/services/adminApi';
 import { AlertTriangle, RotateCcw } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { Trans, useTranslation } from 'react-i18next';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
-
-function statusLabel(s: string): string {
-  return s === 'unknown' ? 'Other' : s.replace(/_/g, ' ');
-}
 
 function ForceRefundDialog({
   open,
@@ -26,6 +26,8 @@ function ForceRefundDialog({
   onClose: () => void;
   onConfirm: () => void;
 }) {
+  const { t } = useTranslation(['operations', 'common']);
+
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
@@ -38,14 +40,11 @@ function ForceRefundDialog({
   if (!open || typeof document === 'undefined') return null;
 
   return createPortal(
-    <div
-      className="fixed inset-0 z-[100] flex items-center justify-center p-4"
-      role="presentation"
-    >
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" role="presentation">
       <button
         type="button"
         className="absolute inset-0 bg-ink/55 backdrop-blur-[1px]"
-        aria-label="Close dialog"
+        aria-label={t('common:close')}
         disabled={loading}
         onClick={() => {
           if (!loading) onClose();
@@ -63,18 +62,21 @@ function ForceRefundDialog({
           </span>
           <div className="min-w-0 flex-1">
             <h2 id="force-refund-title" className="text-lg font-extrabold text-ink">
-              Force refund this order?
+              {t('operations:orders.forceRefundDialogTitle')}
             </h2>
             <p className="mt-2 text-[14px] leading-relaxed text-ink-60">
-              This refunds <span className="font-semibold text-ink">{order.reference ?? order.id}</span> outside the
-              normal buyer flow. Only continue if policy allows and you are ready to record it for audit. This may not
-              be reversible.
+              <Trans
+                ns="operations"
+                i18nKey="orders.forceRefundDialogBody"
+                values={{ reference: order.reference ?? order.id }}
+                components={{ strong: <span className="font-semibold text-ink" /> }}
+              />
             </p>
           </div>
         </div>
         <div className="mt-6 flex flex-wrap justify-end gap-2">
           <Button type="button" variant="outline" disabled={loading} onClick={onClose}>
-            Cancel
+            {t('common:cancel')}
           </Button>
           <Button
             type="button"
@@ -84,16 +86,18 @@ function ForceRefundDialog({
             onClick={onConfirm}
           >
             <RotateCcw className="h-4 w-4 shrink-0" aria-hidden />
-            Confirm force refund
+            {t('operations:orders.confirmForceRefund')}
           </Button>
         </div>
       </div>
     </div>,
-    document.body
+    document.body,
   );
 }
 
 export function OrderDetailPage() {
+  const { t } = useTranslation(['operations', 'common']);
+  const locale = getCurrentLocale();
   const { id = '' } = useParams();
   const [searchParams] = useSearchParams();
   const focusTicketId = searchParams.get('ticket')?.trim() || undefined;
@@ -107,13 +111,25 @@ export function OrderDetailPage() {
     focusTicketRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }, [focusTicketId, q.data]);
 
-  if (q.isLoading) return <p className="text-ink-60">Loading…</p>;
+  function statusLabel(s: AdminOrderStatus | string): string {
+    if (s in { paid: 1, pending: 1, processing: 1, completed: 1, refunded: 1, cancelled: 1, failed: 1, unknown: 1 }) {
+      return t(`operations:orderStatus.${s as AdminOrderStatus}`);
+    }
+    return String(s);
+  }
+
+  function fmtMoney(amount: number, currency: string): string {
+    if (currency === 'SAR') return formatSarCompact(amount, locale);
+    return `${amount.toLocaleString(locale === 'ar' ? 'ar-SA' : 'en-US')} ${currency}`;
+  }
+
+  if (q.isLoading) return <p className="text-ink-60">{t('common:loading')}</p>;
   if (!q.data) {
     return (
       <div className="rounded-3xl border border-ink-10 bg-white p-8">
-        <p className="font-semibold text-ink">Order not found.</p>
+        <p className="font-semibold text-ink">{t('operations:orders.notFound')}</p>
         <Link to="/orders" className="mt-4 inline-block text-coral hover:underline">
-          Back to orders
+          {t('operations:orders.backToOrders')}
         </Link>
       </div>
     );
@@ -128,71 +144,80 @@ export function OrderDetailPage() {
     <div className="space-y-6">
       <div>
         <Link to="/orders" className="text-[13px] font-semibold text-coral hover:underline">
-          ← Orders
+          {t('operations:orders.backLink')}
         </Link>
         <h1 className="mt-2 font-mono text-2xl font-extrabold text-ink">{o.reference ?? o.id}</h1>
         {o.numericId ? (
           <p className="mt-1 font-mono text-[13px] text-ink-60">
-            Order id <span className="text-ink">#{o.numericId}</span>
+            <Trans
+              ns="operations"
+              i18nKey="orders.orderId"
+              values={{ id: o.numericId }}
+              components={{ strong: <span className="text-ink" /> }}
+            />
           </p>
         ) : null}
-        <p className="mt-2 text-[14px] capitalize text-ink-60">{statusLabel(o.status)}</p>
+        <p className="mt-2 text-[14px] text-ink-60">{statusLabel(o.status)}</p>
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">
         <Card className="rounded-3xl border-ink-10 shadow-card-sm">
           <CardHeader>
-            <CardTitle className="text-sm">Subtotal ({currency})</CardTitle>
+            <CardTitle className="text-sm">
+              {t('operations:orders.subtotal', { currency })}
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="font-mono text-3xl font-black text-ink">{(o.subtotalSar ?? o.totalSar).toLocaleString()}</p>
+            <p className="font-mono text-3xl font-black text-ink">
+              {fmtMoney(o.subtotalSar ?? o.totalSar, currency)}
+            </p>
           </CardContent>
         </Card>
         <Card className="rounded-3xl border-ink-10 shadow-card-sm">
           <CardHeader>
-            <CardTitle className="text-sm">Fees ({currency})</CardTitle>
+            <CardTitle className="text-sm">{t('operations:orders.fees', { currency })}</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="font-mono text-3xl font-black text-ink">{(o.feesSar ?? 0).toLocaleString()}</p>
+            <p className="font-mono text-3xl font-black text-ink">{fmtMoney(o.feesSar ?? 0, currency)}</p>
           </CardContent>
         </Card>
         <Card className="rounded-3xl border-ink-10 shadow-card-sm">
           <CardHeader>
-            <CardTitle className="text-sm">Total ({currency})</CardTitle>
+            <CardTitle className="text-sm">{t('operations:orders.total', { currency })}</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="font-mono text-3xl font-black text-ink">{o.totalSar.toLocaleString()}</p>
+            <p className="font-mono text-3xl font-black text-ink">{fmtMoney(o.totalSar, currency)}</p>
           </CardContent>
         </Card>
       </div>
 
       <Card className="rounded-3xl border-ink-10 shadow-card-sm">
         <CardHeader>
-          <CardTitle className="text-lg">Order details</CardTitle>
+          <CardTitle className="text-lg">{t('operations:orders.orderDetails')}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-2 text-[14px]">
           <p>
-            <span className="font-semibold text-ink-60">Reference: </span>
+            <span className="font-semibold text-ink-60">{t('operations:orders.reference')} </span>
             <span className="font-mono text-ink">{o.reference ?? o.id}</span>
           </p>
           {o.numericId ? (
             <p>
-              <span className="font-semibold text-ink-60">ID: </span>
+              <span className="font-semibold text-ink-60">{t('operations:orders.id')} </span>
               <span className="font-mono text-ink">#{o.numericId}</span>
             </p>
           ) : null}
           <p>
-            <span className="font-semibold text-ink-60">Status: </span>
-            <span className="capitalize text-ink">{statusLabel(o.status)}</span>
+            <span className="font-semibold text-ink-60">{t('operations:orders.status')} </span>
+            <span className="text-ink">{statusLabel(o.status)}</span>
           </p>
           <p>
-            <span className="font-semibold text-ink-60">Quantity: </span>
+            <span className="font-semibold text-ink-60">{t('operations:orders.quantity')} </span>
             <span className="text-ink">{o.ticketCount}</span>
           </p>
           {o.paymentMethod ? (
             <p>
-              <span className="font-semibold text-ink-60">Payment method: </span>
-              <span className="capitalize text-ink">
+              <span className="font-semibold text-ink-60">{t('operations:orders.paymentMethod')} </span>
+              <span className="text-ink">
                 {o.paymentMethod}
                 {o.paymentCardLast4 ? ` ···· ${o.paymentCardLast4}` : ''}
               </span>
@@ -200,20 +225,18 @@ export function OrderDetailPage() {
           ) : null}
           {o.paidAt ? (
             <p>
-              <span className="font-semibold text-ink-60">Paid at: </span>
-              <span className="text-ink">{new Date(o.paidAt).toLocaleString()}</span>
+              <span className="font-semibold text-ink-60">{t('operations:orders.paidAt')} </span>
+              <span className="text-ink">{formatDateTime(o.paidAt, locale)}</span>
             </p>
           ) : null}
           <p>
-            <span className="font-semibold text-ink-60">Created: </span>
-            <span className="text-ink">{new Date(o.createdAt).toLocaleString()}</span>
+            <span className="font-semibold text-ink-60">{t('operations:orders.created')} </span>
+            <span className="text-ink">{formatDateTime(o.createdAt, locale)}</span>
           </p>
           {o.discountSar != null && o.discountSar > 0 ? (
             <p>
-              <span className="font-semibold text-ink-60">Discount: </span>
-              <span className="text-ink">
-                {o.discountSar.toLocaleString()} {currency}
-              </span>
+              <span className="font-semibold text-ink-60">{t('operations:orders.discount')} </span>
+              <span className="text-ink">{fmtMoney(o.discountSar, currency)}</span>
             </p>
           ) : null}
         </CardContent>
@@ -221,23 +244,23 @@ export function OrderDetailPage() {
 
       <Card className="rounded-3xl border-ink-10 shadow-card-sm">
         <CardHeader>
-          <CardTitle className="text-lg">Buyer &amp; event</CardTitle>
+          <CardTitle className="text-lg">{t('operations:orders.buyerAndEvent')}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-2 text-[14px]">
           <p>
-            <span className="font-semibold text-ink-60">Buyer: </span>
+            <span className="font-semibold text-ink-60">{t('operations:orders.buyer')} </span>
             <span className="text-ink">{o.buyerLabel}</span>
             {o.buyerEmail ? <span className="text-ink-60"> ({o.buyerEmail})</span> : null}
             {o.buyerPhone ? <span className="text-ink-60"> · {o.buyerPhone}</span> : null}
           </p>
           <p>
-            <span className="font-semibold text-ink-60">Event: </span>
+            <span className="font-semibold text-ink-60">{t('operations:orders.event')} </span>
             <span className="text-ink">{o.eventTitle}</span>
             {o.eventId ? <span className="font-mono text-ink-60"> · #{o.eventId}</span> : null}
           </p>
           {o.paymentReference ? (
             <p>
-              <span className="font-semibold text-ink-60">Payment ref: </span>
+              <span className="font-semibold text-ink-60">{t('operations:orders.paymentRef')} </span>
               <span className="font-mono text-ink">{o.paymentReference}</span>
             </p>
           ) : null}
@@ -250,18 +273,18 @@ export function OrderDetailPage() {
       {o.items && o.items.length > 0 ? (
         <Card className="rounded-3xl border-ink-10 shadow-card-sm">
           <CardHeader>
-            <CardTitle className="text-lg">Line items</CardTitle>
+            <CardTitle className="text-lg">{t('operations:orders.lineItems')}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="admin-table-scroll">
               <table className="w-full min-w-[640px] text-left text-[14px]">
                 <thead className="text-[11px] font-bold uppercase tracking-wide text-ink-40">
                   <tr>
-                    <th className="px-4 py-3">Item</th>
-                    <th className="px-4 py-3">Qty</th>
-                    <th className="px-4 py-3">Unit ({currency})</th>
-                    <th className="px-4 py-3">Subtotal ({currency})</th>
-                    <th className="px-4 py-3">Ticket type</th>
+                    <th className="px-4 py-3">{t('operations:orders.colItem')}</th>
+                    <th className="px-4 py-3">{t('operations:orders.colQty')}</th>
+                    <th className="px-4 py-3">{t('operations:orders.colUnit', { currency })}</th>
+                    <th className="px-4 py-3">{t('operations:orders.colSubtotal', { currency })}</th>
+                    <th className="px-4 py-3">{t('operations:orders.ticketType')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -269,9 +292,9 @@ export function OrderDetailPage() {
                     <tr key={row.id} className="border-t border-ink-10 hover:bg-surface-tint">
                       <td className="px-4 py-3 font-mono text-[13px] text-ink-60">{row.id}</td>
                       <td className="px-4 py-3 text-ink">{row.quantity}</td>
-                      <td className="px-4 py-3 font-mono text-ink">{row.unitPriceSar.toLocaleString()}</td>
-                      <td className="px-4 py-3 font-mono text-ink">{row.subtotalSar.toLocaleString()}</td>
-                      <td className="px-4 py-3 text-ink-60">{row.ticketTypeId ?? '—'}</td>
+                      <td className="px-4 py-3 font-mono text-ink">{fmtMoney(row.unitPriceSar, currency)}</td>
+                      <td className="px-4 py-3 font-mono text-ink">{fmtMoney(row.subtotalSar, currency)}</td>
+                      <td className="px-4 py-3 text-ink-60">{row.ticketTypeId ?? t('common:none')}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -284,37 +307,38 @@ export function OrderDetailPage() {
       {o.tickets && o.tickets.length > 0 ? (
         <Card className="rounded-3xl border-ink-10 shadow-card-sm">
           <CardHeader>
-            <CardTitle className="text-lg">Tickets</CardTitle>
+            <CardTitle className="text-lg">{t('operations:orders.tickets')}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="admin-table-scroll">
               <table className="w-full min-w-[720px] text-left text-[14px]">
                 <thead className="text-[11px] font-bold uppercase tracking-wide text-ink-40">
                   <tr>
-                    <th className="px-4 py-3">Code</th>
-                    <th className="px-4 py-3">Status</th>
-                    <th className="px-4 py-3">Paid ({currency})</th>
-                    <th className="px-4 py-3">Event</th>
+                    <th className="px-4 py-3">{t('operations:orders.colCode')}</th>
+                    <th className="px-4 py-3">{t('operations:orders.colStatus')}</th>
+                    <th className="px-4 py-3">{t('operations:orders.colPaid', { currency })}</th>
+                    <th className="px-4 py-3">{t('operations:orders.colEvent')}</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {o.tickets.map((t) => {
-                    const ticketFocused =
-                      focusTicketId !== undefined && t.id === focusTicketId;
+                  {o.tickets.map((ticket) => {
+                    const ticketFocused = focusTicketId !== undefined && ticket.id === focusTicketId;
                     return (
-                    <tr
-                      key={t.id}
-                      ref={ticketFocused ? focusTicketRef : undefined}
-                      className={cn(
-                        'border-t border-ink-10 hover:bg-surface-tint',
-                        ticketFocused && 'bg-coral/10 ring-1 ring-inset ring-coral/30',
-                      )}
-                    >
-                      <td className="px-4 py-3 font-mono text-[13px] font-semibold text-ink">{t.code}</td>
-                      <td className="px-4 py-3 capitalize text-ink-60">{t.status}</td>
-                      <td className="px-4 py-3 font-mono text-ink">{t.pricePaidSar.toLocaleString()}</td>
-                      <td className="px-4 py-3 text-ink">{t.eventTitleCache ?? o.eventTitle}</td>
-                    </tr>
+                      <tr
+                        key={ticket.id}
+                        ref={ticketFocused ? focusTicketRef : undefined}
+                        className={cn(
+                          'border-t border-ink-10 hover:bg-surface-tint',
+                          ticketFocused && 'bg-coral/10 ring-1 ring-inset ring-coral/30',
+                        )}
+                      >
+                        <td className="px-4 py-3 font-mono text-[13px] font-semibold text-ink">{ticket.code}</td>
+                        <td className="px-4 py-3 text-ink-60">{ticket.status}</td>
+                        <td className="px-4 py-3 font-mono text-ink">
+                          {fmtMoney(ticket.pricePaidSar, currency)}
+                        </td>
+                        <td className="px-4 py-3 text-ink">{ticket.eventTitleCache ?? o.eventTitle}</td>
+                      </tr>
                     );
                   })}
                 </tbody>
@@ -326,13 +350,10 @@ export function OrderDetailPage() {
 
       <Card className="rounded-3xl border-ink-10 shadow-card-sm">
         <CardHeader>
-          <CardTitle className="text-lg">Force refund</CardTitle>
+          <CardTitle className="text-lg">{t('operations:orders.forceRefund')}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          <p className="text-[14px] text-ink-60">
-            Reverses this order outside the normal buyer refund flow. Use only when your policy allows it; this action
-            may be irreversible and should be recorded for audit.
-          </p>
+          <p className="text-[14px] text-ink-60">{t('operations:orders.forceRefundHint')}</p>
           {canForceRefund ? (
             <Button
               type="button"
@@ -342,11 +363,11 @@ export function OrderDetailPage() {
               onClick={() => setRefundDialogOpen(true)}
             >
               <RotateCcw className="h-4 w-4 shrink-0" aria-hidden />
-              Force refund
+              {t('operations:orders.forceRefund')}
             </Button>
           ) : (
             <p className="text-[14px] font-medium text-ink-60">
-              This order is not in a state that supports force refund from the admin UI.
+              {t('operations:orders.forceRefundUnavailable')}
             </p>
           )}
         </CardContent>
@@ -361,10 +382,10 @@ export function OrderDetailPage() {
           onConfirm={async () => {
             try {
               await forceRefund(orderIdForApi).unwrap();
-              notifySuccess('Refund processed.');
+              notifySuccess(t('operations:orders.notifyRefundProcessed'));
               setRefundDialogOpen(false);
             } catch {
-              notifyError('Force refund failed.');
+              notifyError(t('operations:orders.notifyForceRefundFailed'));
             }
           }}
         />

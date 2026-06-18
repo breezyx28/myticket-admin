@@ -1,13 +1,14 @@
 import { Button } from '@/components/ui/Button';
 import {
   USER_SUSPENSION_CUSTOM_OPTION,
-  USER_SUSPENSION_PRESET_REASONS,
+  USER_SUSPENSION_PRESET_REASON_KEYS,
 } from '@/lib/userSuspensionReasons';
 import { cn } from '@/lib/utils';
 import type { SuspendUserInput } from '@/schemas/user.schema';
 import { AlertTriangle } from 'lucide-react';
 import { useEffect, useId, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { Trans, useTranslation } from 'react-i18next';
 
 type SuspendUserDialogProps = {
   open: boolean;
@@ -24,15 +25,16 @@ export function SuspendUserDialog({
   onClose,
   onConfirm,
 }: SuspendUserDialogProps) {
+  const { t } = useTranslation(['operations', 'common', 'validation']);
   const titleId = useId();
-  const [preset, setPreset] = useState<string>(USER_SUSPENSION_PRESET_REASONS[0]);
+  const [preset, setPreset] = useState<string>(USER_SUSPENSION_PRESET_REASON_KEYS[0]);
   const [customReason, setCustomReason] = useState('');
   const [permanent, setPermanent] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!open) return;
-    setPreset(USER_SUSPENSION_PRESET_REASONS[0]);
+    setPreset(USER_SUSPENSION_PRESET_REASON_KEYS[0]);
     setCustomReason('');
     setPermanent(false);
     setError(null);
@@ -50,14 +52,14 @@ export function SuspendUserDialog({
   if (!open || typeof document === 'undefined') return null;
 
   const usingCustom = preset === USER_SUSPENSION_CUSTOM_OPTION;
-  const resolvedReason = usingCustom ? customReason.trim() : preset;
+  const resolvedReason = usingCustom ? customReason.trim() : t(`operations:${preset}`);
 
   return createPortal(
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" role="presentation">
       <button
         type="button"
         className="absolute inset-0 bg-ink/55 backdrop-blur-[1px]"
-        aria-label="Close dialog"
+        aria-label={t('common:close')}
         disabled={loading}
         onClick={() => {
           if (!loading) onClose();
@@ -75,12 +77,15 @@ export function SuspendUserDialog({
           </span>
           <div className="min-w-0 flex-1">
             <h2 id={titleId} className="text-lg font-extrabold tracking-tight text-ink">
-              Suspend account
+              {t('operations:users.suspendDialogTitle')}
             </h2>
             <p className="mt-2 text-[14px] leading-relaxed text-ink-60">
-              This revokes all active sessions for{' '}
-              <span className="font-semibold text-ink">{userLabel}</span>. The action is recorded in
-              the admin audit log.
+              <Trans
+                ns="operations"
+                i18nKey="users.suspendDialogBody"
+                values={{ name: userLabel }}
+                components={{ strong: <span className="font-semibold text-ink" /> }}
+              />
             </p>
           </div>
         </div>
@@ -90,7 +95,7 @@ export function SuspendUserDialog({
           onSubmit={(e) => {
             e.preventDefault();
             if (resolvedReason.length < 3) {
-              setError('Provide a suspension reason (at least 3 characters).');
+              setError(t('validation:suspensionReasonMin'));
               return;
             }
             setError(null);
@@ -99,7 +104,7 @@ export function SuspendUserDialog({
         >
           <label className="block space-y-2">
             <span className="text-[12px] font-semibold uppercase tracking-wide text-ink-40">
-              Reason
+              {t('operations:users.reason')}
             </span>
             <select
               className={cn(
@@ -113,23 +118,23 @@ export function SuspendUserDialog({
                 setError(null);
               }}
             >
-              {USER_SUSPENSION_PRESET_REASONS.map((reason) => (
-                <option key={reason} value={reason}>
-                  {reason}
+              {USER_SUSPENSION_PRESET_REASON_KEYS.map((reasonKey) => (
+                <option key={reasonKey} value={reasonKey}>
+                  {t(`operations:${reasonKey}`)}
                 </option>
               ))}
-              <option value={USER_SUSPENSION_CUSTOM_OPTION}>Custom reason…</option>
+              <option value={USER_SUSPENSION_CUSTOM_OPTION}>{t('operations:suspensionReason.custom')}</option>
             </select>
           </label>
 
           {usingCustom ? (
             <label className="block space-y-2">
               <span className="text-[12px] font-semibold uppercase tracking-wide text-ink-40">
-                Custom reason
+                {t('operations:suspensionReason.customLabel')}
               </span>
               <textarea
                 className="min-h-[96px] w-full rounded-xl border border-ink-10 px-4 py-3 text-[14px] outline-none focus:border-coral focus:ring-2 focus:ring-coral/30"
-                placeholder="Describe why this account is being suspended"
+                placeholder={t('operations:suspensionReason.customPlaceholder')}
                 value={customReason}
                 disabled={loading}
                 onChange={(e) => {
@@ -149,9 +154,9 @@ export function SuspendUserDialog({
               onChange={(e) => setPermanent(e.target.checked)}
             />
             <span>
-              <span className="font-semibold text-ink">Permanent suspension</span>
+              <span className="font-semibold text-ink">{t('operations:users.permanentSuspension')}</span>
               <span className="mt-0.5 block text-[13px] text-ink-60">
-                Leave unchecked for a temporary suspension that can be reversed later.
+                {t('operations:users.permanentSuspensionHint')}
               </span>
             </span>
           </label>
@@ -160,10 +165,10 @@ export function SuspendUserDialog({
 
           <div className="flex flex-wrap justify-end gap-2 pt-2">
             <Button type="button" variant="outline" disabled={loading} onClick={onClose}>
-              Cancel
+              {t('common:cancel')}
             </Button>
             <Button type="submit" variant="danger" loading={loading}>
-              Confirm suspend
+              {t('operations:users.confirmSuspend')}
             </Button>
           </div>
         </form>

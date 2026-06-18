@@ -1,8 +1,11 @@
+import { tError } from '@/lib/i18nMessage';
+
 /**
  * Best-effort message from RTK Query / fetch errors (e.g. Laravel 422 JSON).
  */
-export function getApiErrorMessage(error: unknown, fallback = 'Request failed.'): string {
-  if (typeof error !== 'object' || error === null) return fallback;
+export function getApiErrorMessage(error: unknown, fallback?: string): string {
+  const fb = fallback ?? tError('requestFailed');
+  if (typeof error !== 'object' || error === null) return fb;
   const e = error as { status?: unknown; data?: unknown };
   const data = e.data;
   if (typeof data === 'string' && data.trim()) return data;
@@ -18,5 +21,5 @@ export function getApiErrorMessage(error: unknown, fallback = 'Request failed.')
       }
     }
   }
-  return fallback;
+  return fb;
 }

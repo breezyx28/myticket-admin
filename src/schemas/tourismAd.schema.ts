@@ -128,14 +128,14 @@ export const openingHoursDayFormSchema = z
   .superRefine((day, ctx) => {
     if (!day.closed) {
       if (!day.opens?.trim()) {
-        ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Opens time required', path: ['opens'] });
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'validation.opensTimeRequired', path: ['opens'] });
       } else if (!timePattern.test(day.opens)) {
-        ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Use HH:MM format', path: ['opens'] });
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'validation.timeFormatHHMM', path: ['opens'] });
       }
       if (!day.closes?.trim()) {
-        ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Closes time required', path: ['closes'] });
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'validation.closesTimeRequired', path: ['closes'] });
       } else if (!timePattern.test(day.closes)) {
-        ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Use HH:MM format', path: ['closes'] });
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'validation.timeFormatHHMM', path: ['closes'] });
       }
     }
   });
@@ -152,23 +152,23 @@ const openingHoursFormSchema = z.object({
 
 export const createTourismAdSchema = z
   .object({
-    locationName: z.string().trim().min(1, 'Location name is required'),
+    locationName: z.string().trim().min(1, 'validation.locationNameRequired'),
     latitude: z.coerce.number().min(-90).max(90),
     longitude: z.coerce.number().min(-180).max(180),
-    description: z.string().trim().min(50, 'Description must be at least 50 characters'),
+    description: z.string().trim().min(50, 'validation.descriptionMin50'),
     openingHours: openingHoursFormSchema,
-    services: z.array(z.string().trim().min(1)).min(1, 'Add at least one service').max(20),
+    services: z.array(z.string().trim().min(1)).min(1, 'validation.servicesMin').max(20),
     contact: tourismAdContactSchema.superRefine((c, ctx) => {
       if (!c.phone?.trim() && !c.email?.trim()) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: 'Phone or email is required',
+          message: 'validation.phoneOrEmailRequired',
           path: ['phone'],
         });
       }
     }),
     mediaLinks: z.array(tourismAdMediaLinkSchema).max(10),
-    galleryUrls: z.array(z.string().url()).min(1, 'Add at least one gallery image').max(20),
+    galleryUrls: z.array(z.string().url()).min(1, 'validation.galleryMin').max(20),
     visibilityStartsAt: z.string().nullable().optional(),
     visibilityEndsAt: z.string().nullable().optional(),
   });
@@ -180,7 +180,7 @@ export const updateTourismAdSchema = createTourismAdSchema.partial();
 export type UpdateTourismAdInput = z.infer<typeof updateTourismAdSchema>;
 
 export const rejectTourismAdSchema = z.object({
-  reason: z.string().trim().min(3, 'Provide a rejection reason').max(1000),
+  reason: z.string().trim().min(3, 'validation.rejectionReasonMin').max(1000),
 });
 
 export type RejectTourismAdInput = z.infer<typeof rejectTourismAdSchema>;

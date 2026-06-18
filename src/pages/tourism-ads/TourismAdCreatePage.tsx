@@ -11,6 +11,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { ArrowLeft, Plus, X } from 'lucide-react';
 import { useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
+import { Trans, useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import { OpeningHoursEditor } from './components/OpeningHoursEditor';
 import { TourismAdContactFields } from './components/TourismAdContactFields';
@@ -18,6 +19,7 @@ import { TourismAdGalleryField } from './components/TourismAdGalleryField';
 import { TourismAdLocationPicker } from './components/TourismAdLocationPicker';
 
 export function TourismAdCreatePage() {
+  const { t } = useTranslation(['operations', 'common']);
   const navigate = useNavigate();
   const [createAd, { isLoading }] = useCreateTourismAdMutation();
   const [serviceDraft, setServiceDraft] = useState('');
@@ -49,18 +51,18 @@ export function TourismAdCreatePage() {
         ...values,
         galleryUrls: values.galleryUrls.filter((u) => u.trim().length > 0),
       }).unwrap();
-      notifySuccess('Tourism ad published.');
+      notifySuccess(t('operations:tourismAds.notify.created'));
       navigate(`/tourism-ads/${created.id}`);
     } catch {
-      notifyError('Could not create tourism ad.');
+      notifyError(t('operations:tourismAds.notify.createFailed'));
     }
   }
 
   function addService() {
-    const t = serviceDraft.trim();
-    if (!t || services.length >= 20) return;
-    if (services.includes(t)) return;
-    form.setValue('services', [...services, t], { shouldValidate: true });
+    const trimmed = serviceDraft.trim();
+    if (!trimmed || services.length >= 20) return;
+    if (services.includes(trimmed)) return;
+    form.setValue('services', [...services, trimmed], { shouldValidate: true });
     setServiceDraft('');
   }
 
@@ -75,26 +77,31 @@ export function TourismAdCreatePage() {
   return (
     <div className="space-y-6">
       <Link to="/tourism-ads" className="inline-flex items-center gap-1 text-[13px] font-semibold text-ink-60">
-        <ArrowLeft size={14} /> Back to tourism ads
+        <ArrowLeft size={14} /> {t('operations:tourismAds.backLink')}
       </Link>
 
       <div>
-        <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-ink-40">Publish</p>
-        <h1 className="text-3xl font-extrabold text-ink">New tourism ad</h1>
+        <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-ink-40">
+          {t('operations:tourismAds.publishEyebrow')}
+        </p>
+        <h1 className="text-3xl font-extrabold text-ink">{t('operations:tourismAds.createTitle')}</h1>
         <p className="mt-2 max-w-2xl text-[14px] text-ink-60">
-          Admin create publishes immediately via{' '}
-          <span className="font-mono text-ink">POST /api/v1/admin/tourism-ads</span>.
+          <Trans
+            ns="operations"
+            i18nKey="tourismAds.createDescription"
+            components={{ mono: <span className="font-mono text-ink" /> }}
+          />
         </p>
       </div>
 
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
         <Card className="rounded-3xl border-ink-10 shadow-card-sm">
           <CardHeader>
-            <CardTitle className="text-lg">Location</CardTitle>
+            <CardTitle className="text-lg">{t('operations:tourismAds.sections.location')}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <label className="flex flex-col gap-1 text-[12px] font-semibold text-ink-60">
-              Location name
+              {t('operations:tourismAds.locationName')}
               <input
                 {...form.register('locationName')}
                 className="h-11 rounded-xl border border-ink-10 bg-white px-3 text-[14px] text-ink"
@@ -133,14 +140,14 @@ export function TourismAdCreatePage() {
 
         <Card className="rounded-3xl border-ink-10 shadow-card-sm">
           <CardHeader>
-            <CardTitle className="text-lg">Description</CardTitle>
+            <CardTitle className="text-lg">{t('operations:tourismAds.sections.description')}</CardTitle>
           </CardHeader>
           <CardContent>
             <textarea
               {...form.register('description')}
               rows={5}
               className="w-full rounded-xl border border-ink-10 bg-white px-3 py-2 text-[14px] text-ink"
-              placeholder="At least 50 characters describing the experience…"
+              placeholder={t('operations:tourismAds.descriptionPlaceholder')}
             />
             {form.formState.errors.description ? (
               <p className="mt-1 text-[12px] font-semibold text-coral">
@@ -152,7 +159,7 @@ export function TourismAdCreatePage() {
 
         <Card className="rounded-3xl border-ink-10 shadow-card-sm">
           <CardHeader>
-            <CardTitle className="text-lg">Opening hours</CardTitle>
+            <CardTitle className="text-lg">{t('operations:tourismAds.sections.openingHours')}</CardTitle>
           </CardHeader>
           <CardContent>
             <Controller
@@ -165,7 +172,7 @@ export function TourismAdCreatePage() {
 
         <Card className="rounded-3xl border-ink-10 shadow-card-sm">
           <CardHeader>
-            <CardTitle className="text-lg">Contact</CardTitle>
+            <CardTitle className="text-lg">{t('operations:tourismAds.sections.contact')}</CardTitle>
           </CardHeader>
           <CardContent>
             <Controller
@@ -188,7 +195,7 @@ export function TourismAdCreatePage() {
 
         <Card className="rounded-3xl border-ink-10 shadow-card-sm">
           <CardHeader>
-            <CardTitle className="text-lg">Services</CardTitle>
+            <CardTitle className="text-lg">{t('operations:tourismAds.sections.services')}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="flex flex-wrap gap-2">
@@ -217,7 +224,7 @@ export function TourismAdCreatePage() {
               <input
                 value={serviceDraft}
                 onChange={(e) => setServiceDraft(e.target.value)}
-                placeholder="e.g. guided tours"
+                placeholder={t('operations:tourismAds.servicePlaceholder')}
                 className="h-11 flex-1 rounded-xl border border-ink-10 bg-white px-3 text-[14px]"
               />
               <Button type="button" variant="outline" onClick={addService}>
@@ -232,7 +239,7 @@ export function TourismAdCreatePage() {
 
         <Card className="rounded-3xl border-ink-10 shadow-card-sm">
           <CardHeader>
-            <CardTitle className="text-lg">Media links</CardTitle>
+            <CardTitle className="text-lg">{t('operations:tourismAds.sections.mediaLinks')}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             {(mediaLinks ?? []).map((m, i) => (
@@ -244,17 +251,17 @@ export function TourismAdCreatePage() {
               <input
                 value={linkDraft.platform}
                 onChange={(e) => setLinkDraft((d) => ({ ...d, platform: e.target.value }))}
-                placeholder="Platform"
+                placeholder={t('operations:tourismAds.platform')}
                 className="h-11 rounded-xl border border-ink-10 bg-white px-3 text-[14px]"
               />
               <input
                 value={linkDraft.url}
                 onChange={(e) => setLinkDraft((d) => ({ ...d, url: e.target.value }))}
-                placeholder="https://…"
+                placeholder={t('operations:tourismAds.urlPlaceholder')}
                 className="h-11 rounded-xl border border-ink-10 bg-white px-3 text-[14px]"
               />
               <Button type="button" variant="outline" onClick={addMediaLink}>
-                Add
+                {t('common:add')}
               </Button>
             </div>
           </CardContent>
@@ -262,7 +269,7 @@ export function TourismAdCreatePage() {
 
         <Card className="rounded-3xl border-ink-10 shadow-card-sm">
           <CardHeader>
-            <CardTitle className="text-lg">Gallery</CardTitle>
+            <CardTitle className="text-lg">{t('operations:tourismAds.sections.gallery')}</CardTitle>
           </CardHeader>
           <CardContent>
             <Controller
@@ -281,11 +288,11 @@ export function TourismAdCreatePage() {
 
         <Card className="rounded-3xl border-ink-10 shadow-card-sm">
           <CardHeader>
-            <CardTitle className="text-lg">Visibility window (optional)</CardTitle>
+            <CardTitle className="text-lg">{t('operations:tourismAds.sections.visibilityWindow')}</CardTitle>
           </CardHeader>
           <CardContent className="grid gap-4 sm:grid-cols-2">
             <label className="flex flex-col gap-1 text-[12px] font-semibold text-ink-60">
-              Starts at
+              {t('operations:tourismAds.startsAt')}
               <input
                 type="datetime-local"
                 {...form.register('visibilityStartsAt')}
@@ -293,7 +300,7 @@ export function TourismAdCreatePage() {
               />
             </label>
             <label className="flex flex-col gap-1 text-[12px] font-semibold text-ink-60">
-              Ends at
+              {t('operations:tourismAds.endsAt')}
               <input
                 type="datetime-local"
                 {...form.register('visibilityEndsAt')}
@@ -306,11 +313,11 @@ export function TourismAdCreatePage() {
         <div className="flex justify-end gap-3">
           <Link to="/tourism-ads">
             <Button type="button" variant="ghost">
-              Cancel
+              {t('common:cancel')}
             </Button>
           </Link>
           <Button type="submit" variant="secondary" loading={isLoading}>
-            Publish tourism ad
+            {t('operations:tourismAds.publishButton')}
           </Button>
         </div>
       </form>

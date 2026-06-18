@@ -1,7 +1,10 @@
 import { ListFiltersBar } from '@/components/admin/ListFiltersBar';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { getCurrentLocale } from '@/i18n';
 import { filterSelectClassName } from '@/lib/adminFilters';
+import { formatSarCompact } from '@/lib/formatSar';
+import { formatDate } from '@/lib/localeFormat';
 import { notifyError, notifySuccess } from '@/lib/notify';
 import { rowMatchesSearch } from '@/lib/listQuery';
 import type { PayoutStatus } from '@/schemas/payout.schema';
@@ -14,8 +17,21 @@ import {
   useRejectPayoutMutation,
 } from '@/services/adminApi';
 import { useMemo, useState } from 'react';
+import { Trans, useTranslation } from 'react-i18next';
+
+const PAYOUT_STATUSES: PayoutStatus[] = [
+  'pending',
+  'approved',
+  'processing',
+  'paid',
+  'failed',
+  'rejected',
+  'unknown',
+];
 
 export function PayoutsPage() {
+  const { t } = useTranslation(['settings', 'common', 'nav']);
+  const locale = getCurrentLocale();
   const { data, isLoading } = useGetPayoutsQuery();
   const [approve] = useApprovePayoutMutation();
   const [reject] = useRejectPayoutMutation();
@@ -41,13 +57,17 @@ export function PayoutsPage() {
 
   const busy = busyId !== null;
 
+  function statusLabel(s: PayoutStatus): string {
+    return t(`settings:payoutStatus.${s}`);
+  }
+
   async function runAction(id: string, okMsg: string, exec: () => Promise<unknown>) {
     setBusyId(id);
     try {
       await exec();
       notifySuccess(okMsg);
     } catch {
-      notifyError('Action failed.');
+      notifyError(t('settings:notifyActionFailed'));
     } finally {
       setBusyId(null);
     }
@@ -56,25 +76,28 @@ export function PayoutsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-ink-40">Platform</p>
-        <h1 className="text-3xl font-extrabold text-ink">Organizer payouts</h1>
+        <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-ink-40">
+          {t('nav:groups.platform')}
+        </p>
+        <h1 className="text-3xl font-extrabold text-ink">{t('settings:payouts.title')}</h1>
         <p className="mt-2 max-w-2xl text-[14px] text-ink-60">
-          Queue from <span className="font-mono text-ink">GET /api/v1/admin/finance/payouts</span> with the Postman
-          lifecycle actions (approve → processing → paid / failed, or reject). Reject may include an optional{' '}
-          <span className="font-mono text-ink">reason</span> in the JSON body; an empty{' '}
-          <span className="font-mono text-ink">{'{}'}</span> is valid.
+          <Trans
+            ns="settings"
+            i18nKey="payouts.subtitle"
+            components={{ mono: <span className="font-mono text-ink" /> }}
+          />
         </p>
       </div>
 
       <Card className="rounded-3xl border-ink-10 shadow-card-sm">
         <CardHeader>
-          <CardTitle className="text-lg">Payouts</CardTitle>
+          <CardTitle className="text-lg">{t('settings:payouts.cardTitle')}</CardTitle>
         </CardHeader>
         <CardContent>
           <ListFiltersBar
             searchValue={search}
             onSearchChange={setSearch}
-            searchPlaceholder="Search id, organizer, event, reference…"
+            searchPlaceholder={t('settings:payouts.searchPlaceholder')}
             className="mb-4"
           >
             <select
@@ -82,31 +105,29 @@ export function PayoutsPage() {
               value={status}
               onChange={(e) => setStatus(e.target.value as typeof status)}
             >
-              <option value="all">All statuses</option>
-              <option value="pending">Pending</option>
-              <option value="approved">Approved</option>
-              <option value="processing">Processing</option>
-              <option value="paid">Paid</option>
-              <option value="failed">Failed</option>
-              <option value="rejected">Rejected</option>
-              <option value="unknown">Other</option>
+              <option value="all">{t('settings:payouts.allStatuses')}</option>
+              {PAYOUT_STATUSES.map((s) => (
+                <option key={s} value={s}>
+                  {statusLabel(s)}
+                </option>
+              ))}
             </select>
           </ListFiltersBar>
-          {isLoading ? <p className="text-sm text-ink-60">Loading…</p> : null}
+          {isLoading ? <p className="text-sm text-ink-60">{t('common:loading')}</p> : null}
           {!isLoading && filtered.length === 0 ? (
-            <p className="mb-3 text-sm font-semibold text-ink-60">No payouts match your search and filters.</p>
+            <p className="mb-3 text-sm font-semibold text-ink-60">{t('settings:payouts.noMatches')}</p>
           ) : null}
           <div className="admin-table-scroll">
             <table className="w-full min-w-[960px] text-left text-[14px]">
               <thead className="text-[11px] font-bold uppercase tracking-wide text-ink-40">
                 <tr>
-                  <th className="px-4 py-3">Payout</th>
-                  <th className="px-4 py-3">Organizer</th>
-                  <th className="px-4 py-3">Event</th>
-                  <th className="px-4 py-3">Status</th>
-                  <th className="px-4 py-3">Amount (SAR)</th>
-                  <th className="px-4 py-3">Created</th>
-                  <th className="px-4 py-3">Actions</th>
+                  <th className="px-4 py-3">{t('settings:payouts.columns.payout')}</th>
+                  <th className="px-4 py-3">{t('settings:payouts.columns.organizer')}</th>
+                  <th className="px-4 py-3">{t('settings:payouts.columns.event')}</th>
+                  <th className="px-4 py-3">{t('settings:payouts.columns.status')}</th>
+                  <th className="px-4 py-3">{t('settings:payouts.columns.amount')}</th>
+                  <th className="px-4 py-3">{t('settings:payouts.columns.created')}</th>
+                  <th className="px-4 py-3">{t('common:actions')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -114,12 +135,10 @@ export function PayoutsPage() {
                   <tr key={row.id} className="border-t border-ink-10 hover:bg-surface-tint">
                     <td className="px-4 py-3 font-mono text-[13px] font-semibold text-ink">{row.id}</td>
                     <td className="px-4 py-3 font-medium text-ink">{row.organizerName}</td>
-                    <td className="px-4 py-3 text-ink-60">{row.eventTitle ?? '—'}</td>
-                    <td className="px-4 py-3 capitalize text-ink-60">{row.status}</td>
-                    <td className="px-4 py-3 font-mono text-ink">{row.amountSar.toLocaleString()}</td>
-                    <td className="px-4 py-3 text-[13px] text-ink-60">
-                      {new Date(row.createdAt).toLocaleDateString()}
-                    </td>
+                    <td className="px-4 py-3 text-ink-60">{row.eventTitle ?? t('common:none')}</td>
+                    <td className="px-4 py-3 text-ink-60">{statusLabel(row.status)}</td>
+                    <td className="px-4 py-3 font-mono text-ink">{formatSarCompact(row.amountSar, locale)}</td>
+                    <td className="px-4 py-3 text-[13px] text-ink-60">{formatDate(row.createdAt, locale)}</td>
                     <td className="px-4 py-3">
                       <div className="flex max-w-[320px] flex-wrap gap-1.5">
                         {row.status === 'pending' ? (
@@ -130,9 +149,13 @@ export function PayoutsPage() {
                               variant="outline"
                               disabled={busy}
                               loading={busyId === row.id}
-                              onClick={() => void runAction(row.id, 'Payout approved.', () => approve(row.id).unwrap())}
+                              onClick={() =>
+                                void runAction(row.id, t('settings:payouts.notifyApproved'), () =>
+                                  approve(row.id).unwrap()
+                                )
+                              }
                             >
-                              Approve
+                              {t('settings:payouts.approve')}
                             </Button>
                             <Button
                               type="button"
@@ -141,14 +164,14 @@ export function PayoutsPage() {
                               disabled={busy}
                               loading={busyId === row.id}
                               onClick={() => {
-                                if (!window.confirm('Reject this payout?')) return;
-                                const reason = window.prompt('Rejection reason (optional):', '')?.trim();
-                                void runAction(row.id, 'Payout rejected.', () =>
+                                if (!window.confirm(t('settings:payouts.confirmReject'))) return;
+                                const reason = window.prompt(t('settings:payouts.rejectReasonPrompt'), '')?.trim();
+                                void runAction(row.id, t('settings:payouts.notifyRejected'), () =>
                                   reject({ id: row.id, reason: reason || undefined }).unwrap()
                                 );
                               }}
                             >
-                              Reject
+                              {t('settings:payouts.reject')}
                             </Button>
                           </>
                         ) : null}
@@ -160,12 +183,12 @@ export function PayoutsPage() {
                             disabled={busy}
                             loading={busyId === row.id}
                             onClick={() =>
-                              void runAction(row.id, 'Marked as processing.', () =>
+                              void runAction(row.id, t('settings:payouts.notifyProcessing'), () =>
                                 markProcessing(row.id).unwrap()
                               )
                             }
                           >
-                            Mark processing
+                            {t('settings:payouts.markProcessing')}
                           </Button>
                         ) : null}
                         {row.status === 'processing' ? (
@@ -177,10 +200,12 @@ export function PayoutsPage() {
                               disabled={busy}
                               loading={busyId === row.id}
                               onClick={() =>
-                                void runAction(row.id, 'Marked as paid.', () => markPaid(row.id).unwrap())
+                                void runAction(row.id, t('settings:payouts.notifyPaid'), () =>
+                                  markPaid(row.id).unwrap()
+                                )
                               }
                             >
-                              Mark paid
+                              {t('settings:payouts.markPaid')}
                             </Button>
                             <Button
                               type="button"
@@ -189,19 +214,21 @@ export function PayoutsPage() {
                               disabled={busy}
                               loading={busyId === row.id}
                               onClick={() => {
-                                if (!window.confirm('Mark payout as failed?')) return;
-                                void runAction(row.id, 'Marked as failed.', () => markFailed(row.id).unwrap());
+                                if (!window.confirm(t('settings:payouts.confirmMarkFailed'))) return;
+                                void runAction(row.id, t('settings:payouts.notifyFailed'), () =>
+                                  markFailed(row.id).unwrap()
+                                );
                               }}
                             >
-                              Mark failed
+                              {t('settings:payouts.markFailed')}
                             </Button>
                           </>
                         ) : null}
                         {row.status === 'paid' || row.status === 'failed' || row.status === 'rejected' ? (
-                          <span className="text-[12px] text-ink-40">—</span>
+                          <span className="text-[12px] text-ink-40">{t('common:none')}</span>
                         ) : null}
                         {row.status === 'unknown' ? (
-                          <span className="text-[12px] text-ink-40">Review in API</span>
+                          <span className="text-[12px] text-ink-40">{t('settings:payouts.reviewInApi')}</span>
                         ) : null}
                       </div>
                     </td>

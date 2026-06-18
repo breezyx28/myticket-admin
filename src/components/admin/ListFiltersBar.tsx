@@ -1,6 +1,7 @@
 import { cn } from '@/lib/utils';
 import { Search } from 'lucide-react';
 import type { ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 
 type ListFiltersBarProps = {
   searchValue: string;
@@ -13,10 +14,12 @@ type ListFiltersBarProps = {
 export function ListFiltersBar({
   searchValue,
   onSearchChange,
-  searchPlaceholder = 'Search…',
+  searchPlaceholder,
   className,
   children,
 }: ListFiltersBarProps) {
+  const { t } = useTranslation('common');
+
   return (
     <div className={cn('flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between', className)}>
       <label className="relative block w-full lg:max-w-md">
@@ -29,7 +32,7 @@ export function ListFiltersBar({
           type="search"
           value={searchValue}
           onChange={(e) => onSearchChange(e.target.value)}
-          placeholder={searchPlaceholder}
+          placeholder={searchPlaceholder ?? t('searchPlaceholder')}
           className="w-full rounded-xl border border-ink-10 bg-white py-2.5 pl-10 pr-3 text-[14px] text-ink outline-none placeholder:text-ink-40 focus:border-coral focus:ring-2 focus:ring-coral/25"
         />
       </label>

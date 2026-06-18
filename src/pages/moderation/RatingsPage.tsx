@@ -1,6 +1,7 @@
 import { ListFiltersBar } from '@/components/admin/ListFiltersBar';
 import { RowActionsMenu } from '@/components/admin/RowActionsMenu';
 import { filterSelectClassName } from '@/lib/adminFilters';
+import { getApiErrorMessage } from '@/lib/apiError';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { rowMatchesSearch } from '@/lib/listQuery';
 import { notifyError, notifySuccess } from '@/lib/notify';
@@ -13,6 +14,7 @@ import {
 } from '@/services/adminApi';
 import { Star } from 'lucide-react';
 import { useMemo, useState } from 'react';
+import { Trans, useTranslation } from 'react-i18next';
 
 function StarRatingCell({ stars }: { stars: number }) {
   const n = Math.min(5, Math.max(1, stars));
@@ -29,6 +31,7 @@ function StarRatingCell({ stars }: { stars: number }) {
 }
 
 export function RatingsPage() {
+  const { t } = useTranslation(['trust', 'common', 'errors']);
   const { data, isLoading } = useGetRatingsModerationQuery();
   const [hide, hideState] = useHideRatingModerationMutation();
   const [restore, restoreState] = useRestoreRatingModerationMutation();
@@ -64,30 +67,32 @@ export function RatingsPage() {
     try {
       await fn();
       notifySuccess(ok);
-    } catch {
-      notifyError('Action failed.');
+    } catch (err) {
+      notifyError(getApiErrorMessage(err, t('errors:requestFailed')));
     }
   }
 
   return (
     <div className="space-y-6">
       <div>
-        <p className="text-[11px] font-extrabold uppercase tracking-[0.16em] text-ink-40">Trust & safety</p>
-        <h1 className="text-3xl font-extrabold tracking-tight text-ink">Ratings oversight</h1>
+        <p className="text-[11px] font-extrabold uppercase tracking-[0.16em] text-ink-40">{t('trust:eyebrow')}</p>
+        <h1 className="text-3xl font-extrabold tracking-tight text-ink">{t('trust:ratings.title')}</h1>
         <p className="mt-2 max-w-2xl text-[14px] leading-relaxed text-ink-60">
-          Read from <span className="font-mono text-ink">GET /api/v1/admin/ratings</span>; hide, restore, and delete
-          map to Postman POSTs on each rating id.
+          <Trans
+            i18nKey="trust:ratings.subtitle"
+            components={[<span key="1" className="font-mono text-ink" />]}
+          />
         </p>
       </div>
       <Card className="rounded-3xl border-ink-10 shadow-card-sm">
         <CardHeader>
-          <CardTitle className="text-lg">Recent ratings</CardTitle>
+          <CardTitle className="text-lg">{t('trust:ratings.recentTitle')}</CardTitle>
         </CardHeader>
         <CardContent>
           <ListFiltersBar
             searchValue={search}
             onSearchChange={setSearch}
-            searchPlaceholder="Search target, author, comment…"
+            searchPlaceholder={t('trust:ratings.searchPlaceholder')}
             className="mb-4"
           >
             <select
@@ -95,38 +100,38 @@ export function RatingsPage() {
               value={minStars}
               onChange={(e) => setMinStars(e.target.value as typeof minStars)}
             >
-              <option value="all">All star ratings</option>
-              <option value="5">5 stars only</option>
-              <option value="4">4+ stars</option>
-              <option value="3">3+ stars</option>
-              <option value="2">2+ stars</option>
-              <option value="1">1+ stars</option>
+              <option value="all">{t('trust:ratings.filters.allStars')}</option>
+              <option value="5">{t('trust:ratings.filters.stars5')}</option>
+              <option value="4">{t('trust:ratings.filters.stars4Plus')}</option>
+              <option value="3">{t('trust:ratings.filters.stars3Plus')}</option>
+              <option value="2">{t('trust:ratings.filters.stars2Plus')}</option>
+              <option value="1">{t('trust:ratings.filters.stars1Plus')}</option>
             </select>
             <select
               className={filterSelectClassName()}
               value={mod}
               onChange={(e) => setMod(e.target.value as typeof mod)}
             >
-              <option value="all">All moderation states</option>
-              <option value="visible">Visible</option>
-              <option value="hidden">Hidden</option>
-              <option value="deleted">Deleted</option>
+              <option value="all">{t('trust:ratings.filters.allModeration')}</option>
+              <option value="visible">{t('trust:ratings.moderationState.visible')}</option>
+              <option value="hidden">{t('trust:ratings.moderationState.hidden')}</option>
+              <option value="deleted">{t('trust:ratings.moderationState.deleted')}</option>
             </select>
           </ListFiltersBar>
-          {isLoading ? <p className="text-sm text-ink-60">Loading…</p> : null}
+          {isLoading ? <p className="text-sm text-ink-60">{t('common:loading')}</p> : null}
           {!isLoading && filtered.length === 0 ? (
-            <p className="mb-3 text-sm font-semibold text-ink-60">No ratings match your search and filters.</p>
+            <p className="mb-3 text-sm font-semibold text-ink-60">{t('trust:ratings.empty')}</p>
           ) : null}
           <div className="admin-table-scroll">
             <table className="w-full min-w-[920px] text-left text-[14px]">
               <thead className="text-[11px] font-bold uppercase tracking-wide text-ink-40">
                 <tr>
-                  <th className="px-4 py-3">Target</th>
-                  <th className="px-4 py-3">Author</th>
-                  <th className="px-4 py-3">Stars</th>
-                  <th className="px-4 py-3">State</th>
-                  <th className="px-4 py-3">Comment</th>
-                  <th className="w-14 px-2 py-3 text-right" aria-label="Actions column" />
+                  <th className="px-4 py-3">{t('trust:ratings.columns.target')}</th>
+                  <th className="px-4 py-3">{t('trust:ratings.columns.author')}</th>
+                  <th className="px-4 py-3">{t('trust:ratings.columns.stars')}</th>
+                  <th className="px-4 py-3">{t('trust:ratings.columns.state')}</th>
+                  <th className="px-4 py-3">{t('trust:ratings.columns.comment')}</th>
+                  <th className="w-14 px-2 py-3 text-right" aria-label={t('trust:ratings.columns.actions')} />
                 </tr>
               </thead>
               <tbody>
@@ -143,33 +148,35 @@ export function RatingsPage() {
                       <td className="px-4 py-3">
                         <StarRatingCell stars={row.stars} />
                       </td>
-                      <td className="px-4 py-3 text-[12px] font-bold uppercase text-ink-60">{row.moderationState}</td>
+                      <td className="px-4 py-3 text-[12px] font-bold uppercase text-ink-60">
+                        {t(`trust:ratings.moderationState.${row.moderationState}`)}
+                      </td>
                       <td className="max-w-[280px] px-4 py-3 text-ink-60">{row.comment}</td>
                       <td className="px-2 py-3 text-right align-middle">
                         <RowActionsMenu
-                          ariaLabel={`Actions for rating ${row.id}`}
+                          ariaLabel={t('trust:ratings.actions.forRating', { id: row.id })}
                           actions={[
                             {
                               key: 'hide',
-                              label: 'Hide',
+                              label: t('trust:ratings.actions.hide'),
                               disabled: row.moderationState !== 'visible' || mutBusy,
                               loading: rowBusy === 'hide',
-                              onSelect: () => run('Rating hidden.', () => hide(row.id).unwrap()),
+                              onSelect: () => run(t('trust:ratings.notify.hidden'), () => hide(row.id).unwrap()),
                             },
                             {
                               key: 'restore',
-                              label: 'Restore',
+                              label: t('trust:ratings.actions.restore'),
                               disabled: row.moderationState !== 'hidden' || mutBusy,
                               loading: rowBusy === 'restore',
-                              onSelect: () => run('Rating restored.', () => restore(row.id).unwrap()),
+                              onSelect: () => run(t('trust:ratings.notify.restored'), () => restore(row.id).unwrap()),
                             },
                             {
                               key: 'delete',
-                              label: 'Delete',
+                              label: t('trust:ratings.actions.delete'),
                               danger: true,
                               disabled: row.moderationState === 'deleted' || mutBusy,
                               loading: rowBusy === 'delete',
-                              onSelect: () => run('Rating marked deleted.', () => del(row.id).unwrap()),
+                              onSelect: () => run(t('trust:ratings.notify.deleted'), () => del(row.id).unwrap()),
                             },
                           ]}
                         />

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { tCommon } from '@/lib/i18nMessage';
 
 /** Accept common Laravel / SPA token envelope shapes. */
 export function parseAdminLoginTokens(json: unknown): { accessToken: string; refreshToken?: string } | null {
@@ -68,7 +69,7 @@ export function parseAdminLoginUser(
   fallbackEmail: string,
 ): { id?: string; email: string; name: string; role: 'admin'; avatarUrl?: string } {
   if (!json || typeof json !== 'object') {
-    return { email: fallbackEmail, name: fallbackEmail.split('@')[0] ?? 'Admin', role: 'admin' };
+    return { email: fallbackEmail, name: fallbackEmail.split('@')[0] ?? tCommon('appNameAdmin'), role: 'admin' };
   }
   const pickId = (raw: unknown): string | undefined => {
     if (typeof raw === 'string' && raw.trim()) return raw.trim();
@@ -89,7 +90,7 @@ export function parseAdminLoginUser(
     (parsed.success && (parsed.data.name || parsed.data.display_name || parsed.data.full_name)) ||
     (typeof inner.name === 'string' && inner.name) ||
     email.split('@')[0] ||
-    'Admin';
+    tCommon('appNameAdmin');
   const id =
     (parsed.success && pickId(parsed.data.id)) ||
     pickId(inner.id) ||

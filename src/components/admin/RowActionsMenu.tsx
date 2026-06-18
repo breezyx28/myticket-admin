@@ -2,6 +2,7 @@ import { cn } from '@/lib/utils';
 import { MoreVertical } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 export type RowMenuAction = {
   key: string;
@@ -20,7 +21,8 @@ type RowActionsMenuProps = {
 
 type PanelPos = { top: number; right?: number; left?: number };
 
-export function RowActionsMenu({ actions, align = 'right', ariaLabel = 'Row actions' }: RowActionsMenuProps) {
+export function RowActionsMenu({ actions, align = 'right', ariaLabel }: RowActionsMenuProps) {
+  const { t } = useTranslation('common');
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
   const btnRef = useRef<HTMLButtonElement>(null);
@@ -129,7 +131,7 @@ export function RowActionsMenu({ actions, align = 'right', ariaLabel = 'Row acti
         ref={btnRef}
         id={btnId}
         type="button"
-        aria-label={ariaLabel}
+        aria-label={ariaLabel ?? t('rowActions')}
         aria-expanded={open}
         aria-haspopup="menu"
         onClick={() => setOpen((v) => !v)}
