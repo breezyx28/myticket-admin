@@ -30,17 +30,10 @@ export function CategoriesHubPage() {
 
   return (
     <div className="mx-auto max-w-[1400px] space-y-8">
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,0.65fr)] lg:items-end">
-        <div>
-          <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-ink-40">{t('categories.eyebrow')}</p>
-          <h1 className="mt-1 text-3xl font-extrabold tracking-tight text-ink md:text-4xl">{t('categories.hubTitle')}</h1>
-          <p className="mt-3 max-w-[65ch] text-[15px] leading-relaxed text-ink-60">{t('categories.hubDescription')}</p>
-        </div>
-        <div className="rounded-3xl border border-ink-10 bg-white px-5 py-4 shadow-card-sm">
-          <p className="text-[11px] font-bold uppercase tracking-wide text-ink-40">{t('categories.apiBase')}</p>
-          <p className="mt-1 font-mono text-[13px] text-ink">/api/v1/admin/*-categories</p>
-          <p className="mt-2 text-[13px] text-ink-60">{t('categories.apiHint')}</p>
-        </div>
+      <div>
+        <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-ink-40">{t('categories.eyebrow')}</p>
+        <h1 className="mt-1 text-3xl font-extrabold tracking-tight text-ink md:text-4xl">{t('categories.hubTitle')}</h1>
+        <p className="mt-3 max-w-[65ch] text-[15px] leading-relaxed text-ink-60">{t('categories.hubDescription')}</p>
       </div>
 
       <div className="flex flex-col gap-3 border-b border-ink-10 pb-1 sm:flex-row sm:items-end sm:gap-6">

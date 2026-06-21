@@ -17,7 +17,7 @@ import {
   useReopenSupportCaseMutation,
   useUpdateSupportStatusMutation,
 } from '@/services/adminApi';
-import { zodResolver } from '@hookform/resolvers/zod';
+import { i18nZodResolver } from '@/lib/i18nZodResolver';
 import { useEffect, useLayoutEffect, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { Trans, useTranslation } from 'react-i18next';
@@ -33,11 +33,11 @@ export function SupportThreadPage() {
   const [reply, replyState] = useAddSupportReplyMutation();
   const scrollRef = useRef<HTMLDivElement>(null);
   const form = useForm<UpdateSupportStatusInput>({
-    resolver: zodResolver(updateSupportStatusSchema),
+    resolver: i18nZodResolver(updateSupportStatusSchema),
     defaultValues: { status: 'open', resolutionNote: '' },
   });
   const replyForm = useForm<SupportReplyInput>({
-    resolver: zodResolver(supportReplySchema),
+    resolver: i18nZodResolver(supportReplySchema),
     defaultValues: { body: '' },
   });
 

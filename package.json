@@ -8,7 +8,12 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview --port 5175",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:unit": "vitest run src/__tests__ --exclude src/__tests__/integration/**",
+    "test:integration": "vitest run src/__tests__/integration",
+    "test:e2e": "playwright test --project=chromium",
+    "test:e2e:ui": "playwright test --ui",
+    "test:smoke:live": "playwright test e2e/live --project=live"
   },
   "dependencies": {
     "@fontsource/noto-sans-arabic": "^5.2.10",
@@ -41,8 +46,11 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.39.4",
+    "@playwright/test": "^1.61.0",
     "@tailwindcss/vite": "^4.2.2",
+    "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.0",
+    "@testing-library/user-event": "^14.6.1",
     "@types/leaflet": "^1.9.21",
     "@types/node": "^24.12.2",
     "@types/react": "^19.2.14",
@@ -53,6 +61,7 @@
     "eslint-plugin-react-refresh": "^0.5.2",
     "globals": "^17.4.0",
     "jsdom": "^27.4.0",
+    "msw": "^2.14.6",
     "tailwindcss": "^4.2.2",
     "typescript": "~6.0.2",
     "typescript-eslint": "^8.58.0",

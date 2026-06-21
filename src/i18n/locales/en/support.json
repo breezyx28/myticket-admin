@@ -52,7 +52,7 @@
   },
   "complaints": {
     "title": "Complaints",
-    "subtitle": "<1>GET /api/v1/admin/complaints</1> with triage, resolve, and escalate actions aligned to the Postman collection.",
+    "subtitle": "Review incoming complaints and triage, resolve, or escalate them from this queue.",
     "queueTitle": "Queue",
     "searchPlaceholder": "Search id, title, category, reporter, target…",
     "allStatuses": "All statuses",

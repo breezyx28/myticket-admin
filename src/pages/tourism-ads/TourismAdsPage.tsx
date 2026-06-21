@@ -1,13 +1,16 @@
 import { ListFiltersBar } from '@/components/admin/ListFiltersBar';
+import { RowActionsMenu, type RowMenuAction } from '@/components/admin/RowActionsMenu';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useTourismAdsRealtime } from '@/hooks/useTourismAdsRealtime';
 import { filterSelectClassName } from '@/lib/adminFilters';
 import { notifyError, notifySuccess } from '@/lib/notify';
 import { rowMatchesSearch } from '@/lib/listQuery';
+import { canArchiveTourismAd, canEditTourismAd } from '@/lib/tourismAdFormValues';
 import { cn } from '@/lib/utils';
 import type { TourismAd, TourismAdSource, TourismAdStatus } from '@/schemas/tourismAd.schema';
 import {
+  useArchiveTourismAdMutation,
   useGetTourismAdsQuery,
   usePinTourismAdMutation,
   useUnpinTourismAdMutation,
@@ -16,7 +19,7 @@ import {
 import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, MapPin, Plus } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { TourismAdStatusBadge } from './components/TourismAdStatusBadge';
 
 type Tab = 'review' | 'all' | 'carousel';
@@ -38,6 +41,7 @@ function submitterLabel(ad: TourismAd) {
 
 export function TourismAdsPage() {
   const { t } = useTranslation(['operations', 'common']);
+  const navigate = useNavigate();
   useTourismAdsRealtime();
   const [searchParams, setSearchParams] = useSearchParams();
   const tab = (searchParams.get('tab') as Tab) || 'review';
@@ -77,6 +81,7 @@ export function TourismAdsPage() {
   const { data, isLoading, isFetching } = useGetTourismAdsQuery(listParams);
   const [pinAd] = usePinTourismAdMutation();
   const [unpinAd] = useUnpinTourismAdMutation();
+  const [archiveAd, archiveState] = useArchiveTourismAdMutation();
   const [reorderCarousel] = useUpdateTourismCarouselOrderMutation();
 
   const filtered = useMemo(() => {
@@ -170,6 +175,52 @@ export function TourismAdsPage() {
     } catch {
       notifyError(t('operations:tourismAds.notify.pinFailed'));
     }
+  }
+
+  async function onArchive(ad: TourismAd) {
+    if (
+      !window.confirm(
+        t('operations:tourismAds.archiveConfirm', { name: ad.locationName }),
+      )
+    ) {
+      return;
+    }
+    try {
+      await archiveAd(ad.id).unwrap();
+      notifySuccess(t('operations:tourismAds.notify.archived'));
+    } catch {
+      notifyError(t('operations:tourismAds.notify.archiveFailed'));
+    }
+  }
+
+  function rowActions(ad: TourismAd): RowMenuAction[] {
+    const actions: RowMenuAction[] = [
+      {
+        key: 'open',
+        label: t('operations:tourismAds.open'),
+        onSelect: () => navigate(`/tourism-ads/${ad.id}`),
+      },
+    ];
+
+    if (canEditTourismAd(ad)) {
+      actions.push({
+        key: 'edit',
+        label: t('operations:tourismAds.actions.edit'),
+        onSelect: () => navigate(`/tourism-ads/${ad.id}/edit`),
+      });
+    }
+
+    if (canArchiveTourismAd(ad)) {
+      actions.push({
+        key: 'archive',
+        label: t('operations:tourismAds.actions.archive'),
+        danger: true,
+        loading: archiveState.isLoading && archiveState.originalArgs === ad.id,
+        onSelect: () => onArchive(ad),
+      });
+    }
+
+    return actions;
   }
 
   return (
@@ -361,36 +412,48 @@ export function TourismAdsPage() {
 
             <div className="space-y-3">
               {filtered.map((ad) => (
-                <Link
+                <div
                   key={ad.id}
-                  to={`/tourism-ads/${ad.id}`}
                   className="flex flex-col gap-4 rounded-2xl border border-ink-10 bg-white p-4 transition hover:border-coral/30 hover:shadow-card-sm sm:flex-row sm:items-center"
                 >
-                  {ad.coverImageUrl ? (
-                    <img
-                      src={ad.coverImageUrl}
-                      alt=""
-                      className="h-24 w-full rounded-xl object-cover sm:h-20 sm:w-28"
+                  <Link to={`/tourism-ads/${ad.id}`} className="flex min-w-0 flex-1 flex-col gap-4 sm:flex-row sm:items-center">
+                    {ad.coverImageUrl ? (
+                      <img
+                        src={ad.coverImageUrl}
+                        alt=""
+                        className="h-24 w-full rounded-xl object-cover outline outline-1 outline-black/10 sm:h-20 sm:w-28"
+                      />
+                    ) : (
+                      <div className="flex h-24 w-full items-center justify-center rounded-xl bg-ink-5 text-ink-40 sm:h-20 sm:w-28">
+                        <MapPin size={24} />
+                      </div>
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="text-lg font-bold text-ink">{ad.locationName}</p>
+                        <TourismAdStatusBadge status={ad.status} />
+                        <span className="rounded-full bg-ink-5 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-ink-60">
+                          {t(`operations:tourismAds.sourceType.${ad.source}`)}
+                        </span>
+                      </div>
+                      <p className="mt-1 line-clamp-2 text-[13px] text-ink-60">{ad.description}</p>
+                      <p className="mt-2 text-[12px] text-ink-40">
+                        {submitterLabel(ad)} · <span className="font-mono tabular-nums">{ad.id}</span>
+                      </p>
+                    </div>
+                  </Link>
+                  <div className="flex shrink-0 items-center justify-end gap-2 self-start sm:self-center">
+                    <Link to={`/tourism-ads/${ad.id}/edit`} className={canEditTourismAd(ad) ? undefined : 'hidden'}>
+                      <Button variant="outline" size="sm" className="hidden sm:inline-flex">
+                        {t('operations:tourismAds.actions.edit')}
+                      </Button>
+                    </Link>
+                    <RowActionsMenu
+                      ariaLabel={t('operations:tourismAds.actions.menuLabel', { name: ad.locationName })}
+                      actions={rowActions(ad)}
                     />
-                  ) : (
-                    <div className="flex h-24 w-full items-center justify-center rounded-xl bg-ink-5 text-ink-40 sm:h-20 sm:w-28">
-                      <MapPin size={24} />
-                    </div>
-                  )}
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <p className="text-lg font-bold text-ink">{ad.locationName}</p>
-                      <TourismAdStatusBadge status={ad.status} />
-                      <span className="rounded-full bg-ink-5 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-ink-60">
-                        {t(`operations:tourismAds.sourceType.${ad.source}`)}
-                      </span>
-                    </div>
-                    <p className="mt-1 line-clamp-2 text-[13px] text-ink-60">{ad.description}</p>
-                    <p className="mt-2 text-[12px] text-ink-40">
-                      {submitterLabel(ad)} · <span className="font-mono">{ad.id}</span>
-                    </p>
                   </div>
-                </Link>
+                </div>
               ))}
             </div>
 

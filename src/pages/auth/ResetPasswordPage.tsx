@@ -2,7 +2,7 @@ import { LanguageSwitcher } from '@/components/layout/LanguageSwitcher';
 import { Button } from '@/components/ui/Button';
 import { postAdminPasswordReset } from '@/lib/adminPasswordReset';
 import { resetPasswordSchema, type ResetPasswordValues } from '@/schemas/auth.schema';
-import { zodResolver } from '@hookform/resolvers/zod';
+import { i18nZodResolver } from '@/lib/i18nZodResolver';
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { Trans, useTranslation } from 'react-i18next';
@@ -17,7 +17,7 @@ export function ResetPasswordPage() {
   const [submitting, setSubmitting] = useState(false);
 
   const form = useForm<ResetPasswordValues>({
-    resolver: zodResolver(resetPasswordSchema),
+    resolver: i18nZodResolver(resetPasswordSchema),
     defaultValues: { token: tokenFromUrl, password: '', confirm: '' },
   });
 

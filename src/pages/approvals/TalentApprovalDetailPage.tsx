@@ -15,7 +15,7 @@ import {
   useRejectTalentProfileMutation,
   useVerifyTalentGovernmentIdMutation,
 } from '@/services/adminApi';
-import { zodResolver } from '@hookform/resolvers/zod';
+import { i18nZodResolver } from '@/lib/i18nZodResolver';
 import { useForm } from 'react-hook-form';
 import type {
   RejectGovernmentIdInput,
@@ -106,11 +106,11 @@ export function TalentApprovalDetailPage() {
   const [verifyGovId, verifyGovIdState] = useVerifyTalentGovernmentIdMutation();
   const [rejectGovId, rejectGovIdState] = useRejectTalentGovernmentIdMutation();
   const form = useForm<RejectForm>({
-    resolver: zodResolver(rejectTalentProfileSchema),
+    resolver: i18nZodResolver(rejectTalentProfileSchema),
     defaultValues: { reason: '' },
   });
   const govIdForm = useForm<RejectGovIdForm>({
-    resolver: zodResolver(rejectGovernmentIdSchema),
+    resolver: i18nZodResolver(rejectGovernmentIdSchema),
     defaultValues: { reason: '' },
   });
 

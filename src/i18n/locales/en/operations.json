@@ -208,7 +208,7 @@
       "next": "Next"
     },
     "eventPanel": {
-      "description": "Event discovery taxonomy via <api>/api/v1/admin/event-categories</api>. Includes Phosphor <mono>icon_key</mono> and theme <mono>color_token</mono> for the public site. Delete returns 422 when events still reference a category.",
+      "description": "Event discovery taxonomy for the public catalog. Includes Phosphor <mono>icon_key</mono> and theme <mono>color_token</mono> for the public site. Delete is blocked when events still reference a category.",
       "createTitle": "Create event category",
       "empty": "No categories on this page",
       "notifyCreated": "Category created.",
@@ -231,9 +231,23 @@
       "filterPlaceholder": "e.g. MusicNotes or Ticket",
       "noMatch": "No icons match that filter."
     },
+    "colorPicker": {
+      "eyebrow": "Theme",
+      "title": "Pick color token",
+      "hint": "Pick a theme token name — the public site maps these strings to brand colors (not raw hex).",
+      "choose": "Choose color",
+      "clear": "Clear color",
+      "filterLabel": "Filter tokens",
+      "filterPlaceholder": "e.g. coral or mint",
+      "noMatch": "No color tokens match that filter.",
+      "unknownToken": "\"{{token}}\" is not in the preset list. Pick a token below or clear to remove it."
+    },
+    "nameSuggest": {
+      "label": "Suggestions"
+    },
     "badgePanel": {
-      "descriptionTalent": "Curated badge taxonomy via <api>/api/v1/admin/talent-categories</api>. Rows marked <strong>Custom</strong> were created by users on the main app.",
-      "descriptionVendor": "Curated badge taxonomy via <api>/api/v1/admin/vendor-service-categories</api>. Rows marked <strong>Custom</strong> were created by users on the main app.",
+      "descriptionTalent": "Curated badge taxonomy for talent profiles. Rows marked <strong>Custom</strong> were created by users on the main app.",
+      "descriptionVendor": "Curated badge taxonomy for vendor services. Rows marked <strong>Custom</strong> were created by users on the main app.",
       "openTalentDirectory": "Open talent directory",
       "openVendorDirectory": "Open vendor directory",
       "createTitle": "Create category",
@@ -346,7 +360,7 @@
   },
   "users": {
     "title": "Users",
-    "subtitle": "Paginated accounts from <mono>GET /api/v1/admin/users</mono> — suspend, unsuspend, or impersonate without leaving the directory.",
+    "subtitle": "Browse platform accounts — suspend, unsuspend, or impersonate without leaving the directory.",
     "directoryTotal": "Directory total",
     "pageMeta": "Page {{page}} of {{total}} · {{perPage}} per page",
     "searchPlaceholder": "Search name, email, phone, id…",
@@ -478,7 +492,7 @@
   },
   "auctions": {
     "title": "Auctions",
-    "subtitle": "Admin auction list from <mono>GET /api/v1/admin/auctions</mono> with <mono>freeze</mono>, <mono>cancel</mono>, and <mono>finalize</mono> actions (empty <mono>POST</mono> bodies). Per API contract, finalize is only valid when the listing is <mono>active</mono> (shown here as <mono>live</mono>); otherwise expect <mono>422</mono>.",
+    "subtitle": "Manage live auctions — freeze, cancel, or finalize listings. Finalize is only available while an auction is live.",
     "allAuctions": "All auctions",
     "searchPlaceholder": "Search id, title, organizer, status…",
     "empty": "No auctions match your search and filters.",
@@ -549,7 +563,7 @@
   },
   "scanners": {
     "title": "Scanners & scan logs",
-    "subtitle": "<mono>GET /api/v1/admin/scanners</mono> with <mono>suspend</mono> / <mono>unsuspend</mono>, and <mono>GET /api/v1/admin/scan-logs</mono> for recent validation activity.",
+    "subtitle": "Manage scanner devices and review recent ticket validation activity.",
     "scanners": "Scanners",
     "scanLogs": "Scan logs",
     "searchScanners": "Search code, name, email, organizer…",
@@ -571,7 +585,7 @@
   },
   "tourismAds": {
     "title": "Tourism ads",
-    "subtitle": "Review guest submissions, manage the directory, and curate the homepage carousel via <mono>/api/v1/admin/tourism-ads</mono>.",
+    "subtitle": "Review guest submissions, manage the directory, and curate the homepage carousel.",
     "publishNewAd": "Publish new ad",
     "tabs": {
       "review": "Review queue",
@@ -596,10 +610,25 @@
     "open": "Open",
     "pin": "Pin",
     "unpin": "Unpin",
+    "actions": {
+      "edit": "Edit",
+      "archive": "Archive",
+      "menuLabel": "Actions for {{name}}"
+    },
+    "backToDetail": "Back to ad details",
+    "editEyebrow": "Edit",
+    "editTitle": "Edit tourism ad",
+    "editDescription": "Update listing details for <strong>{{name}}</strong>. Changes are saved with PATCH.",
+    "saveButton": "Save changes",
+    "archiveConfirm": "Archive \"{{name}}\"? It will be removed from the directory and carousel.",
+    "actionsHint": "Review, update, or retire this listing.",
+    "actionsReadOnly": "No actions available for this status.",
+    "cancelReject": "Cancel",
+    "editHoursLink": "Edit opening hours and all fields",
     "backLink": "Back to tourism ads",
     "publishEyebrow": "Publish",
     "createTitle": "New tourism ad",
-    "createDescription": "Admin create publishes immediately via <mono>POST /api/v1/admin/tourism-ads</mono>.",
+    "createDescription": "New listings publish immediately after you create them.",
     "sections": {
       "location": "Location",
       "description": "Description",
@@ -609,6 +638,7 @@
       "mediaLinks": "Media links",
       "gallery": "Gallery",
       "visibilityWindow": "Visibility window (optional)",
+      "details": "Details",
       "actions": "Actions"
     },
     "locationName": "Location name",
@@ -685,7 +715,7 @@
       "addImageUrl": "Add image URL",
       "uploadImages": "Upload images",
       "uploading": "Uploading…",
-      "uploadHint": "Uploads use <mono>POST /api/v1/admin/uploads</mono> with <mono>context=tourism_ad_gallery</mono>. URL paste remains available.",
+      "uploadHint": "Upload gallery images from your device. You can also paste an image URL.",
       "uploadOrAdd": "Upload or add gallery image URLs",
       "urlPlaceholder": "https://cdn.example/image.jpg",
       "remove": "Remove"
@@ -711,6 +741,8 @@
       "rejectFailed": "Reject failed.",
       "archived": "Tourism ad archived.",
       "archiveFailed": "Archive failed.",
+      "updated": "Tourism ad updated.",
+      "updateFailed": "Could not update tourism ad.",
       "pinDetailFailed": "Pin failed.",
       "unpinDetailFailed": "Unpin failed.",
       "galleryUploadFailed": "Gallery upload failed."

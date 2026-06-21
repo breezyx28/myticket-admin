@@ -34,7 +34,7 @@
   },
   "refundBreakdowns": {
     "title": "Refund breakdowns",
-    "subtitle": "Aggregated refund volume from <mono>GET /api/v1/admin/finance/refund-breakdowns</mono>. Row shape is normalized from common Laravel list patterns; confirm field names with your API when going live.",
+    "subtitle": "Aggregated refund volume by segment. Totals are summed from the breakdown rows when the API omits a headline figure.",
     "totalTitle": "Total refunded (reported)",
     "totalHint": "If the API omits a total, this figure is the sum of the breakdown rows below.",
     "bySegmentTitle": "By segment",
@@ -48,7 +48,7 @@
   },
   "payouts": {
     "title": "Organizer payouts",
-    "subtitle": "Queue from <mono>GET /api/v1/admin/finance/payouts</mono> with the Postman lifecycle actions (approve → processing → paid / failed, or reject). Reject may include an optional <mono>reason</mono> in the JSON body; an empty <mono>{}</mono> is valid.",
+    "subtitle": "Review organizer payout requests through the full lifecycle: approve, process, mark paid or failed, or reject with an optional reason.",
     "cardTitle": "Payouts",
     "searchPlaceholder": "Search id, organizer, event, reference…",
     "allStatuses": "All statuses",
@@ -78,7 +78,7 @@
   },
   "financeCompliance": {
     "title": "Finance compliance",
-    "subtitle": "Postman-aligned tools: <mono>POST /api/v1/admin/finance/fee-adjustments</mono>, <mono>GET …/finance/organizers/{id}/kyc</mono>, and document <mono>…/approve</mono> / <mono>…/reject</mono>. Mock data uses organizer ids <mono>{{ids}}</mono>.",
+    "subtitle": "Submit manual fee adjustments and review organizer KYC documents for approval or rejection. Demo data uses organizer ids <mono>{{ids}}</mono>.",
     "feeAdjustmentTitle": "Fee adjustment",
     "organizerIdLabel": "Organizer id",
     "amountLabel": "Amount (SAR)",
@@ -105,7 +105,7 @@
   },
   "notifications": {
     "title": "Notifications",
-    "subtitle": "Active channel flags from <mono>GET …/notification-settings</mono> (root <mono>active</mono> / <mono>history</mono>), saved with <mono>PATCH …/notification-settings</mono> (snake_case body). Operational views: <mono>GET …/notifications/recent</mono>, <mono>GET …/notifications/delivery-log</mono>, and <mono>POST …/notifications/test</mono> (body is backend-defined).",
+    "subtitle": "Configure active notification channels, review recent messages, inspect delivery logs, and send test notifications.",
     "channelsTitle": "Channels",
     "loadingSettings": "Loading settings…",
     "channelEmail": "Email",
@@ -145,7 +145,7 @@
   },
   "systemStatus": {
     "title": "System status",
-    "subtitle": "<mono>GET /api/v1/admin/health</mono> and <mono>GET /api/v1/admin/version</mono> — read-only operational snapshots when API read mode and a bearer token are available.",
+    "subtitle": "Read-only operational snapshots for service health and deployed version when connected to the API.",
     "refreshHealth": "Refresh health",
     "refreshVersion": "Refresh version",
     "healthTitle": "Health",

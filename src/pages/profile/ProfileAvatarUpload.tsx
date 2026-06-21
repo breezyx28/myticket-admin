@@ -5,7 +5,7 @@ import { PROFILE_IMAGE_ACCEPT, PROFILE_IMAGE_MAX_BYTES } from '@/schemas/adminSe
 import { useUploadAdminProfileImageMutation } from '@/services/adminApi';
 import { Camera } from '@phosphor-icons/react';
 import { useRef, useState } from 'react';
-import { Trans, useTranslation } from 'react-i18next';
+import { useTranslation } from 'react-i18next';
 
 type ProfileAvatarUploadProps = {
   avatarUrl?: string;
@@ -95,13 +95,7 @@ export function ProfileAvatarUpload({
       <div className="min-w-0 flex-1 space-y-3">
         <div>
           <p className="text-[15px] font-extrabold text-ink">{t('profile:avatar.title')}</p>
-          <p className="mt-1 max-w-[42ch] text-[13px] leading-relaxed text-ink-60">
-            <Trans
-              ns="profile"
-              i18nKey="avatar.description"
-              components={{ mono: <span className="font-mono text-[12px] text-ink" /> }}
-            />
-          </p>
+          <p className="mt-1 max-w-[42ch] text-[13px] leading-relaxed text-ink-60">{t('profile:avatar.description')}</p>
         </div>
         <div className="flex flex-wrap gap-2">
           <Button

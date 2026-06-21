@@ -14,7 +14,7 @@ import {
   useSendTestNotificationMutation,
   useUpdateNotificationSettingsMutation,
 } from '@/services/adminApi';
-import { zodResolver } from '@hookform/resolvers/zod';
+import { i18nZodResolver } from '@/lib/i18nZodResolver';
 import { useEffect, useMemo, useState } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import { Trans, useTranslation } from 'react-i18next';
@@ -31,7 +31,7 @@ export function NotificationsPage() {
   const [save, saveState] = useUpdateNotificationSettingsMutation();
   const [sendTest, sendTestState] = useSendTestNotificationMutation();
   const form = useForm<NotificationSettings>({
-    resolver: zodResolver(notificationSettingsSchema),
+    resolver: i18nZodResolver(notificationSettingsSchema),
   });
   const [searchRecent, setSearchRecent] = useState('');
   const [searchDelivery, setSearchDelivery] = useState('');

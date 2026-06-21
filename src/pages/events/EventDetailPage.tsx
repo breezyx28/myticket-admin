@@ -18,7 +18,7 @@ import {
   useRejectEventMutation,
   useUnfeatureEventMutation,
 } from '@/services/adminApi';
-import { zodResolver } from '@hookform/resolvers/zod';
+import { i18nZodResolver } from '@/lib/i18nZodResolver';
 import { Building2, Clock, Sparkles, Tag, Ticket, UserCircle } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
@@ -103,7 +103,7 @@ export function EventDetailPage() {
   const [unfeature, unfeatureState] = useUnfeatureEventMutation();
 
   const rejectForm = useForm<RejectEventInput>({
-    resolver: zodResolver(rejectEventSchema),
+    resolver: i18nZodResolver(rejectEventSchema),
     defaultValues: { reason: '' },
   });
 

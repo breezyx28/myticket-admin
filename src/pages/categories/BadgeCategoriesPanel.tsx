@@ -1,4 +1,9 @@
 import { ListFiltersBar } from '@/components/admin/ListFiltersBar';
+import {
+  CategoryDisplayOrderField,
+  defaultCategoryDisplayOrder,
+} from '@/components/category/CategoryDisplayOrderField';
+import { CategoryNameSuggestInput } from '@/components/category/CategoryNameSuggestInput';
 import { RowActionsMenu, type RowMenuAction } from '@/components/admin/RowActionsMenu';
 import { Button } from '@/components/ui/Button';
 import { filterSelectClassName } from '@/lib/adminFilters';
@@ -8,7 +13,8 @@ import { rowMatchesSearch } from '@/lib/listQuery';
 import { notifyError, notifySuccess } from '@/lib/notify';
 import { pickLocalizedField } from '@/lib/pickLocalizedField';
 import { CategoryPaginationBar } from '@/pages/categories/CategoryPaginationBar';
-import { suggestUniqueCategorySlug } from '@/schemas/api/adminMappers';
+import { ordersFromCategories, resolveCategoryDisplayOrder } from '@/lib/categoryDisplayOrder';
+import { autoCategorySlugFromEnglishName } from '@/lib/categoryFormSlug';
 import {
   badgeCategoryUpsertFormSchema,
   type BadgeCategory,
@@ -24,11 +30,18 @@ import {
   useUpsertTalentCategoryMutation,
   useUpsertVendorServiceCategoryMutation,
 } from '@/services/adminApi';
-import { zodResolver } from '@hookform/resolvers/zod';
+import { i18nZodResolver } from '@/lib/i18nZodResolver';
+import {
+  buildCategoryNameSuggestions,
+  lookupNameCounterpart,
+  nameArPresetsForBadgeKind,
+  nameEnPresetsForBadgeKind,
+  namePairsForBadgeKind,
+} from '@/lib/categoryNameSuggestions';
 import { Trans, useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { useMemo, useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 
 const defaultValues = {
   slug: '',
@@ -70,11 +83,11 @@ export function BadgeCategoriesPanel({ kind }: BadgeCategoriesPanelProps) {
   const deleteState = kind === 'talent' ? deleteTalentState : deleteVendorState;
 
   const addForm = useForm<BadgeCategoryUpsertForm>({
-    resolver: zodResolver(badgeCategoryUpsertFormSchema),
+    resolver: i18nZodResolver(badgeCategoryUpsertFormSchema),
     defaultValues,
   });
   const editForm = useForm<BadgeCategoryUpsertForm>({
-    resolver: zodResolver(badgeCategoryUpsertFormSchema),
+    resolver: i18nZodResolver(badgeCategoryUpsertFormSchema),
     defaultValues,
   });
 
@@ -92,8 +105,91 @@ export function BadgeCategoriesPanel({ kind }: BadgeCategoriesPanelProps) {
 
   const totalPages = data ? Math.max(1, Math.ceil(data.total / data.perPage)) : 1;
 
-  const apiBase =
-    kind === 'talent' ? '/api/v1/admin/talent-categories' : '/api/v1/admin/vendor-service-categories';
+  const namePairs = useMemo(() => namePairsForBadgeKind(kind), [kind]);
+  const nameEnSuggestions = useMemo(
+    () => buildCategoryNameSuggestions(items.map((c) => c.nameEn), nameEnPresetsForBadgeKind(kind)),
+    [items, kind],
+  );
+  const nameArSuggestions = useMemo(
+    () => buildCategoryNameSuggestions(items.map((c) => c.nameAr), nameArPresetsForBadgeKind(kind)),
+    [items, kind],
+  );
+  const localizedItems = useMemo(
+    () => items.map((c) => ({ nameEn: c.nameEn, nameAr: c.nameAr })),
+    [items],
+  );
+
+  function syncSlugFromEnglishName(form: typeof addForm, nameEn: string, excludeSlug?: string) {
+    form.setValue('slug', autoCategorySlugFromEnglishName(nameEn, existingSlugs, excludeSlug), {
+      shouldValidate: true,
+      shouldDirty: true,
+    });
+  }
+
+  function fillCounterpartName(form: typeof addForm, selectedName: string, from: 'en' | 'ar') {
+    const counterpart = lookupNameCounterpart(selectedName, from, namePairs, localizedItems);
+    if (!counterpart) return;
+    form.setValue(from === 'en' ? 'nameAr' : 'nameEn', counterpart, {
+      shouldValidate: true,
+      shouldDirty: true,
+    });
+  }
+
+  const formFields = (form: typeof addForm, excludeSlug?: string, excludeId?: string) => (
+    <>
+      <label className="block space-y-2">
+        <span className="text-[12px] font-semibold text-ink-60">{t('operations:categories.fields.nameEn')}</span>
+        <Controller
+          control={form.control}
+          name="nameEn"
+          render={({ field }) => (
+            <CategoryNameSuggestInput
+              value={field.value ?? ''}
+              onChange={(value) => {
+                field.onChange(value);
+                syncSlugFromEnglishName(form, value, excludeSlug);
+              }}
+              onSuggestionSelect={(name) => {
+                fillCounterpartName(form, name, 'en');
+                syncSlugFromEnglishName(form, name, excludeSlug);
+              }}
+              onBlur={field.onBlur}
+              suggestions={nameEnSuggestions}
+              dir="ltr"
+              error={form.formState.errors.nameEn?.message}
+            />
+          )}
+        />
+      </label>
+      <label className="block space-y-2">
+        <span className="text-[12px] font-semibold text-ink-60">{t('operations:categories.fields.nameAr')}</span>
+        <Controller
+          control={form.control}
+          name="nameAr"
+          render={({ field }) => (
+            <CategoryNameSuggestInput
+              value={field.value ?? ''}
+              onChange={field.onChange}
+              onSuggestionSelect={(name) => fillCounterpartName(form, name, 'ar')}
+              onBlur={field.onBlur}
+              suggestions={nameArSuggestions}
+              dir="rtl"
+              error={form.formState.errors.nameAr?.message}
+            />
+          )}
+        />
+      </label>
+      <label className="block space-y-2">
+        <span className="text-[12px] font-semibold text-ink-60">{t('operations:categories.fields.slug')}</span>
+        <input className="w-full rounded-xl border border-ink-10 px-3 py-2 font-mono text-[13px]" {...form.register('slug')} />
+        {form.formState.errors.slug ? (
+          <p className="text-[12px] font-medium text-coral">{form.formState.errors.slug.message}</p>
+        ) : null}
+      </label>
+      <CategoryDisplayOrderField form={form} items={items} excludeId={excludeId} />
+    </>
+  );
+
   const directoryPath = kind === 'talent' ? '/approvals/talent' : '/approvals/vendors';
   const filterHint =
     kind === 'talent'
@@ -183,7 +279,6 @@ export function BadgeCategoriesPanel({ kind }: BadgeCategoriesPanelProps) {
             ns="operations"
             i18nKey={descriptionKey}
             components={{
-              api: <span className="font-mono text-ink">{apiBase}</span>,
               strong: <span className="font-semibold text-ink" />,
             }}
           />
@@ -212,7 +307,23 @@ export function BadgeCategoriesPanel({ kind }: BadgeCategoriesPanelProps) {
               <option value="active">{t('operations:categories.filters.activeOnly')}</option>
               <option value="inactive">{t('operations:categories.filters.inactiveOnly')}</option>
             </select>
-            <Button type="button" variant="dark" size="sm" onClick={() => setShowCreate((v) => !v)}>
+            <Button
+              type="button"
+              variant="dark"
+              size="sm"
+              onClick={() => {
+                setShowCreate((open) => {
+                  const next = !open;
+                  if (next) {
+                    addForm.reset({
+                      ...defaultValues,
+                      displayOrder: defaultCategoryDisplayOrder(items),
+                    });
+                  }
+                  return next;
+                });
+              }}
+            >
               {showCreate ? t('operations:categories.actions.closeForm') : t('operations:categories.actions.newCategory')}
             </Button>
           </ListFiltersBar>
@@ -227,7 +338,13 @@ export function BadgeCategoriesPanel({ kind }: BadgeCategoriesPanelProps) {
               className="grid gap-3 md:grid-cols-2 xl:grid-cols-4"
               onSubmit={addForm.handleSubmit(async (values) => {
                 try {
-                  await upsert({ body: values }).unwrap();
+                  const takenOrders = ordersFromCategories(items);
+                  await upsert({
+                    body: {
+                      ...values,
+                      displayOrder: resolveCategoryDisplayOrder(values.displayOrder, takenOrders),
+                    },
+                  }).unwrap();
                   notifySuccess(t('operations:categories.badgePanel.notifyCreated'));
                   addForm.reset(defaultValues);
                   setShowCreate(false);
@@ -236,51 +353,7 @@ export function BadgeCategoriesPanel({ kind }: BadgeCategoriesPanelProps) {
                 }
               })}
             >
-              <label className="block space-y-2">
-                <span className="text-[12px] font-semibold text-ink-60">{t('operations:categories.fields.slug')}</span>
-                <input
-                  className="w-full rounded-xl border border-ink-10 px-3 py-2 font-mono text-[13px]"
-                  {...addForm.register('slug')}
-                />
-                <Button
-                  type="button"
-                  variant="ghost"
-                  className="h-8 px-2 text-[12px]"
-                  onClick={() =>
-                    addForm.setValue(
-                      'slug',
-                      suggestUniqueCategorySlug(addForm.getValues('nameEn') || 'category', existingSlugs),
-                      { shouldValidate: true },
-                    )
-                  }
-                >
-                  {t('operations:categories.actions.suggestSlug')}
-                </Button>
-              </label>
-              <label className="block space-y-2">
-                <span className="text-[12px] font-semibold text-ink-60">{t('operations:categories.fields.nameEn')}</span>
-                <input className="w-full rounded-xl border border-ink-10 px-3 py-2 text-[13px]" {...addForm.register('nameEn')} />
-              </label>
-              <label className="block space-y-2">
-                <span className="text-[12px] font-semibold text-ink-60">{t('operations:categories.fields.nameAr')}</span>
-                <input className="w-full rounded-xl border border-ink-10 px-3 py-2 text-[13px]" {...addForm.register('nameAr')} />
-              </label>
-              <label className="block space-y-2">
-                <span className="text-[12px] font-semibold text-ink-60">{t('operations:categories.fields.displayOrder')}</span>
-                <input
-                  type="number"
-                  min={0}
-                  max={65535}
-                  className="w-full rounded-xl border border-ink-10 px-3 py-2 font-mono text-[13px]"
-                  {...addForm.register('displayOrder', {
-                    setValueAs: (v) => {
-                      if (v === '' || v === null || v === undefined) return undefined;
-                      const n = Number(v);
-                      return Number.isFinite(n) ? n : undefined;
-                    },
-                  })}
-                />
-              </label>
+              {formFields(addForm)}
               <div className="flex items-end md:col-span-2 xl:col-span-4">
                 <Button type="submit" variant="dark" loading={upsertState.isLoading}>
                   {t('operations:categories.actions.create')}
@@ -328,7 +401,14 @@ export function BadgeCategoriesPanel({ kind }: BadgeCategoriesPanelProps) {
                             className="grid gap-3 md:grid-cols-2 xl:grid-cols-4"
                             onSubmit={editForm.handleSubmit(async (values) => {
                               try {
-                                await upsert({ id: row.id, body: values }).unwrap();
+                                const takenOrders = ordersFromCategories(items, row.id);
+                                await upsert({
+                                  id: row.id,
+                                  body: {
+                                    ...values,
+                                    displayOrder: resolveCategoryDisplayOrder(values.displayOrder, takenOrders),
+                                  },
+                                }).unwrap();
                                 notifySuccess(t('operations:categories.badgePanel.notifyUpdated'));
                                 setEditingId(null);
                               } catch (err) {
@@ -336,34 +416,7 @@ export function BadgeCategoriesPanel({ kind }: BadgeCategoriesPanelProps) {
                               }
                             })}
                           >
-                            <label className="block space-y-2">
-                              <span className="text-[12px] font-semibold text-ink-60">{t('operations:categories.fields.slug')}</span>
-                              <input className="w-full rounded-xl border border-ink-10 px-3 py-2 font-mono text-[13px]" {...editForm.register('slug')} />
-                            </label>
-                            <label className="block space-y-2">
-                              <span className="text-[12px] font-semibold text-ink-60">{t('operations:categories.fields.nameEn')}</span>
-                              <input className="w-full rounded-xl border border-ink-10 px-3 py-2 text-[13px]" {...editForm.register('nameEn')} />
-                            </label>
-                            <label className="block space-y-2">
-                              <span className="text-[12px] font-semibold text-ink-60">{t('operations:categories.fields.nameAr')}</span>
-                              <input className="w-full rounded-xl border border-ink-10 px-3 py-2 text-[13px]" {...editForm.register('nameAr')} />
-                            </label>
-                            <label className="block space-y-2">
-                              <span className="text-[12px] font-semibold text-ink-60">{t('operations:categories.fields.displayOrder')}</span>
-                              <input
-                                type="number"
-                                min={0}
-                                max={65535}
-                                className="w-full rounded-xl border border-ink-10 px-3 py-2 font-mono text-[13px]"
-                                {...editForm.register('displayOrder', {
-                                  setValueAs: (v) => {
-                                    if (v === '' || v === null || v === undefined) return undefined;
-                                    const n = Number(v);
-                                    return Number.isFinite(n) ? n : undefined;
-                                  },
-                                })}
-                              />
-                            </label>
+                            {formFields(editForm, row.slug, row.id)}
                             <div className="flex gap-2 xl:col-span-4">
                               <Button type="submit" size="sm" variant="dark" loading={upsertState.isLoading}>
                                 {t('operations:categories.actions.save')}

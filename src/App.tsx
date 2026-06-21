@@ -46,6 +46,7 @@ import { RatingsPage } from "@/pages/moderation/RatingsPage";
 import { ComplaintsPage } from "@/pages/complaints/ComplaintsPage";
 import { TourismAdCreatePage } from "@/pages/tourism-ads/TourismAdCreatePage";
 import { TourismAdDetailPage } from "@/pages/tourism-ads/TourismAdDetailPage";
+import { TourismAdEditPage } from "@/pages/tourism-ads/TourismAdEditPage";
 import { TourismAdsPage } from "@/pages/tourism-ads/TourismAdsPage";
 import { SupportInboxPage } from "@/pages/support/SupportInboxPage";
 import { SupportThreadPage } from "@/pages/support/SupportThreadPage";
@@ -125,6 +126,7 @@ export function App() {
             <Route path="complaints" element={<ComplaintsPage />} />
             <Route path="tourism-ads" element={<TourismAdsPage />} />
             <Route path="tourism-ads/new" element={<TourismAdCreatePage />} />
+            <Route path="tourism-ads/:id/edit" element={<TourismAdEditPage />} />
             <Route path="tourism-ads/:id" element={<TourismAdDetailPage />} />
           </Route>
         </Route>

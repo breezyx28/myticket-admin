@@ -26,6 +26,7 @@ export function LanguageSwitcher({ className, compact }: LanguageSwitcherProps) 
         <button
           key={lng}
           type="button"
+          data-testid={lng === 'en' ? 'lang-en' : 'lang-ar'}
           onClick={() => void select(lng)}
           className={cn(
             'rounded-full px-3 py-1.5 text-[12px] font-bold transition active:scale-[0.98]',

@@ -7,7 +7,7 @@ import {
   useGetRoleApplicationQuery,
   useRejectRoleApplicationMutation,
 } from '@/services/adminApi';
-import { zodResolver } from '@hookform/resolvers/zod';
+import { i18nZodResolver } from '@/lib/i18nZodResolver';
 import { useForm } from 'react-hook-form';
 import type { RejectRoleApplicationInput } from '@/schemas/roleApplication.schema';
 import { Link, useNavigate, useParams } from 'react-router-dom';
@@ -24,7 +24,7 @@ export function RoleApplicationDetailPage() {
   const [reject, rejectState] = useRejectRoleApplicationMutation();
 
   const form = useForm<RejectForm>({
-    resolver: zodResolver(rejectRoleApplicationSchema),
+    resolver: i18nZodResolver(rejectRoleApplicationSchema),
     defaultValues: { reason: '', internalNote: '' },
   });
 

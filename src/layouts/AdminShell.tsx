@@ -37,7 +37,7 @@ export function AdminShell({ children }: { children?: ReactNode }) {
               type="button"
               className="inline-flex rounded-full border border-ink-10 p-2 md:hidden"
               aria-label={t('openMenu')}
-              onClick={() => setOpen(true)}
+              onClick={() => setOpen(!open)}
             >
               <Menu size={20} strokeWidth={2} />
             </button>
@@ -56,9 +56,9 @@ export function AdminShell({ children }: { children?: ReactNode }) {
               {dataSourceBadge()}
             </span>
           </div>
-          <div className="flex items-center gap-2">
-            <LanguageSwitcher className="hidden sm:inline-flex" compact />
-            <AdminNotificationsDropdown className="md:hidden" />
+          <div className="flex items-center gap-2 md:hidden">
+            <LanguageSwitcher compact />
+            <AdminNotificationsDropdown />
           </div>
           <div className="hidden items-center gap-2 md:flex">
             <LanguageSwitcher />
@@ -94,7 +94,7 @@ export function AdminShell({ children }: { children?: ReactNode }) {
                 <p className="text-[10px] font-bold uppercase tracking-wide text-ink-40">{t('administrator')}</p>
               </div>
             </div>
-            <Button type="button" variant="outline" size="sm" onClick={() => signOut()}>
+            <Button data-testid="sign-out" type="button" variant="outline" size="sm" onClick={() => signOut()}>
               <span className="inline-flex items-center gap-2">
                 <LogOut size={16} strokeWidth={2} />
                 {t('signOut')}
@@ -104,12 +104,16 @@ export function AdminShell({ children }: { children?: ReactNode }) {
         </div>
       </header>
 
-      <div className="flex">
+      <div className="md:grid md:grid-cols-[18rem_minmax(0,1fr)]">
         <aside
+          data-testid="admin-sidebar"
           className={cn(
-            'fixed inset-y-0 start-0 z-40 w-[86%] max-w-[320px] bg-white/95 p-6 transition-transform',
-            'md:top-[72px] md:z-30 md:w-72 md:max-w-none md:translate-x-0 md:overflow-y-auto md:border-e md:border-ink-10 md:bg-white md:p-5 md:pt-6',
-            open ? 'translate-x-0' : '-translate-x-full rtl:translate-x-full md:translate-x-0',
+            // Mobile drawer: anchor to inline-start (left in LTR, right in RTL) per CSS logical properties.
+            'fixed inset-y-0 start-0 z-40 w-[86%] max-w-[320px] bg-white/95 p-6 transition-transform duration-200 ease-out',
+            open ? 'translate-x-0' : '-translate-x-full rtl:-translate-x-auto',
+            // Desktop: first grid column; dir=rtl on <html> places this column on the right automatically.
+            'md:static md:z-30 md:w-auto md:max-w-none md:translate-x-0',
+            'md:sticky md:top-[72px] md:h-[calc(100dvh-72px)] md:overflow-y-auto md:border-e md:border-ink-10 md:bg-white md:p-5 md:pt-6',
           )}
         >
           <div className="mb-6 flex items-center justify-between md:hidden">
@@ -134,6 +138,7 @@ export function AdminShell({ children }: { children?: ReactNode }) {
                     <NavLink
                       key={item.to}
                       to={item.to}
+                      data-testid={`nav-${item.to.replace(/^\//, '').replace(/\//g, '-') || 'home'}`}
                       end={item.to === '/'}
                       onClick={() => setOpen(false)}
                       className={({ isActive }) =>
@@ -165,7 +170,7 @@ export function AdminShell({ children }: { children?: ReactNode }) {
           </div>
         </aside>
 
-        <main className="min-h-[calc(100dvh-72px)] flex-1 px-4 py-10 md:ms-72 md:px-8 lg:px-10">
+        <main className="min-h-[calc(100dvh-72px)] flex-1 px-4 py-10 md:px-8 lg:px-10">
           <div className="mx-auto w-full max-w-[1280px]">{children ?? <Outlet />}</div>
         </main>
       </div>

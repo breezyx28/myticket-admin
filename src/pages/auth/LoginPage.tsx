@@ -5,7 +5,7 @@ import { allowDemoAuth } from '@/config/env';
 import { useAuth } from '@/hooks/useAuth';
 import { notifyError, notifySuccess } from '@/lib/notify';
 import { loginFormSchema, type LoginFormValues } from '@/schemas/auth.schema';
-import { zodResolver } from '@hookform/resolvers/zod';
+import { i18nZodResolver } from '@/lib/i18nZodResolver';
 import { Trans, useTranslation } from 'react-i18next';
 import { useForm } from 'react-hook-form';
 import { Link, Navigate, useLocation } from 'react-router-dom';
@@ -17,7 +17,7 @@ export function LoginPage() {
   const from = (loc.state as { from?: string } | null)?.from ?? '/';
 
   const form = useForm<LoginFormValues>({
-    resolver: zodResolver(loginFormSchema),
+    resolver: i18nZodResolver(loginFormSchema),
     defaultValues: allowDemoAuth()
       ? { email: DEMO_ADMIN_EMAIL, password: DEMO_ADMIN_PASSWORD }
       : { email: '', password: '' },
@@ -73,11 +73,12 @@ export function LoginPage() {
             </p>
           ) : null}
 
-          <form onSubmit={form.handleSubmit(onSubmit)} className="mt-8 space-y-4">
+          <form data-testid="login-form" onSubmit={form.handleSubmit(onSubmit)} className="mt-8 space-y-4">
             <div>
               <label className="block">
                 <span className="text-[12px] font-semibold text-ink-60">{t('common:email')}</span>
                 <input
+                  data-testid="login-email"
                   className="mt-1.5 w-full rounded-xl border border-ink-10 px-4 py-3 text-[14px] outline-none focus:border-coral focus:ring-2 focus:ring-coral/30"
                   autoComplete="email"
                   placeholder={DEMO_ADMIN_EMAIL}
@@ -92,6 +93,7 @@ export function LoginPage() {
               <label className="block">
                 <span className="text-[12px] font-semibold text-ink-60">{t('common:password')}</span>
                 <input
+                  data-testid="login-password"
                   type="password"
                   className="mt-1.5 w-full rounded-xl border border-ink-10 px-4 py-3 text-[14px] outline-none focus:border-coral focus:ring-2 focus:ring-coral/30"
                   autoComplete="current-password"
@@ -108,7 +110,7 @@ export function LoginPage() {
                 {form.formState.errors.root.message}
               </p>
             ) : null}
-            <Button type="submit" variant="dark" className="w-full" size="lg">
+            <Button data-testid="login-submit" type="submit" variant="dark" className="w-full" size="lg">
               {t('auth:login.continue')}
             </Button>
           </form>

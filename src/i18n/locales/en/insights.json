@@ -2,7 +2,7 @@
   "analytics": {
     "eyebrow": "Insights",
     "title": "Analytics",
-    "subtitle": "Financial totals use <1>GET /api/v1/admin/analytics/financial?range=…</1>. Charts fill when the API returns time series or category breakdown; otherwise an empty state is shown. Leaderboards use <2>GET …/analytics/leaderboards</2>.",
+    "subtitle": "Financial totals and charts for the selected reporting window. Leaderboards highlight top performers when data is available.",
     "financialWindow": "Financial window",
     "apiWindow": "API window:",
     "since": "since",
@@ -70,7 +70,7 @@
   "activity": {
     "eyebrow": "Insights",
     "title": "Activity & audit",
-    "subtitle": "<1>GET /api/v1/admin/admin-actions</1> lists the action catalog; <2>POST /api/v1/admin/admin-actions</2> records a row (see guide — body uses <3>action_kind</3>, not arbitrary keys). <4>GET …/audit-logs</4> and <5>GET …/audit-logs/{id}</5> for detail (IP, user-agent, changes when the API provides them).",
+    "subtitle": "Browse the admin action catalog, record new actions, and inspect audit logs with IP, user-agent, and change details when available.",
     "catalogTitle": "Admin actions catalog",
     "searchActions": "Search key, label, category…",
     "columns": {
@@ -113,7 +113,7 @@
   "guide": {
     "closeAria": "Close guide",
     "title": "Recording work on the activity timeline",
-    "subtitle": "POST <1>/api/v1/admin/admin-actions</1> — append a narrative row for audit, separate from domain endpoints that change real state.",
+    "subtitle": "Append a narrative audit row for admin activity, separate from actions that change live platform state.",
     "gotIt": "Got it",
     "inOneSentence": {
       "heading": "In one sentence",
@@ -145,7 +145,7 @@
       "heading": "When to use this",
       "item1": "You already performed the real change via another endpoint, but want a clear line on the timeline.",
       "item2": "You did offline / manual work (phone, legal review) that should still appear under admin activity.",
-      "footer": "New rows appear when you refresh <1>GET /api/v1/admin/admin-actions</1> (this page lists the catalog; your timeline / list view may differ by product wiring)."
+      "footer": "New rows appear when you refresh the activity catalog."
     },
     "minimalBody": {
       "heading": "Minimal valid body",

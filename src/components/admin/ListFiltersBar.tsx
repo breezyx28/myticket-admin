@@ -29,6 +29,7 @@ export function ListFiltersBar({
           aria-hidden
         />
         <input
+          data-testid="list-search"
           type="search"
           value={searchValue}
           onChange={(e) => onSearchChange(e.target.value)}

@@ -48,7 +48,7 @@
   },
   "ratings": {
     "title": "Ratings oversight",
-    "subtitle": "Read from <1>GET /api/v1/admin/ratings</1>; hide, restore, and delete map to Postman POSTs on each rating id.",
+    "subtitle": "Review published ratings and hide, restore, or delete entries that violate policy.",
     "recentTitle": "Recent ratings",
     "searchPlaceholder": "Search target, author, comment…",
     "empty": "No ratings match your search and filters.",

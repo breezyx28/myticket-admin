@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { notifyError, notifySuccess } from '@/lib/notify';
 import { feeConfigurationFormSchema, type FeeConfiguration } from '@/schemas/settings.schema';
 import { useGetFeeConfigurationQuery, useUpdateFeeConfigurationMutation } from '@/services/adminApi';
-import { zodResolver } from '@hookform/resolvers/zod';
+import { i18nZodResolver } from '@/lib/i18nZodResolver';
 import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
@@ -13,7 +13,7 @@ export function FeesPage() {
   const q = useGetFeeConfigurationQuery();
   const [save, saveState] = useUpdateFeeConfigurationMutation();
   const form = useForm<FeeConfiguration>({
-    resolver: zodResolver(feeConfigurationFormSchema),
+    resolver: i18nZodResolver(feeConfigurationFormSchema),
   });
 
   useEffect(() => {

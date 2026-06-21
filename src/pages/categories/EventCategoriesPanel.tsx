@@ -1,5 +1,12 @@
 import { ListFiltersBar } from '@/components/admin/ListFiltersBar';
 import { RowActionsMenu, type RowMenuAction } from '@/components/admin/RowActionsMenu';
+import {
+  CategoryDisplayOrderField,
+  defaultCategoryDisplayOrder,
+} from '@/components/category/CategoryDisplayOrderField';
+import { CategoryNameSuggestInput } from '@/components/category/CategoryNameSuggestInput';
+import { ColorTokenBadge } from '@/components/category/ColorTokenBadge';
+import { ColorTokenPicker } from '@/components/category/ColorTokenPicker';
 import { PhosphorIconKeyPreview } from '@/components/category/PhosphorIconKeyPreview';
 import { PhosphorIconPickerModal } from '@/components/category/PhosphorIconPickerModal';
 import { Button } from '@/components/ui/Button';
@@ -10,7 +17,8 @@ import { rowMatchesSearch } from '@/lib/listQuery';
 import { notifyError, notifySuccess } from '@/lib/notify';
 import { pickLocalizedField } from '@/lib/pickLocalizedField';
 import { CategoryPaginationBar } from '@/pages/categories/CategoryPaginationBar';
-import { suggestUniqueCategorySlug } from '@/schemas/api/adminMappers';
+import { ordersFromCategories, resolveCategoryDisplayOrder } from '@/lib/categoryDisplayOrder';
+import { autoCategorySlugFromEnglishName } from '@/lib/categoryFormSlug';
 import { eventCategoryUpsertFormSchema, type EventCategoryUpsertForm } from '@/schemas/event.schema';
 import type { EventCategory } from '@/schemas/event.schema';
 import {
@@ -19,10 +27,16 @@ import {
   useToggleCategoryActiveMutation,
   useUpsertCategoryMutation,
 } from '@/services/adminApi';
-import { zodResolver } from '@hookform/resolvers/zod';
+import { i18nZodResolver } from '@/lib/i18nZodResolver';
+import {
+  buildCategoryNameSuggestions,
+  EVENT_CATEGORY_NAME_AR_SUGGESTIONS,
+  EVENT_CATEGORY_NAME_EN_SUGGESTIONS,
+  lookupCategoryNameCounterpart,
+} from '@/lib/categoryNameSuggestions';
 import { Trans, useTranslation } from 'react-i18next';
 import { useMemo, useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 
 const defaultAddValues = {
   slug: '',
@@ -49,11 +63,11 @@ export function EventCategoriesPanel() {
   const [deleteCategory, deleteState] = useDeleteEventCategoryMutation();
 
   const addForm = useForm<EventCategoryUpsertForm>({
-    resolver: zodResolver(eventCategoryUpsertFormSchema),
+    resolver: i18nZodResolver(eventCategoryUpsertFormSchema),
     defaultValues: defaultAddValues,
   });
   const editForm = useForm<EventCategoryUpsertForm>({
-    resolver: zodResolver(eventCategoryUpsertFormSchema),
+    resolver: i18nZodResolver(eventCategoryUpsertFormSchema),
     defaultValues: defaultAddValues,
   });
 
@@ -71,6 +85,43 @@ export function EventCategoriesPanel() {
   }, [items, search, activeFilter]);
 
   const totalPages = data ? Math.max(1, Math.ceil(data.total / data.perPage)) : 1;
+
+  const nameEnSuggestions = useMemo(
+    () => buildCategoryNameSuggestions(items.map((c) => c.nameEn), EVENT_CATEGORY_NAME_EN_SUGGESTIONS),
+    [items],
+  );
+  const nameArSuggestions = useMemo(
+    () => buildCategoryNameSuggestions(items.map((c) => c.nameAr), EVENT_CATEGORY_NAME_AR_SUGGESTIONS),
+    [items],
+  );
+  const localizedCategoryItems = useMemo(
+    () => items.map((c) => ({ nameEn: c.nameEn, nameAr: c.nameAr })),
+    [items],
+  );
+
+  function syncSlugFromEnglishName(
+    form: typeof addForm,
+    nameEn: string,
+    mode: 'add' | 'edit',
+    excludeSlug?: string,
+  ) {
+    if (mode !== 'add') return;
+    form.setValue('slug', autoCategorySlugFromEnglishName(nameEn, existingSlugs, excludeSlug), {
+      shouldValidate: true,
+      shouldDirty: true,
+    });
+  }
+
+  function fillCounterpartName(
+    form: typeof addForm,
+    selectedName: string,
+    from: 'en' | 'ar',
+  ) {
+    const counterpart = lookupCategoryNameCounterpart(selectedName, from, localizedCategoryItems);
+    if (!counterpart) return;
+    const targetField = from === 'en' ? 'nameAr' : 'nameEn';
+    form.setValue(targetField, counterpart, { shouldValidate: true, shouldDirty: true });
+  }
 
   function statusBadge(active: boolean) {
     return active ? (
@@ -143,44 +194,55 @@ export function EventCategoriesPanel() {
     ];
   }
 
-  const formFields = (form: typeof addForm, iconKey: string | undefined, mode: 'add' | 'edit') => (
+  const formFields = (
+    form: typeof addForm,
+    iconKey: string | undefined,
+    mode: 'add' | 'edit',
+    excludeSlug?: string,
+    excludeId?: string,
+  ) => (
     <>
       <label className="block space-y-2">
-        <span className="text-[12px] font-semibold text-ink-60">{t('operations:categories.fields.slug')}</span>
-        <input className="w-full rounded-xl border border-ink-10 px-3 py-2 font-mono text-[13px]" {...form.register('slug')} />
-        {form.formState.errors.slug ? (
-          <p className="text-[12px] font-medium text-coral">{form.formState.errors.slug.message}</p>
-        ) : null}
-        {mode === 'add' ? (
-          <Button
-            type="button"
-            variant="ghost"
-            className="h-8 px-2 text-[12px]"
-            onClick={() =>
-              form.setValue(
-                'slug',
-                suggestUniqueCategorySlug(form.getValues('nameEn') || 'category', existingSlugs),
-                { shouldValidate: true },
-              )
-            }
-          >
-            {t('operations:categories.actions.suggestSlug')}
-          </Button>
-        ) : null}
-      </label>
-      <label className="block space-y-2">
         <span className="text-[12px] font-semibold text-ink-60">{t('operations:categories.fields.nameEn')}</span>
-        <input className="w-full rounded-xl border border-ink-10 px-3 py-2 text-[13px]" {...form.register('nameEn')} />
-        {form.formState.errors.nameEn ? (
-          <p className="text-[12px] font-medium text-coral">{form.formState.errors.nameEn.message}</p>
-        ) : null}
+        <Controller
+          control={form.control}
+          name="nameEn"
+          render={({ field }) => (
+            <CategoryNameSuggestInput
+              value={field.value ?? ''}
+              onChange={(value) => {
+                field.onChange(value);
+                syncSlugFromEnglishName(form, value, mode, excludeSlug);
+              }}
+              onSuggestionSelect={(name) => {
+                fillCounterpartName(form, name, 'en');
+                syncSlugFromEnglishName(form, name, mode, excludeSlug);
+              }}
+              onBlur={field.onBlur}
+              suggestions={nameEnSuggestions}
+              dir="ltr"
+              error={form.formState.errors.nameEn?.message}
+            />
+          )}
+        />
       </label>
       <label className="block space-y-2">
         <span className="text-[12px] font-semibold text-ink-60">{t('operations:categories.fields.nameAr')}</span>
-        <input className="w-full rounded-xl border border-ink-10 px-3 py-2 text-[13px]" {...form.register('nameAr')} />
-        {form.formState.errors.nameAr ? (
-          <p className="text-[12px] font-medium text-coral">{form.formState.errors.nameAr.message}</p>
-        ) : null}
+        <Controller
+          control={form.control}
+          name="nameAr"
+          render={({ field }) => (
+            <CategoryNameSuggestInput
+              value={field.value ?? ''}
+              onChange={field.onChange}
+              onSuggestionSelect={(name) => fillCounterpartName(form, name, 'ar')}
+              onBlur={field.onBlur}
+              suggestions={nameArSuggestions}
+              dir="rtl"
+              error={form.formState.errors.nameAr?.message}
+            />
+          )}
+        />
       </label>
       <label className="block space-y-2 md:col-span-2">
         <span className="text-[12px] font-semibold text-ink-60">{t('operations:categories.fields.iconKey')}</span>
@@ -204,30 +266,24 @@ export function EventCategoriesPanel() {
           </Button>
         </div>
       </label>
-      <label className="block space-y-2">
+      <div className="block space-y-2">
         <span className="text-[12px] font-semibold text-ink-60">{t('operations:categories.fields.colorToken')}</span>
-        <input
-          className="w-full rounded-xl border border-ink-10 px-3 py-2 text-[13px]"
-          placeholder={t('operations:categories.fields.colorPlaceholder')}
-          {...form.register('colorToken')}
+        <Controller
+          control={form.control}
+          name="colorToken"
+          render={({ field }) => (
+            <ColorTokenPicker value={field.value ?? ''} onChange={field.onChange} />
+          )}
         />
-      </label>
+      </div>
       <label className="block space-y-2">
-        <span className="text-[12px] font-semibold text-ink-60">{t('operations:categories.fields.displayOrder')}</span>
-        <input
-          type="number"
-          min={0}
-          max={65535}
-          className="w-full rounded-xl border border-ink-10 px-3 py-2 font-mono text-[13px]"
-          {...form.register('displayOrder', {
-            setValueAs: (v) => {
-              if (v === '' || v === null || v === undefined) return undefined;
-              const n = Number(v);
-              return Number.isFinite(n) ? n : undefined;
-            },
-          })}
-        />
+        <span className="text-[12px] font-semibold text-ink-60">{t('operations:categories.fields.slug')}</span>
+        <input className="w-full rounded-xl border border-ink-10 px-3 py-2 font-mono text-[13px]" {...form.register('slug')} />
+        {form.formState.errors.slug ? (
+          <p className="text-[12px] font-medium text-coral">{form.formState.errors.slug.message}</p>
+        ) : null}
       </label>
+      <CategoryDisplayOrderField form={form} items={items} excludeId={excludeId} />
     </>
   );
 
@@ -238,7 +294,6 @@ export function EventCategoriesPanel() {
           ns="operations"
           i18nKey="categories.eventPanel.description"
           components={{
-            api: <span className="font-mono text-ink" />,
             mono: <span className="font-mono" />,
           }}
         />
@@ -260,7 +315,23 @@ export function EventCategoriesPanel() {
               <option value="active">{t('operations:categories.filters.activeOnly')}</option>
               <option value="inactive">{t('operations:categories.filters.inactiveOnly')}</option>
             </select>
-            <Button type="button" variant="dark" size="sm" onClick={() => setShowCreate((v) => !v)}>
+            <Button
+              type="button"
+              variant="dark"
+              size="sm"
+              onClick={() => {
+                setShowCreate((open) => {
+                  const next = !open;
+                  if (next) {
+                    addForm.reset({
+                      ...defaultAddValues,
+                      displayOrder: defaultCategoryDisplayOrder(items),
+                    });
+                  }
+                  return next;
+                });
+              }}
+            >
               {showCreate ? t('operations:categories.actions.closeForm') : t('operations:categories.actions.newCategory')}
             </Button>
           </ListFiltersBar>
@@ -275,7 +346,13 @@ export function EventCategoriesPanel() {
               className="grid gap-3 md:grid-cols-2 xl:grid-cols-4"
               onSubmit={addForm.handleSubmit(async (values) => {
                 try {
-                  await upsert({ body: values }).unwrap();
+                  const takenOrders = ordersFromCategories(items);
+                  await upsert({
+                    body: {
+                      ...values,
+                      displayOrder: resolveCategoryDisplayOrder(values.displayOrder, takenOrders),
+                    },
+                  }).unwrap();
                   notifySuccess(t('operations:categories.eventPanel.notifyCreated'));
                   addForm.reset(defaultAddValues);
                   setShowCreate(false);
@@ -332,7 +409,14 @@ export function EventCategoriesPanel() {
                             className="grid gap-3 md:grid-cols-2 xl:grid-cols-4"
                             onSubmit={editForm.handleSubmit(async (values) => {
                               try {
-                                await upsert({ id: row.id, body: values }).unwrap();
+                                const takenOrders = ordersFromCategories(items, row.id);
+                                await upsert({
+                                  id: row.id,
+                                  body: {
+                                    ...values,
+                                    displayOrder: resolveCategoryDisplayOrder(values.displayOrder, takenOrders),
+                                  },
+                                }).unwrap();
                                 notifySuccess(t('operations:categories.eventPanel.notifyUpdated'));
                                 setEditingId(null);
                               } catch (err) {
@@ -340,7 +424,7 @@ export function EventCategoriesPanel() {
                               }
                             })}
                           >
-                            {formFields(editForm, editIconKey, 'edit')}
+                            {formFields(editForm, editIconKey, 'edit', row.slug, row.id)}
                             <div className="flex gap-2 xl:col-span-4">
                               <Button type="submit" size="sm" variant="dark" loading={upsertState.isLoading}>
                                 {t('operations:categories.actions.save')}
@@ -368,9 +452,7 @@ export function EventCategoriesPanel() {
                           </div>
                         </td>
                         <td className="px-4 py-3">
-                          <span className="rounded-full bg-ink-5 px-2 py-1 text-[12px] font-bold text-ink-60">
-                            {row.colorToken || t('common:none')}
-                          </span>
+                          <ColorTokenBadge token={row.colorToken} compact />
                         </td>
                         <td className="px-4 py-3">{statusBadge(row.active)}</td>
                         <td className="px-4 py-3 text-right">

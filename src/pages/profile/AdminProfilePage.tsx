@@ -33,11 +33,6 @@ export function AdminProfilePage() {
           <h1 className="mt-1 text-3xl font-extrabold tracking-tight text-ink md:text-4xl">{t('profile:title')}</h1>
           <p className="mt-3 max-w-[65ch] text-[15px] leading-relaxed text-ink-60">{t('profile:subtitle')}</p>
         </div>
-        <div className="rounded-3xl border border-ink-10 bg-white px-5 py-4 shadow-card-sm">
-          <p className="text-[11px] font-bold uppercase tracking-wide text-ink-40">{t('profile:endpointsTitle')}</p>
-          <p className="mt-1 font-mono text-[12px] text-ink">{t('profile:patchMe')}</p>
-          <p className="font-mono text-[12px] text-ink">{t('profile:postProfileImage')}</p>
-        </div>
       </div>
 
       <Card className="rounded-[2rem] border-ink-10 shadow-[0_20px_40px_-15px_rgba(0,0,0,0.05)]">

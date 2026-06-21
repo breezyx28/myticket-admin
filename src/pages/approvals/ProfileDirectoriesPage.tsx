@@ -89,7 +89,6 @@ function ProfileDirectoryBody({ kind }: { kind: Kind }) {
         <p className="mt-2 max-w-2xl text-[14px] leading-relaxed text-ink-60">
           {t(`profileDirectories.${kind}.description`)}
         </p>
-        <p className="mt-2 font-mono text-[12px] text-ink-50">{t(`profileDirectories.${kind}.apiPath`)}</p>
       </div>
 
       <Card className="rounded-3xl border-ink-10 shadow-card-sm">

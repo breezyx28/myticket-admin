@@ -2,7 +2,7 @@ import { LanguageSwitcher } from '@/components/layout/LanguageSwitcher';
 import { Button } from '@/components/ui/Button';
 import { postAdminPasswordForgot } from '@/lib/adminPasswordReset';
 import { forgotPasswordSchema, type ForgotPasswordValues } from '@/schemas/auth.schema';
-import { zodResolver } from '@hookform/resolvers/zod';
+import { i18nZodResolver } from '@/lib/i18nZodResolver';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
@@ -14,7 +14,7 @@ export function ForgotPasswordPage() {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const form = useForm<ForgotPasswordValues>({
-    resolver: zodResolver(forgotPasswordSchema),
+    resolver: i18nZodResolver(forgotPasswordSchema),
     defaultValues: { email: '' },
   });
 

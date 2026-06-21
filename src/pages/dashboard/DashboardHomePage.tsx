@@ -10,7 +10,7 @@ import {
   useGetEventsQuery,
   useGetPendingActionsQuery,
 } from '@/services/adminApi';
-import { Trans, useTranslation } from 'react-i18next';
+import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { Activity, ArrowRight, Cpu, Radio } from 'lucide-react';
 
@@ -48,12 +48,7 @@ export function DashboardHomePage() {
       <div>
         <p className="text-[11px] font-extrabold uppercase tracking-[0.16em] text-ink-40">{t('home.eyebrow')}</p>
         <h1 className="mt-1 text-4xl font-extrabold tracking-tight text-ink">{t('home.title')}</h1>
-        <p className="mt-2 max-w-2xl text-[15px] leading-relaxed text-ink-60">
-          <Trans
-            i18nKey="home.subtitle"
-            components={[<span key="1" className="font-mono text-ink" />]}
-          />
-        </p>
+        <p className="mt-2 max-w-2xl text-[15px] leading-relaxed text-ink-60">{t('home.subtitle')}</p>
         {counters.isError ? (
           <p className="mt-3 rounded-xl bg-coral/15 px-4 py-3 text-[13px] font-semibold text-ink">
             {t('home.countersError')}

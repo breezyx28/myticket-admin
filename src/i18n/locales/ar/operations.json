@@ -208,7 +208,7 @@
       "next": "التالي"
     },
     "eventPanel": {
-      "description": "تصنيف اكتشاف الفعاليات عبر <api>/api/v1/admin/event-categories</api>. يتضمن <mono>icon_key</mono> من Phosphor و<mono>color_token</mono> للموقع العام. الحذف يعيد 422 عندما تُشير فعاليات إلى التصنيف.",
+      "description": "تصنيف اكتشاف الفعاليات للكتالوج العام. يتضمن <mono>icon_key</mono> من Phosphor و<mono>color_token</mono> للموقع العام. يُمنع الحذف عندما تُشير فعاليات إلى التصنيف.",
       "createTitle": "إنشاء تصنيف فعالية",
       "empty": "لا توجد تصنيفات في هذه الصفحة",
       "notifyCreated": "تم إنشاء التصنيف.",
@@ -231,9 +231,23 @@
       "filterPlaceholder": "مثال MusicNotes أو Ticket",
       "noMatch": "لا توجد أيقونات تطابق هذا الفلتر."
     },
+    "colorPicker": {
+      "eyebrow": "السمة",
+      "title": "اختر رمز اللون",
+      "hint": "اختر اسم رمز لون — يربط الموقع العام هذه السلاسل بألوان العلامة (وليس قيم hex خام).",
+      "choose": "اختر لوناً",
+      "clear": "مسح اللون",
+      "filterLabel": "تصفية الرموز",
+      "filterPlaceholder": "مثال coral أو mint",
+      "noMatch": "لا توجد رموز ألوان تطابق هذا الفلتر.",
+      "unknownToken": "\"{{token}}\" غير موجود في القائمة. اختر رمزاً أدناه أو امسح لإزالته."
+    },
+    "nameSuggest": {
+      "label": "اقتراحات"
+    },
     "badgePanel": {
-      "descriptionTalent": "تصنيف الشارات عبر <api>/api/v1/admin/talent-categories</api>. الصفوف الموسومة <strong>مخصص</strong> أنشأها مستخدمون في التطبيق الرئيسي.",
-      "descriptionVendor": "تصنيف الشارات عبر <api>/api/v1/admin/vendor-service-categories</api>. الصفوف الموسومة <strong>مخصص</strong> أنشأها مستخدمون في التطبيق الرئيسي.",
+      "descriptionTalent": "تصنيف الشارات لملفات المواهب. الصفوف الموسومة <strong>مخصص</strong> أنشأها مستخدمون في التطبيق الرئيسي.",
+      "descriptionVendor": "تصنيف الشارات لخدمات الموردين. الصفوف الموسومة <strong>مخصص</strong> أنشأها مستخدمون في التطبيق الرئيسي.",
       "openTalentDirectory": "فتح دليل المواهب",
       "openVendorDirectory": "فتح دليل البائعين",
       "createTitle": "إنشاء تصنيف",
@@ -346,7 +360,7 @@
   },
   "users": {
     "title": "المستخدمون",
-    "subtitle": "حسابات مجزأة من <mono>GET /api/v1/admin/users</mono> — إيقاف أو إلغاء إيقاف أو انتحال شخصية دون مغادرة الدليل.",
+    "subtitle": "تصفح حسابات المنصة — إيقاف أو إلغاء إيقاف أو انتحال شخصية دون مغادرة الدليل.",
     "directoryTotal": "إجمالي الدليل",
     "pageMeta": "صفحة {{page}} من {{total}} · {{perPage}} لكل صفحة",
     "searchPlaceholder": "بحث بالاسم أو البريد أو الهاتف أو المعرّف…",
@@ -478,7 +492,7 @@
   },
   "auctions": {
     "title": "المزادات",
-    "subtitle": "قائمة مزادات المسؤول من <mono>GET /api/v1/admin/auctions</mono> مع إجراءات <mono>freeze</mono> و<mono>cancel</mono> و<mono>finalize</mono> (أجسام <mono>POST</mono> فارغة). وفق عقد واجهة البرمجة، الإنهاء صالح فقط عندما يكون الإدراج <mono>active</mono> (يُعرض هنا كـ <mono>live</mono>)؛ وإلا توقّع <mono>422</mono>.",
+    "subtitle": "إدارة المزادات المباشرة — تجميد أو إلغاء أو إنهاء الإدراجات. الإنهاء متاح فقط أثناء كون المزاد مباشرًا.",
     "allAuctions": "جميع المزادات",
     "searchPlaceholder": "بحث بالمعرّف أو العنوان أو المنظّم أو الحالة…",
     "empty": "لا توجد مزادات مطابقة لبحثك وعوامل التصفية.",
@@ -549,7 +563,7 @@
   },
   "scanners": {
     "title": "الماسحات وسجلات المسح",
-    "subtitle": "<mono>GET /api/v1/admin/scanners</mono> مع <mono>suspend</mono> / <mono>unsuspend</mono>، و<mono>GET /api/v1/admin/scan-logs</mono> لنشاط التحقق الأخير.",
+    "subtitle": "إدارة أجهزة الماسح الضوئي ومراجعة نشاط التحقق من التذاكر الأخير.",
     "scanners": "الماسحات",
     "scanLogs": "سجلات المسح",
     "searchScanners": "بحث بالرمز أو الاسم أو البريد أو المنظّم…",
@@ -571,7 +585,7 @@
   },
   "tourismAds": {
     "title": "إعلانات السياحة",
-    "subtitle": "راجع طلبات الضيوف، وأدر الدليل، ونسّق شريط الصفحة الرئيسية عبر <mono>/api/v1/admin/tourism-ads</mono>.",
+    "subtitle": "راجع طلبات الضيوف، وأدر الدليل، ونسّق شريط الصفحة الرئيسية.",
     "publishNewAd": "نشر إعلان جديد",
     "tabs": {
       "review": "قائمة المراجعة",
@@ -596,10 +610,25 @@
     "open": "فتح",
     "pin": "تثبيت",
     "unpin": "إلغاء التثبيت",
+    "actions": {
+      "edit": "تعديل",
+      "archive": "أرشفة",
+      "menuLabel": "إجراءات {{name}}"
+    },
+    "backToDetail": "العودة إلى تفاصيل الإعلان",
+    "editEyebrow": "تعديل",
+    "editTitle": "تعديل إعلان السياحة",
+    "editDescription": "حدّث تفاصيل الإدراج لـ <strong>{{name}}</strong>. تُحفظ التغييرات عبر PATCH.",
+    "saveButton": "حفظ التغييرات",
+    "archiveConfirm": "أرشفة \"{{name}}\"؟ سيُزال من الدليل والشريط.",
+    "actionsHint": "راجع أو حدّث أو أوقف هذا الإدراج.",
+    "actionsReadOnly": "لا توجد إجراءات متاحة لهذه الحالة.",
+    "cancelReject": "إلغاء",
+    "editHoursLink": "تعديل ساعات العمل وجميع الحقول",
     "backLink": "العودة إلى إعلانات السياحة",
     "publishEyebrow": "نشر",
     "createTitle": "إعلان سياحة جديد",
-    "createDescription": "إنشاء المسؤول ينشر فورًا عبر <mono>POST /api/v1/admin/tourism-ads</mono>.",
+    "createDescription": "تُنشر الإدراجات الجديدة فور إنشائها.",
     "sections": {
       "location": "الموقع",
       "description": "الوصف",
@@ -609,6 +638,7 @@
       "mediaLinks": "روابط الوسائط",
       "gallery": "المعرض",
       "visibilityWindow": "نافذة الظهور (اختياري)",
+      "details": "التفاصيل",
       "actions": "الإجراءات"
     },
     "locationName": "اسم الموقع",
@@ -685,7 +715,7 @@
       "addImageUrl": "إضافة رابط صورة",
       "uploadImages": "رفع الصور",
       "uploading": "جارٍ الرفع…",
-      "uploadHint": "الرفع يستخدم <mono>POST /api/v1/admin/uploads</mono> مع <mono>context=tourism_ad_gallery</mono>. لصق الرابط ما زال متاحًا.",
+      "uploadHint": "ارفع صور المعرض من جهازك. يمكنك أيضًا لصق رابط صورة.",
       "uploadOrAdd": "ارفع أو أضف روابط صور المعرض",
       "urlPlaceholder": "https://cdn.example/image.jpg",
       "remove": "إزالة"
@@ -711,6 +741,8 @@
       "rejectFailed": "فشل الرفض.",
       "archived": "تم أرشفة إعلان السياحة.",
       "archiveFailed": "فشلت الأرشفة.",
+      "updated": "تم تحديث إعلان السياحة.",
+      "updateFailed": "تعذّر تحديث إعلان السياحة.",
       "pinDetailFailed": "فشل التثبيت.",
       "unpinDetailFailed": "فشل إلغاء التثبيت.",
       "galleryUploadFailed": "فشل رفع المعرض."
