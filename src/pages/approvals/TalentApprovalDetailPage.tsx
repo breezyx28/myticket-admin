@@ -1,6 +1,8 @@
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { getCurrentLocale } from '@/i18n';
 import { formatDateTime } from '@/lib/localeFormat';
+import { formatGeoLocationLine } from '@/lib/localizedGeoName';
 import { notifyError, notifySuccess } from '@/lib/notify';
 import { cn } from '@/lib/utils';
 import {
@@ -143,8 +145,17 @@ export function TalentApprovalDetailPage() {
   }
 
   function locationLine(row: TalentProfile) {
-    const parts = [row.city, row.country].filter(Boolean);
-    if (parts.length) return parts.join(', ');
+    const locale = getCurrentLocale();
+    const formatted = formatGeoLocationLine(
+      {
+        city: row.city,
+        cityDetail: row.cityDetail,
+        country: row.country,
+        regionDetail: row.regionDetail,
+      },
+      locale,
+    );
+    if (formatted) return formatted;
     if (row.regionId !== undefined || row.cityId !== undefined) {
       return [
         row.regionId !== undefined ? t('talentDetail.regionId', { id: row.regionId }) : null,

@@ -9,8 +9,10 @@ import { formatDateTime } from '@/lib/localeFormat';
 import { getCurrentLocale } from '@/i18n';
 import { eventCategoryLabel } from '@/lib/pickLocalizedField';
 import { rowMatchesSearch } from '@/lib/listQuery';
+import { LocalizedGeoSelect } from '@/components/geo/LocalizedGeoSelect';
+import { geoSearchTokens, localizedGeoLabel } from '@/lib/localizedGeoName';
 import type { AdminEventRow } from '@/schemas/event.schema';
-import { useGetEventsQuery } from '@/services/adminApi';
+import { useGetEventCitiesQuery, useGetEventsQuery } from '@/services/adminApi';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { useMemo, useState } from 'react';
@@ -19,9 +21,11 @@ export function EventsListPage() {
   const { t } = useTranslation(['operations', 'common']);
   const locale = getCurrentLocale();
   const { data, isLoading } = useGetEventsQuery();
+  const { data: eventCities = [] } = useGetEventCitiesQuery();
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState<'all' | AdminEventRow['status']>('all');
   const [category, setCategory] = useState<string>('all');
+  const [cityFilter, setCityFilter] = useState<number | ''>('');
 
   const categories = useMemo(() => {
     const seen = new Map<string, string>();
@@ -37,9 +41,26 @@ export function EventsListPage() {
     return rows.filter((e) => {
       if (status !== 'all' && e.status !== status) return false;
       if (category !== 'all' && e.category !== category) return false;
-      return rowMatchesSearch(search, [e.title, e.organizerName, e.city, e.category, e.venueName, e.id]);
+      if (cityFilter !== '') {
+        const matchesId = e.cityDetail?.id === cityFilter;
+        const selected = eventCities.find((city) => city.id === cityFilter);
+        const matchesLabel =
+          selected &&
+          [localizedGeoLabel(e.cityDetail, locale, e.city), e.city].includes(
+            localizedGeoLabel(selected, locale),
+          );
+        if (!matchesId && !matchesLabel) return false;
+      }
+      return rowMatchesSearch(search, [
+        e.title,
+        e.organizerName,
+        ...geoSearchTokens(e.cityDetail, e.city),
+        e.category,
+        e.venueName,
+        e.id,
+      ]);
     });
-  }, [data, search, status, category]);
+  }, [data, search, status, category, cityFilter, eventCities, locale]);
 
   return (
     <div className="space-y-12">
@@ -75,6 +96,12 @@ export function EventsListPage() {
               </option>
             ))}
           </select>
+          <LocalizedGeoSelect
+            items={eventCities}
+            value={cityFilter}
+            onChange={setCityFilter}
+            placeholder={t('operations:events.allCities')}
+          />
         </ListFiltersBar>
         {isLoading ? <p className="text-sm text-ink-60">{t('common:loading')}</p> : null}
         {!isLoading && filtered.length === 0 ? (

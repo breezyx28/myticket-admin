@@ -1,7 +1,9 @@
 import { ListFiltersBar } from '@/components/admin/ListFiltersBar';
 import { filterSelectClassName } from '@/lib/adminFilters';
 import { Card, CardContent } from '@/components/ui/card';
+import { getCurrentLocale } from '@/i18n';
 import { formatDateTime } from '@/lib/localeFormat';
+import { formatGeoLocationLine, geoSearchTokens } from '@/lib/localizedGeoName';
 import { rowMatchesSearch } from '@/lib/listQuery';
 import { cn } from '@/lib/utils';
 import type { TalentProfile } from '@/schemas/talentApproval.schema';
@@ -54,8 +56,8 @@ export function TalentApprovalsPage() {
         row.stageName,
         row.legalName,
         row.email,
-        row.city,
-        row.country,
+        ...geoSearchTokens(row.cityDetail, row.city),
+        ...geoSearchTokens(row.regionDetail, row.country),
         row.bio,
         row.genres.join(' '),
         row.id,
@@ -66,8 +68,16 @@ export function TalentApprovalsPage() {
   }, [data, search, status, gov, active]);
 
   function locationLabel(row: TalentProfile) {
-    const parts = [row.city, row.country].filter(Boolean);
-    if (parts.length) return parts.join(', ');
+    const formatted = formatGeoLocationLine(
+      {
+        city: row.city,
+        cityDetail: row.cityDetail,
+        country: row.country,
+        regionDetail: row.regionDetail,
+      },
+      getCurrentLocale(),
+    );
+    if (formatted) return formatted;
     return t('talentApprovals.locationNotSet');
   }
 

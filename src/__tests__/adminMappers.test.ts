@@ -475,6 +475,33 @@ describe("mapTalentProfilesFromApi / mapTalentProfileFromApi", () => {
     expect(one.portfolioPdfUrl).toBe("");
   });
 
+  it("mapTalentProfileDetailFromApi maps nested region and city objects with bilingual names", () => {
+    const one = mapTalentProfileDetailFromApi({
+      data: {
+        id: 3,
+        stage_name: "KAT",
+        region: {
+          id: 5,
+          name: "Eastern Province",
+          name_en: "Eastern Province",
+          name_ar: "المنطقة الشرقية",
+        },
+        city: {
+          id: 36,
+          name: "Dammam",
+          name_en: "Dammam",
+          name_ar: "الدمام",
+        },
+      },
+    });
+    expect(one.cityDetail?.nameEn).toBe("Dammam");
+    expect(one.cityDetail?.nameAr).toBe("الدمام");
+    expect(one.regionDetail?.nameEn).toBe("Eastern Province");
+    expect(one.regionDetail?.nameAr).toBe("المنطقة الشرقية");
+    expect(one.city).toBe("Dammam");
+    expect(one.country).toBe("Eastern Province");
+  });
+
   it("mapTalentProfileFromApi clamps rating and defaults invalid status", () => {
     const one = mapTalentProfileFromApi({
       id: "x",
@@ -657,6 +684,27 @@ describe("mapAdminEventsFromApi / mapAdminEventRowFromApi", () => {
     expect(out.organizer?.displayName).toBe("Demo Events Co.");
     expect(out.categoryDetail?.nameEn).toBe("Workshops");
     expect(out.capacity).toBeNull();
+  });
+
+  it("mapAdminEventRowFromApi maps nested city objects with bilingual names", () => {
+    const row = mapAdminEventRowFromApi({
+      id: "e",
+      title: "T",
+      organizer_name: "O",
+      status: "published",
+      starts_at: "2026-01-02T00:00:00Z",
+      ends_at: "2026-01-02T01:00:00Z",
+      tickets_sold: 0,
+      capacity: 100,
+      city: {
+        id: 1,
+        name: "Riyadh",
+        name_en: "Riyadh",
+        name_ar: "الرياض",
+      },
+    });
+    expect(row.city).toBe("Riyadh");
+    expect(row.cityDetail?.nameAr).toBe("الرياض");
   });
 
   it("mapAdminEventRowFromApi clamps rating and success rate", () => {

@@ -16,6 +16,7 @@ import {
   MOCK_PLATFORM_COUNTERS,
   MOCK_ADMIN_HEALTH,
   MOCK_ADMIN_VERSION,
+  MOCK_SAUDI_REGIONS,
 } from '@/mock/fixtures';
 import {
   categoriesState,
@@ -98,6 +99,7 @@ import {
   type TourismAdsListResult,
   type UpdateTourismAdInput,
 } from '@/schemas/tourismAd.schema';
+import type { SaudiCity, SaudiRegion } from '@/schemas/localizedGeo.schema';
 import { cancelEventSchema } from '@/schemas/event.schema';
 import {
   badgeCategoriesListResultSchema,
@@ -159,6 +161,8 @@ import {
   mapAdminAuctionDetailFromApi,
   mapTourismAdFromApi,
   mapTourismAdsListFromApi,
+  mapSaudiCitiesFromApi,
+  mapSaudiRegionsFromApi,
   mapAdminUploadFromApi,
   mapAdminProfileImageUploadFromApi,
 } from '@/schemas/api/adminMappers';
@@ -245,7 +249,10 @@ type LiveReadName =
   | 'getAdminActions'
   | 'getAuditLogs'
   | 'getAdminHealth'
-  | 'getAdminVersion';
+  | 'getAdminVersion'
+  | 'getSaudiRegions'
+  | 'getSaudiCities'
+  | 'getEventCities';
 
 /** Wire confirmed GET paths here; `null` keeps mock + one-time console warning in API read mode. */
 const LIVE_GET: Record<LiveReadName, string | null> = {
@@ -295,6 +302,9 @@ const LIVE_GET: Record<LiveReadName, string | null> = {
   getAuditLogs: '/api/v1/admin/audit-logs',
   getAdminHealth: '/api/v1/admin/health',
   getAdminVersion: '/api/v1/admin/version',
+  getSaudiRegions: '/api/v1/reference/saudi-regions',
+  getSaudiCities: '/api/v1/reference/saudi-cities',
+  getEventCities: '/api/v1/main/events/cities',
 };
 
 type LiveReadOptions<T> = {
@@ -594,6 +604,7 @@ export const adminApi = createApi({
     'AdminHealth',
     'AdminVersion',
     'OrganizerKyc',
+    'ReferenceGeo',
   ],
   endpoints: (builder) => ({
     getDashboardSummary: builder.query<typeof MOCK_DASHBOARD_SUMMARY, void>({
@@ -2394,6 +2405,48 @@ export const adminApi = createApi({
         }
       },
     }),
+    getSaudiRegions: builder.query<SaudiRegion[], void>({
+      providesTags: ['ReferenceGeo'],
+      async queryFn(_arg, api, extraOptions) {
+        const mockMapped = mapSaudiRegionsFromApi(MOCK_SAUDI_REGIONS);
+        return tryLiveRead(api, extraOptions, 'getSaudiRegions', 40, mockMapped, {
+          map: mapSaudiRegionsFromApi,
+        });
+      },
+    }),
+    getSaudiCities: builder.query<SaudiCity[], { regionId?: number } | void>({
+      providesTags: ['ReferenceGeo'],
+      async queryFn(arg, api, extraOptions) {
+        const regionId =
+          typeof arg === 'object' && arg !== null && 'regionId' in arg ? arg.regionId : undefined;
+        const mockCities = mapSaudiRegionsFromApi(MOCK_SAUDI_REGIONS).flatMap((region) =>
+          region.cities ?? [],
+        );
+        const mockMapped = regionId
+          ? mockCities.filter((city) => {
+              const parent = mapSaudiRegionsFromApi(MOCK_SAUDI_REGIONS).find((region) =>
+                region.cities?.some((item) => item.id === city.id),
+              );
+              return parent?.id === regionId;
+            })
+          : mockCities;
+        return tryLiveRead(api, extraOptions, 'getSaudiCities', 40, mockMapped, {
+          params: regionId ? { region_id: regionId } : undefined,
+          map: mapSaudiCitiesFromApi,
+        });
+      },
+    }),
+    getEventCities: builder.query<SaudiCity[], void>({
+      providesTags: ['ReferenceGeo'],
+      async queryFn(_arg, api, extraOptions) {
+        const mockMapped = mapSaudiRegionsFromApi(MOCK_SAUDI_REGIONS).flatMap(
+          (region) => region.cities ?? [],
+        );
+        return tryLiveRead(api, extraOptions, 'getEventCities', 40, mockMapped, {
+          map: mapSaudiCitiesFromApi,
+        });
+      },
+    }),
     upsertCategory: builder.mutation<{ ok: true }, { id?: string; body: EventCategoryUpsertForm }>({
       invalidatesTags: ['Categories'],
       async queryFn({ id, body }, api, extraOptions) {
@@ -3459,6 +3512,9 @@ export const {
   useGetCategoriesQuery,
   useGetTalentCategoriesQuery,
   useGetVendorServiceCategoriesQuery,
+  useGetSaudiRegionsQuery,
+  useGetSaudiCitiesQuery,
+  useGetEventCitiesQuery,
   useUpsertCategoryMutation,
   useUpsertTalentCategoryMutation,
   useUpsertVendorServiceCategoryMutation,

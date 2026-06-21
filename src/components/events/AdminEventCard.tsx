@@ -1,6 +1,7 @@
 import { formatSarCompact } from '@/lib/formatSar';
 import { formatDateTime, formatNumber } from '@/lib/localeFormat';
 import { getCurrentLocale } from '@/i18n';
+import { localizedGeoLabel } from '@/lib/localizedGeoName';
 import { eventCategoryLabel } from '@/lib/pickLocalizedField';
 import { cn } from '@/lib/utils';
 import type { AdminEventRow } from '@/schemas/event.schema';
@@ -106,7 +107,7 @@ export function AdminEventCard({
             </span>
             <span className="inline-flex items-center gap-1">
               <MapPin size={13} strokeWidth={2} className="text-coral" />
-              {event.venueName}, {event.city}
+              {event.venueName}, {localizedGeoLabel(event.cityDetail, locale, event.city)}
             </span>
           </p>
         </div>

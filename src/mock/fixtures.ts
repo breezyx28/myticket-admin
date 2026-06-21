@@ -1242,3 +1242,30 @@ export const MOCK_TOURISM_ADS = tourismAdsListSchema.parse([
     updatedAt: '2026-06-02T12:00:00+00:00',
   },
 ]);
+
+export const MOCK_SAUDI_REGIONS = [
+  {
+    id: 1,
+    code: 'riyadh',
+    name: 'Riyadh',
+    name_en: 'Riyadh',
+    name_ar: 'الرياض',
+    cities: [{ id: 1, name: 'Riyadh', name_en: 'Riyadh', name_ar: 'الرياض' }],
+  },
+  {
+    id: 2,
+    code: 'makkah',
+    name: 'Makkah',
+    name_en: 'Makkah',
+    name_ar: 'مكة المكرمة',
+    cities: [{ id: 2, name: 'Jeddah', name_en: 'Jeddah', name_ar: 'جدة' }],
+  },
+  {
+    id: 3,
+    code: 'eastern',
+    name: 'Eastern Province',
+    name_en: 'Eastern Province',
+    name_ar: 'المنطقة الشرقية',
+    cities: [{ id: 3, name: 'Dammam', name_en: 'Dammam', name_ar: 'الدمام' }],
+  },
+] as const;

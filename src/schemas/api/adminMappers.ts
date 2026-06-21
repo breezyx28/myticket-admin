@@ -1,5 +1,6 @@
 import { placeholderAssetUrl } from "@/config/env";
 import { tFallback, tMapperListError } from "@/lib/i18nMessage";
+import { mapLocalizedGeoNameFromApi } from "@/lib/localizedGeoName";
 import {
   adminProfileImageUploadSchema,
   type AdminProfileImageUploadResult,
@@ -56,6 +57,15 @@ import {
   adminProfileDirectoryRowSchema,
   type AdminProfileDirectoryRow,
 } from "@/schemas/adminProfileDirectory.schema";
+import {
+  saudiCitiesListSchema,
+  saudiCitySchema,
+  saudiRegionSchema,
+  saudiRegionsListSchema,
+  type LocalizedGeoName,
+  type SaudiCity,
+  type SaudiRegion,
+} from "@/schemas/localizedGeo.schema";
 import {
   talentProfileSchema,
   talentProfilesListSchema,
@@ -715,17 +725,128 @@ function parseTalentGallery(o: Record<string, unknown>) {
     .sort((a, b) => a.position - b.position);
 }
 
+function pickGeoRaw(
+  o: Record<string, unknown>,
+  application: Record<string, unknown>,
+  objectKeys: string[],
+  stringKeys: string[],
+): unknown {
+  for (const key of objectKeys) {
+    const fromRow = o[key];
+    if (fromRow !== undefined && fromRow !== null) return fromRow;
+    const fromApp = application[key];
+    if (fromApp !== undefined && fromApp !== null) return fromApp;
+  }
+  for (const key of stringKeys) {
+    const value = pickStr(o, key) ?? pickStr(application, key);
+    if (value) return value;
+  }
+  return undefined;
+}
+
 function formatTalentLocation(
-  city: string,
-  country: string,
+  o: Record<string, unknown>,
+  application: Record<string, unknown>,
   regionId?: number,
   cityId?: number,
-): { city: string; country: string } {
-  let nextCity = city.trim();
-  let nextCountry = country.trim();
-  if (!nextCity && cityId !== undefined) nextCity = `City #${cityId}`;
-  if (!nextCountry && regionId !== undefined) nextCountry = `Region #${regionId}`;
-  return { city: nextCity, country: nextCountry };
+): {
+  city: string;
+  country: string;
+  cityDetail?: LocalizedGeoName;
+  regionDetail?: LocalizedGeoName;
+} {
+  const cityRaw = pickGeoRaw(o, application, ["city", "saudi_city", "saudiCity"], ["city"]);
+  const regionRaw = pickGeoRaw(
+    o,
+    application,
+    ["region", "saudi_region", "saudiRegion"],
+    ["country", "region_name", "regionName"],
+  );
+
+  const cityDetail = mapLocalizedGeoNameFromApi(cityRaw);
+  const regionDetail = mapLocalizedGeoNameFromApi(regionRaw);
+
+  let city = cityDetail?.nameEn ?? "";
+  let country = regionDetail?.nameEn ?? "";
+
+  if (!city && typeof cityRaw === "string") city = cityRaw.trim();
+  if (!country && typeof regionRaw === "string") country = regionRaw.trim();
+
+  if (!city && cityId !== undefined) city = `City #${cityId}`;
+  if (!country && regionId !== undefined) country = `Region #${regionId}`;
+
+  return {
+    city,
+    country,
+    ...(cityDetail ? { cityDetail } : {}),
+    ...(regionDetail ? { regionDetail } : {}),
+  };
+}
+
+function mapEventCityFromApi(o: Record<string, unknown>): {
+  city: string;
+  cityDetail?: LocalizedGeoName;
+} {
+  const raw = o.city ?? o.venue_city ?? o.venueCity;
+  const cityDetail = mapLocalizedGeoNameFromApi(raw);
+  const city =
+    cityDetail?.nameEn ??
+    (typeof raw === "string" ? raw.trim() : pickStr(o, "city", "venue_city") ?? "");
+  return {
+    city,
+    ...(cityDetail ? { cityDetail } : {}),
+  };
+}
+
+export function mapSaudiCityFromApi(raw: unknown): SaudiCity {
+  const detail = mapLocalizedGeoNameFromApi(raw);
+  if (!detail) {
+    return saudiCitySchema.parse({ nameEn: "", nameAr: "" });
+  }
+  return saudiCitySchema.parse(detail);
+}
+
+export function mapSaudiCitiesFromApi(raw: unknown): SaudiCity[] {
+  const inner = unwrapApiJson(raw);
+  const rows = Array.isArray(inner)
+    ? inner
+    : isRecord(inner) && Array.isArray(inner.data)
+      ? inner.data
+      : isRecord(inner) && Array.isArray(inner.cities)
+        ? inner.cities
+        : null;
+  if (!rows) throwExpectedList("saudiCities", raw);
+  return saudiCitiesListSchema.parse(rows.map(mapSaudiCityFromApi));
+}
+
+export function mapSaudiRegionFromApi(raw: unknown): SaudiRegion {
+  const inner = unwrapApiJson(raw);
+  const o = asObject(inner);
+  const base = mapLocalizedGeoNameFromApi(o);
+  if (!base) {
+    return saudiRegionSchema.parse({ nameEn: "", nameAr: "" });
+  }
+  const citiesRaw = o.cities;
+  const cities = Array.isArray(citiesRaw)
+    ? saudiCitiesListSchema.parse(citiesRaw.map(mapSaudiCityFromApi))
+    : undefined;
+  return saudiRegionSchema.parse({
+    ...base,
+    ...(cities?.length ? { cities } : {}),
+  });
+}
+
+export function mapSaudiRegionsFromApi(raw: unknown): SaudiRegion[] {
+  const inner = unwrapApiJson(raw);
+  const rows = Array.isArray(inner)
+    ? inner
+    : isRecord(inner) && Array.isArray(inner.data)
+      ? inner.data
+      : isRecord(inner) && Array.isArray(inner.regions)
+        ? inner.regions
+        : null;
+  if (!rows) throwExpectedList("saudiRegions", raw);
+  return saudiRegionsListSchema.parse(rows.map(mapSaudiRegionFromApi));
 }
 
 /** Unwrap admin talent directory rows: `{ approval_status, role_application_id, profile }`. */
@@ -936,12 +1057,7 @@ export function mapTalentProfileFromApi(raw: unknown): TalentProfile {
   const cityId =
     pickNum(o, "city_id", "cityId") ??
     pickNum(application, "city_id", "cityId");
-  const location = formatTalentLocation(
-    pickStr(o, "city") ?? pickStr(application, "city") ?? "",
-    pickStr(o, "country") ?? pickStr(application, "country") ?? "",
-    regionId,
-    cityId,
-  );
+  const location = formatTalentLocation(o, application, regionId, cityId);
   const contactEmail = pickStr(
     o,
     "contact_email",
@@ -978,6 +1094,8 @@ export function mapTalentProfileFromApi(raw: unknown): TalentProfile {
     ...(contactPhone ? { contactPhone } : {}),
     country: location.country,
     city: location.city,
+    ...(location.cityDetail ? { cityDetail: location.cityDetail } : {}),
+    ...(location.regionDetail ? { regionDetail: location.regionDetail } : {}),
     ...(regionId !== undefined ? { regionId: Math.trunc(regionId) } : {}),
     ...(cityId !== undefined ? { cityId: Math.trunc(cityId) } : {}),
     genres: parseTalentCategoryLabels(o),
@@ -1237,8 +1355,13 @@ export function mapAdminProfileDirectoryRowFromApi(
     "availability_status", // For profiles that have availability
   );
   const slugVal = pickStr(o, "slug");
-  const city = pickStr(o, "city");
-  const country = pickStr(o, "country", "country_code");
+  const cityRaw = o.city;
+  const regionRaw = o.region ?? o.saudi_region ?? o.saudiRegion;
+  const cityDetail = mapLocalizedGeoNameFromApi(cityRaw);
+  const regionDetail = mapLocalizedGeoNameFromApi(regionRaw);
+  const city = cityDetail?.nameEn ?? pickStr(o, "city") ?? "";
+  const country =
+    regionDetail?.nameEn ?? pickStr(o, "country", "country_code") ?? "";
   const updatedAt = pickStr(o, "updatedAt", "updated_at", "modified_at");
   const bio = pickStr(o, "bio", "description", "about");
   const profileImageUrl = pickStr(
@@ -1290,7 +1413,9 @@ export function mapAdminProfileDirectoryRowFromApi(
     ...(linkedUserId ? { linkedUserId } : {}),
     ...(slugVal ? { slug: slugVal } : {}),
     ...(city ? { city } : {}),
+    ...(cityDetail ? { cityDetail } : {}),
     ...(country ? { country } : {}),
+    ...(regionDetail ? { regionDetail } : {}),
     ...(status ? { status } : {}),
     ...(updatedAt ? { updatedAt } : {}),
     ...(bio ? { bio } : {}),
@@ -1525,6 +1650,7 @@ export function mapAdminEventRowFromApi(raw: unknown): AdminEventRow {
   const featured =
     pickBool(o, "featured", "is_featured", "isFeatured", "on_homepage") ??
     false;
+  const cityFields = mapEventCityFromApi(o);
   const candidate = {
     id: idStr,
     title: pickStr(o, "title", "name") ?? "",
@@ -1553,7 +1679,8 @@ export function mapAdminEventRowFromApi(raw: unknown): AdminEventRow {
     successRatePercent,
     category,
     venueName: pickStr(o, "venueName", "venue_name", "venue") ?? "",
-    city: pickStr(o, "city", "venue_city") ?? "",
+    city: cityFields.city,
+    ...(cityFields.cityDetail ? { cityDetail: cityFields.cityDetail } : {}),
     coverImageUrl: cover,
     featured,
     ...(categoryFromNested ? { categoryDetail: categoryFromNested } : {}),
@@ -1617,6 +1744,7 @@ export function mapAdminEventDetailFromApi(raw: unknown): AdminEventDetail {
   const categoryNested = o.category;
   const organizerFromNested = mapEventOrganizerFromApi(organizerNested);
   const categoryFromNested = mapEventCategorySummaryFromApi(categoryNested);
+  const cityFields = mapEventCityFromApi(o);
 
   const candidate = {
     ...row,
@@ -1655,7 +1783,8 @@ export function mapAdminEventDetailFromApi(raw: unknown): AdminEventDetail {
     updatedAt: pickStr(o, "updated_at", "updatedAt") ?? undefined,
     venueName: pickStr(o, "venue_name", "venueName", "venue") ?? row.venueName,
     venueAddress: pickStr(o, "venue_address", "venueAddress") ?? undefined,
-    city: pickStr(o, "city", "venue_city") ?? row.city,
+    city: cityFields.city,
+    ...(cityFields.cityDetail ? { cityDetail: cityFields.cityDetail } : {}),
     videoUrl: pickStr(o, "video_url", "videoUrl") ?? undefined,
     priceMin: pickNum(o, "price_min", "priceMin") ?? null,
     priceMax: pickNum(o, "price_max", "priceMax") ?? null,

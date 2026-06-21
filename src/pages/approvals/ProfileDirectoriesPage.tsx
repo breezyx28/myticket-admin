@@ -1,9 +1,12 @@
 import { ListFiltersBar } from '@/components/admin/ListFiltersBar';
 import { Card, CardContent } from '@/components/ui/card';
 import { filterSelectClassName } from '@/lib/adminFilters';
+import { getCurrentLocale } from '@/i18n';
 import { formatDateTime } from '@/lib/localeFormat';
+import { formatGeoLocationLine, geoSearchTokens } from '@/lib/localizedGeoName';
 import { rowMatchesSearch } from '@/lib/listQuery';
 import { cn } from '@/lib/utils';
+import type { AdminProfileDirectoryRow } from '@/schemas/adminProfileDirectory.schema';
 import {
   useGetOrganizerProfilesQuery,
   useGetVendorProfilesQuery,
@@ -37,8 +40,24 @@ function statusTone(s: string | undefined) {
   return 'text-ink-60 font-extrabold';
 }
 
+function directoryLocationLabel(
+  row: AdminProfileDirectoryRow,
+  locale: ReturnType<typeof getCurrentLocale>,
+) {
+  return formatGeoLocationLine(
+    {
+      city: row.city,
+      cityDetail: row.cityDetail,
+      country: row.country,
+      regionDetail: row.regionDetail,
+    },
+    locale,
+  );
+}
+
 function ProfileDirectoryBody({ kind }: { kind: Kind }) {
   const { t } = useTranslation(['approvals', 'common']);
+  const locale = getCurrentLocale();
   const vendorQ = useGetVendorProfilesQuery(undefined, {
     skip: kind !== 'vendor',
   });
@@ -67,8 +86,8 @@ function ProfileDirectoryBody({ kind }: { kind: Kind }) {
         row.email ?? '',
         row.linkedUserId ?? '',
         row.slug ?? '',
-        row.city ?? '',
-        row.country ?? '',
+        ...geoSearchTokens(row.cityDetail, row.city ?? ''),
+        ...geoSearchTokens(row.regionDetail, row.country ?? ''),
         row.status ?? '',
         row.bio ?? '',
         row.coverageArea ?? '',
@@ -176,8 +195,7 @@ function ProfileDirectoryBody({ kind }: { kind: Kind }) {
                     <div className="flex flex-wrap gap-3 text-[12px] font-semibold text-ink-60">
                       <span className="inline-flex items-center gap-1">
                         <MapPin size={14} className="text-coral" />
-                        {[row.city, row.country].filter(Boolean).join(', ') ||
-                          t('common:none')}
+                        {directoryLocationLabel(row, locale) || t('common:none')}
                       </span>
                       {row.updatedAt ? (
                         <span className="inline-flex items-center gap-1">

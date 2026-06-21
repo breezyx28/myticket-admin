@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { localizedGeoNameSchema } from './localizedGeo.schema';
 
 /** Shared row shape for `GET …/admin/profiles/vendors` and `…/organizers` list payloads. */
 export const adminProfileDirectoryRowSchema = z.object({
@@ -9,7 +10,9 @@ export const adminProfileDirectoryRowSchema = z.object({
   linkedUserId: z.string().optional(),
   slug: z.string().optional(),
   city: z.string().optional(),
+  cityDetail: localizedGeoNameSchema.optional(),
   country: z.string().optional(),
+  regionDetail: localizedGeoNameSchema.optional(),
   status: z.string().optional(),
   updatedAt: z.string().optional(),
   bio: z.string().optional(),

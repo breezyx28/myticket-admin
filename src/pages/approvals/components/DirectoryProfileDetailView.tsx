@@ -1,5 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatDateTime } from '@/lib/localeFormat';
+import { formatGeoLocationLine } from '@/lib/localizedGeoName';
+import { getCurrentLocale } from '@/i18n';
 import { cn } from '@/lib/utils';
 import type { AdminProfileDirectoryRow } from '@/schemas/adminProfileDirectory.schema';
 import { Link } from 'react-router-dom';
@@ -50,9 +52,18 @@ export function DirectoryProfileDetailView({
   row: AdminProfileDirectoryRow;
 }) {
   const { t } = useTranslation(['approvals', 'common']);
+  const locale = getCurrentLocale();
   const heroFallback = kind === 'vendor' ? HERO_VENDOR : HERO_ORGANIZER;
   const hero = row.profileImageUrl ?? heroFallback;
-  const locationLine = [row.city, row.country].filter(Boolean).join(', ');
+  const locationLine = formatGeoLocationLine(
+    {
+      city: row.city,
+      cityDetail: row.cityDetail,
+      country: row.country,
+      regionDetail: row.regionDetail,
+    },
+    locale,
+  );
   const backPath = kind === 'vendor' ? '/approvals/vendors' : '/approvals/organizers';
 
   const chips: { key: string; label: string }[] = [];

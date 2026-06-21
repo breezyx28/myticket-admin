@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { localizedGeoNameSchema } from './localizedGeo.schema';
 import { reviewStatusSchema } from './shared';
 
 export const governmentIdStatusSchema = z.enum(['pending', 'verified', 'rejected']);
@@ -44,6 +45,8 @@ export const talentProfileSchema = z.object({
   contactPhone: z.string().optional(),
   country: z.string(),
   city: z.string(),
+  cityDetail: localizedGeoNameSchema.optional(),
+  regionDetail: localizedGeoNameSchema.optional(),
   regionId: z.number().int().positive().optional(),
   cityId: z.number().int().positive().optional(),
   genres: z.array(z.string()),

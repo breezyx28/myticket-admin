@@ -6,6 +6,7 @@ import { getApiBaseUrl } from '@/config/env';
 import { getCurrentLocale } from '@/i18n';
 import { formatSarCompact } from '@/lib/formatSar';
 import { formatDateTime, formatNumber } from '@/lib/localeFormat';
+import { localizedGeoLabel } from '@/lib/localizedGeoName';
 import { notifyError, notifySuccess } from '@/lib/notify';
 import { pickLocalizedField, eventCategoryLabel } from '@/lib/pickLocalizedField';
 import { cn } from '@/lib/utils';
@@ -89,6 +90,7 @@ function toCardRow(e: AdminEventDetail): AdminEventRow {
     coverImageUrl: e.coverImageUrl,
     featured: e.featured,
     ...(e.categoryDetail ? { categoryDetail: e.categoryDetail } : {}),
+    ...(e.cityDetail ? { cityDetail: e.cityDetail } : {}),
   };
 }
 
@@ -339,7 +341,11 @@ export function EventDetailPage() {
                   }
                 />
                 <DetailField label={t('operations:events.detail.ends')} value={formatWhen(e.endsAt, locale, e.timezone)} />
-                <DetailField label={t('operations:events.detail.city')} value={e.city || t('common:none')} className="sm:col-span-2" />
+                <DetailField
+                  label={t('operations:events.detail.city')}
+                  value={localizedGeoLabel(e.cityDetail, locale, e.city || t('common:none'))}
+                  className="sm:col-span-2"
+                />
                 <DetailField
                   label={t('operations:events.detail.venue')}
                   value={e.venueName || t('operations:events.detail.venueNotSpecified')}

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { localizedGeoNameSchema } from './localizedGeo.schema';
 
 export const eventLifecycleSchema = z.enum(['active', 'ended', 'cancelled', 'archived']);
 
@@ -27,6 +28,7 @@ export const adminEventRowSchema = z.object({
   category: z.string(),
   venueName: z.string(),
   city: z.string(),
+  cityDetail: localizedGeoNameSchema.optional(),
   /** API may return relative paths; avoid strict `.url()` for live reads. */
   coverImageUrl: z.string().min(1),
   /** Homepage / manual featuring (admin `POST …/feature` | `…/unfeature`). */
