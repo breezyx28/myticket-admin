@@ -136,9 +136,15 @@ export function EventDetailPage() {
 
   const e = q.data;
   const fill = fillPercent(e.ticketsSold, e.capacity);
-  const canApprove = e.apiStatus === 'pending_approval' || e.apiStatus === 'draft';
-  const canReject = e.apiStatus === 'pending_approval' || e.apiStatus === 'draft';
+  const canApprove = e.apiStatus === 'pending_approval';
+  const canReject = e.apiStatus === 'pending_approval';
   const isPublished = e.apiStatus === 'published';
+  const reviewHintKey =
+    e.apiStatus === 'draft'
+      ? 'operations:events.detail.reviewHintDraft'
+      : e.apiStatus === 'pending_approval'
+        ? 'operations:events.detail.reviewHintPending'
+        : 'operations:events.detail.reviewHint';
   const categoryLabel = eventCategoryLabel(
     {
       category: e.category,
@@ -187,7 +193,7 @@ export function EventDetailPage() {
 
         <div className="border-t border-ink-10 bg-surface-tint/50 px-4 py-4 lg:px-6">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-            <p className="text-[13px] font-medium text-ink-60">{t('operations:events.detail.reviewHint')}</p>
+            <p className="text-[13px] font-medium text-ink-60">{t(reviewHintKey)}</p>
             <div className="flex flex-wrap gap-2" role="group" aria-label={t('operations:events.detail.actionsLabel')}>
               <Button
                 type="button"

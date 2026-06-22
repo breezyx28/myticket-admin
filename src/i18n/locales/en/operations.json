@@ -84,6 +84,8 @@
       "backToEvents": "← Back to events",
       "breadcrumb": "← Events catalog",
       "reviewHint": "Review this event and update its status for the storefront.",
+      "reviewHintDraft": "Approve & publish unlocks after the organizer submits this event for review.",
+      "reviewHintPending": "The organizer submitted this event — approve to publish on the storefront.",
       "actionsLabel": "Event actions",
       "approvePublish": "Approve & publish",
       "feature": "Feature",
