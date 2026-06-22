@@ -191,9 +191,11 @@ import {
   adminNotificationDeliveryStatusSchema,
   adminRecentNotificationListSchema,
   adminRecentNotificationRowSchema,
+  adminRecentNotificationsListResultSchema,
   type AdminDeliveryLogRow,
   type AdminNotificationDeliveryStatus,
   type AdminRecentNotificationRow,
+  type AdminRecentNotificationsListResult,
 } from "@/schemas/adminNotifications.schema";
 import {
   adminHealthViewSchema,
@@ -4371,6 +4373,17 @@ export function mapAdminRecentNotificationRowFromApi(
   const read =
     pickBool(o, "read", "is_read", "seen") ??
     (pickStr(o, "read_at", "seen_at") ? true : undefined);
+  const readAt = pickStr(o, "readAt", "read_at", "seen_at");
+  const archivedAt = pickStr(o, "archivedAt", "archived_at");
+  const relatedEntityType = pickStr(o, "relatedEntityType", "related_entity_type");
+  const relatedEntityIdRaw = pickStr(o, "relatedEntityId", "related_entity_id");
+  const relatedEntityIdNum = pickNum(o, "related_entity_id", "relatedEntityId");
+  const relatedEntityId =
+    relatedEntityIdRaw ?? (relatedEntityIdNum !== undefined ? String(relatedEntityIdNum) : undefined);
+  const payload = isRecord(o.data) ? o.data : undefined;
+  const eventCode = payload
+    ? (pickStr(payload, "event_code", "eventCode") ?? pickStr(o, "event_code", "eventCode"))
+    : pickStr(o, "event_code", "eventCode");
   const createdAt =
     pickStr(o, "createdAt", "created_at", "sent_at", "timestamp") ??
     new Date().toISOString();
@@ -4384,6 +4397,11 @@ export function mapAdminRecentNotificationRowFromApi(
     ...(channel ? { channel } : {}),
     ...(href ? { href } : {}),
     ...(read !== undefined ? { read } : {}),
+    ...(readAt ? { readAt } : {}),
+    ...(archivedAt ? { archivedAt } : {}),
+    ...(relatedEntityType ? { relatedEntityType } : {}),
+    ...(relatedEntityId ? { relatedEntityId } : {}),
+    ...(eventCode ? { eventCode } : {}),
   };
   return adminRecentNotificationRowSchema.parse(candidate);
 }
@@ -4435,12 +4453,49 @@ export function mapAdminProfileImageUploadFromApi(
   });
 }
 
+function extractRecentNotificationsPaginatorMeta(raw: unknown) {
+  const readMeta = (block: Record<string, unknown>) => ({
+    currentPage: intNonNeg(pickNum(block, "current_page", "currentPage"), 1),
+    perPage: intNonNeg(pickNum(block, "per_page", "perPage"), 30),
+    total: intNonNeg(pickNum(block, "total"), 0),
+  });
+
+  if (isRecord(raw) && isLaravelPaginator(raw)) return readMeta(raw);
+
+  if (isRecord(raw)) {
+    const wrapped = raw.data;
+    if (isRecord(wrapped) && isLaravelPaginator(wrapped)) return readMeta(wrapped);
+  }
+
+  const inner = unwrapApiJson(raw);
+  if (isRecord(inner) && isLaravelPaginator(inner)) return readMeta(inner);
+  if (isRecord(inner)) {
+    const nested = inner.data;
+    if (isRecord(nested) && isLaravelPaginator(nested)) return readMeta(nested);
+  }
+
+  return { currentPage: 1, perPage: 30, total: 0 };
+}
+
 export function mapAdminRecentNotificationsFromApi(
   raw: unknown,
 ): AdminRecentNotificationRow[] {
+  return mapAdminRecentNotificationsListFromApi(raw).items;
+}
+
+export function mapAdminRecentNotificationsListFromApi(
+  raw: unknown,
+): AdminRecentNotificationsListResult {
   const rows = extractRecentNotificationsPayload(raw);
+  const meta = extractRecentNotificationsPaginatorMeta(raw);
   const mapped = rows.map(mapAdminRecentNotificationRowFromApi);
-  return adminRecentNotificationListSchema.parse(mapped);
+  const items = adminRecentNotificationListSchema.parse(mapped);
+  return adminRecentNotificationsListResultSchema.parse({
+    items,
+    currentPage: meta.currentPage,
+    perPage: meta.perPage,
+    total: meta.total > 0 ? meta.total : items.length,
+  });
 }
 
 function extractDeliveryLogsPayload(raw: unknown): unknown[] {

@@ -66,6 +66,11 @@ import { adminAuctionDetailSchema, type AdminAuctionDetail } from '@/schemas/auc
 import { adminProfileUpdateSchema, type AdminProfileUpdate, type AdminProfileImageUploadResult, PROFILE_IMAGE_ACCEPT, PROFILE_IMAGE_MAX_BYTES } from '@/schemas/adminSelf.schema';
 import type { FeeConfiguration, NotificationSettings } from '@/schemas/settings.schema';
 import {
+  adminRecentNotificationsListResultSchema,
+  type AdminRecentNotificationsListParams,
+  type AdminRecentNotificationsListResult,
+} from '@/schemas/adminNotifications.schema';
+import {
   feeConfigurationSchema,
   notificationSettingsSchema,
 } from '@/schemas/settings.schema';
@@ -146,7 +151,7 @@ import {
   mapListingModerationFromApi,
   mapAdminDeliveryLogsFromApi,
   mapAdminHealthFromApi,
-  mapAdminRecentNotificationsFromApi,
+  mapAdminRecentNotificationsListFromApi,
   mapAdminVersionFromApi,
   mapNotificationSettingsFromApi,
   mapAdminProfileDirectoryFromApi,
@@ -312,6 +317,11 @@ type LiveReadOptions<T> = {
   map?: (raw: unknown) => T;
 };
 
+/** RTK Query may pass `void` when a query arg is omitted; normalize before property access. */
+function queryArg<T extends object>(arg: T | void): T | undefined {
+  return arg as T | undefined;
+}
+
 async function tryLiveRead<T>(
   api: BaseQueryApi,
   extraOptions: object,
@@ -397,12 +407,30 @@ function syncComplaintRow(id: string, patch: Partial<(typeof complaintsState)[nu
   if (r) Object.assign(r, patch);
 }
 
+function recentNotificationsQueryParams(
+  filters?: AdminRecentNotificationsListParams | void,
+): Record<string, string | number | boolean | undefined> {
+  const f = queryArg(filters);
+  const params: Record<string, string | number | boolean | undefined> = {};
+  if (f?.page) params.page = f.page;
+  if (f?.perPage) params.per_page = f.perPage;
+  return params;
+}
+
+function filterRecentNotificationsMock(
+  params?: AdminRecentNotificationsListParams,
+): AdminRecentNotificationsListResult {
+  const paged = paginateCategoryMock(recentNotificationsState, params);
+  return adminRecentNotificationsListResultSchema.parse(paged);
+}
+
 function categoryListQueryParams(
   filters?: CategoryListParams | void,
 ): Record<string, string | number | boolean | undefined> {
+  const f = queryArg(filters);
   const params: Record<string, string | number | boolean | undefined> = {};
-  if (filters?.page) params.page = filters.page;
-  if (filters?.perPage) params.per_page = filters.perPage;
+  if (f?.page) params.page = f.page;
+  if (f?.perPage) params.per_page = f.perPage;
   return params;
 }
 
@@ -503,13 +531,14 @@ function filterUsersMock(params?: AdminUsersListParams): AdminUsersListResult {
 function usersListQueryParams(
   filters?: AdminUsersListParams | void,
 ): Record<string, string | number | boolean | undefined> {
+  const f = queryArg(filters);
   const params: Record<string, string | number | boolean | undefined> = {};
-  if (filters?.page) params.page = filters.page;
-  if (filters?.perPage) params.per_page = filters.perPage;
-  if (filters?.role && filters.role !== 'all') params.role = filters.role;
-  if (filters?.suspended === 'yes') params.is_suspended = 1;
-  if (filters?.suspended === 'no') params.is_suspended = 0;
-  if (filters?.search?.trim()) params.search = filters.search.trim();
+  if (f?.page) params.page = f.page;
+  if (f?.perPage) params.per_page = f.perPage;
+  if (f?.role && f.role !== 'all') params.role = f.role;
+  if (f?.suspended === 'yes') params.is_suspended = 1;
+  if (f?.suspended === 'no') params.is_suspended = 0;
+  if (f?.search?.trim()) params.search = f.search.trim();
   return params;
 }
 
@@ -544,11 +573,12 @@ function nextTourismAdMockId() {
 function tourismAdListQueryParams(
   filters?: TourismAdsListParams | void,
 ): Record<string, string | number | boolean | undefined> {
+  const f = queryArg(filters);
   const params: Record<string, string | number | boolean | undefined> = {};
-  if (filters?.status) params.status = filters.status;
-  if (filters?.source) params.source = filters.source;
-  if (filters?.page) params.page = filters.page;
-  if (filters?.perPage) params.per_page = filters.perPage;
+  if (f?.status) params.status = f.status;
+  if (f?.source) params.source = f.source;
+  if (f?.page) params.page = f.page;
+  if (f?.perPage) params.per_page = f.perPage;
   return params;
 }
 
@@ -742,12 +772,13 @@ export const adminApi = createApi({
           ? [...r.map((row) => ({ type: 'TalentProfiles' as const, id: row.id })), 'TalentProfiles']
           : ['TalentProfiles'],
       async queryFn(filters, api, extraOptions) {
+        const f = queryArg(filters);
         const params: Record<string, string | number | boolean | undefined> = {};
-        if (filters?.status) params.status = filters.status;
-        if (filters?.governmentIdStatus) {
-          params.government_id_status = filters.governmentIdStatus;
+        if (f?.status) params.status = f.status;
+        if (f?.governmentIdStatus) {
+          params.government_id_status = f.governmentIdStatus;
         }
-        if (filters?.isActive !== undefined) params.is_active = filters.isActive ? 1 : 0;
+        if (f?.isActive !== undefined) params.is_active = f.isActive ? 1 : 0;
         return tryLiveRead(api, extraOptions, 'getTalentProfiles', 65, talentProfilesState, {
           params: Object.keys(params).length ? params : undefined,
           map: mapTalentProfilesFromApi,
@@ -1400,13 +1431,13 @@ export const adminApi = createApi({
       async queryFn(filters, api, extraOptions) {
         if (shouldUseMockReads()) {
           await delay(55);
-          return { data: filterTourismAdsMock(filters ?? undefined) };
+          return { data: filterTourismAdsMock(queryArg(filters)) };
         }
         const livePath = LIVE_GET.getTourismAds;
         if (!livePath) {
           warnReadFallback('getTourismAds');
           await delay(55);
-          return { data: filterTourismAdsMock(filters ?? undefined) };
+          return { data: filterTourismAdsMock(queryArg(filters)) };
         }
         if (!getAccessToken()) return unauthenticatedReadError();
         const params = tourismAdListQueryParams(filters);
@@ -1998,13 +2029,13 @@ export const adminApi = createApi({
       async queryFn(filters, api, extraOptions) {
         if (shouldUseMockReads()) {
           await delay(55);
-          return { data: filterUsersMock(filters ?? undefined) };
+          return { data: filterUsersMock(queryArg(filters)) };
         }
         const livePath = LIVE_GET.getUsers;
         if (!livePath) {
           warnReadFallback('getUsers');
           await delay(55);
-          return { data: filterUsersMock(filters ?? undefined) };
+          return { data: filterUsersMock(queryArg(filters)) };
         }
         if (!getAccessToken()) return unauthenticatedReadError();
         const params = usersListQueryParams(filters);
@@ -2302,13 +2333,13 @@ export const adminApi = createApi({
       async queryFn(filters, api, extraOptions) {
         if (shouldUseMockReads()) {
           await delay(45);
-          return { data: filterEventCategoriesMock(filters ?? undefined) };
+          return { data: filterEventCategoriesMock(queryArg(filters)) };
         }
         const livePath = LIVE_GET.getCategories;
         if (!livePath) {
           warnReadFallback('getCategories');
           await delay(45);
-          return { data: filterEventCategoriesMock(filters ?? undefined) };
+          return { data: filterEventCategoriesMock(queryArg(filters)) };
         }
         if (!getAccessToken()) return unauthenticatedReadError();
         const params = categoryListQueryParams(filters);
@@ -2340,13 +2371,13 @@ export const adminApi = createApi({
       async queryFn(filters, api, extraOptions) {
         if (shouldUseMockReads()) {
           await delay(45);
-          return { data: filterTalentCategoriesMock(filters ?? undefined) };
+          return { data: filterTalentCategoriesMock(queryArg(filters)) };
         }
         const livePath = LIVE_GET.getTalentCategories;
         if (!livePath) {
           warnReadFallback('getTalentCategories');
           await delay(45);
-          return { data: filterTalentCategoriesMock(filters ?? undefined) };
+          return { data: filterTalentCategoriesMock(queryArg(filters)) };
         }
         if (!getAccessToken()) return unauthenticatedReadError();
         const params = categoryListQueryParams(filters);
@@ -2378,13 +2409,13 @@ export const adminApi = createApi({
       async queryFn(filters, api, extraOptions) {
         if (shouldUseMockReads()) {
           await delay(45);
-          return { data: filterVendorServiceCategoriesMock(filters ?? undefined) };
+          return { data: filterVendorServiceCategoriesMock(queryArg(filters)) };
         }
         const livePath = LIVE_GET.getVendorServiceCategories;
         if (!livePath) {
           warnReadFallback('getVendorServiceCategories');
           await delay(45);
-          return { data: filterVendorServiceCategoriesMock(filters ?? undefined) };
+          return { data: filterVendorServiceCategoriesMock(queryArg(filters)) };
         }
         if (!getAccessToken()) return unauthenticatedReadError();
         const params = categoryListQueryParams(filters);
@@ -2734,12 +2765,39 @@ export const adminApi = createApi({
         return { data: { ok: true } };
       },
     }),
-    getNotificationsRecent: builder.query<typeof recentNotificationsState, void>({
+    getNotificationsRecent: builder.query<
+      AdminRecentNotificationsListResult,
+      AdminRecentNotificationsListParams | void
+    >({
       providesTags: ['NotificationFeed'],
-      async queryFn(_arg, api, extraOptions) {
-        return tryLiveRead(api, extraOptions, 'getNotificationsRecent', 45, recentNotificationsState, {
-          map: mapAdminRecentNotificationsFromApi,
-        });
+      async queryFn(filters, api, extraOptions) {
+        if (shouldUseMockReads()) {
+          await delay(45);
+          return { data: filterRecentNotificationsMock(queryArg(filters)) };
+        }
+        const livePath = LIVE_GET.getNotificationsRecent;
+        if (!livePath) {
+          warnReadFallback('getNotificationsRecent');
+          await delay(45);
+          return { data: filterRecentNotificationsMock(queryArg(filters)) };
+        }
+        if (!getAccessToken()) return unauthenticatedReadError();
+        const params = recentNotificationsQueryParams(filters);
+        const res = await baseQueryWithReauth(
+          {
+            url: livePath,
+            method: 'GET',
+            params: Object.keys(params).length ? params : undefined,
+          },
+          api,
+          extraOptions,
+        );
+        if (res.error) return { error: toFetchError(res.error) };
+        try {
+          return { data: mapAdminRecentNotificationsListFromApi(res.data) };
+        } catch (e) {
+          return mapLiveReadFailure(e);
+        }
       },
     }),
     getNotificationsDeliveryLog: builder.query<typeof deliveryLogsState, void>({

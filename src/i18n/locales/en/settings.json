@@ -104,8 +104,9 @@
     "notifyDocRejected": "Document rejected."
   },
   "notifications": {
-    "title": "Notifications",
-    "subtitle": "Configure active notification channels, review recent messages, inspect delivery logs, and send test notifications.",
+    "title": "Notification settings",
+    "subtitle": "Configure delivery channels, reminder offsets, inspect the delivery log, and send test notifications.",
+    "inboxLink": "View notification inbox",
     "channelsTitle": "Channels",
     "loadingSettings": "Loading settings…",
     "channelEmail": "Email",

@@ -18,12 +18,37 @@ export const adminRecentNotificationRowSchema = z.object({
   channel: z.string().optional(),
   href: z.string().optional(),
   read: z.boolean().optional(),
+  readAt: z.string().optional(),
+  archivedAt: z.string().optional(),
+  relatedEntityType: z.string().optional(),
+  relatedEntityId: z.string().optional(),
+  eventCode: z.string().optional(),
   createdAt: z.string(),
 });
 
 export type AdminRecentNotificationRow = z.infer<typeof adminRecentNotificationRowSchema>;
 
 export const adminRecentNotificationListSchema = z.array(adminRecentNotificationRowSchema);
+
+export const adminRecentNotificationsListResultSchema = z.object({
+  items: adminRecentNotificationListSchema,
+  currentPage: z.number().int().positive(),
+  perPage: z.number().int().positive(),
+  total: z.number().int().nonnegative(),
+});
+
+export type AdminRecentNotificationsListResult = z.infer<
+  typeof adminRecentNotificationsListResultSchema
+>;
+
+export const adminRecentNotificationsListParamsSchema = z.object({
+  page: z.number().int().positive().optional(),
+  perPage: z.number().int().positive().max(50).optional(),
+});
+
+export type AdminRecentNotificationsListParams = z.infer<
+  typeof adminRecentNotificationsListParamsSchema
+>;
 
 export const adminDeliveryLogRowSchema = z.object({
   id: z.string().min(1),

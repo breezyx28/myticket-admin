@@ -20,6 +20,7 @@ import {
   mapAdminVersionFromApi,
   mapAdminDeliveryLogsFromApi,
   mapAdminRecentNotificationsFromApi,
+  mapAdminRecentNotificationsListFromApi,
   mapAdminActionsFromApi,
   mapAdminAuditLogDetailFromApi,
   mapAdminAuditLogsFromApi,
@@ -1773,6 +1774,39 @@ describe("mapAdminRecentNotificationsFromApi", () => {
     });
     expect(out[0]?.kind).toBe("tourism_ad_submitted");
     expect(out[0]?.channel).toBe("in_app");
+  });
+
+  it("maps paginated list with related entity and event code", () => {
+    const out = mapAdminRecentNotificationsListFromApi({
+      current_page: 2,
+      per_page: 10,
+      total: 21,
+      data: [
+        {
+          id: 21,
+          kind: "general",
+          title: "Event approved",
+          body: '"Test Event" has been approved.',
+          href: "/events/1",
+          related_entity_type: "event",
+          related_entity_id: 1,
+          data: { event_code: "EVT-00000001" },
+          is_read: false,
+          created_at: "2026-06-21T19:21:21.000000Z",
+        },
+      ],
+    });
+    expect(out.currentPage).toBe(2);
+    expect(out.perPage).toBe(10);
+    expect(out.total).toBe(21);
+    expect(out.items[0]).toMatchObject({
+      id: "21",
+      kind: "general",
+      relatedEntityType: "event",
+      relatedEntityId: "1",
+      eventCode: "EVT-00000001",
+      read: false,
+    });
   });
 });
 

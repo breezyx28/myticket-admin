@@ -75,7 +75,21 @@ export const readHandlers = [
   http.get(`${ADMIN_API}/featured-events/config`, () => data(MOCK_FEATURED_CONFIG)),
   http.get(`${ADMIN_API}/finance/fee-configurations`, () => data(MOCK_FEE_CONFIG)),
   http.get(`${ADMIN_API}/notification-settings`, () => data(MOCK_NOTIFICATION_SETTINGS)),
-  http.get(`${ADMIN_API}/notifications/recent`, () => data(MOCK_ADMIN_RECENT_NOTIFICATIONS)),
+  http.get(`${ADMIN_API}/notifications/recent`, ({ request }) => {
+    const url = new URL(request.url);
+    const page = Math.max(1, Number(url.searchParams.get('page') ?? 1));
+    const perPage = Math.max(1, Number(url.searchParams.get('per_page') ?? 30));
+    const total = MOCK_ADMIN_RECENT_NOTIFICATIONS.length;
+    const start = (page - 1) * perPage;
+    const rows = MOCK_ADMIN_RECENT_NOTIFICATIONS.slice(start, start + perPage);
+    return data({
+      current_page: page,
+      data: rows,
+      per_page: perPage,
+      total,
+      last_page: Math.max(1, Math.ceil(total / perPage)),
+    });
+  }),
   http.get(`${ADMIN_API}/analytics/financial`, () => data(MOCK_FINANCIAL_ANALYTICS)),
   http.get(`${ADMIN_API}/analytics/leaderboards`, () => data(MOCK_LEADERBOARDS)),
   http.get(`${ADMIN_API}/moderation-queue`, () => data(MOCK_LISTING_MODERATION)),

@@ -32,6 +32,7 @@ import { FeaturedEventsPage } from "@/pages/events/FeaturedEventsPage";
 import { AdminProfilePage } from "@/pages/profile/AdminProfilePage";
 import { FeesPage } from "@/pages/settings/FeesPage";
 import { NotificationsPage } from "@/pages/settings/NotificationsPage";
+import { RecentNotificationsPage } from "@/pages/notifications/RecentNotificationsPage";
 import { SystemStatusPage } from "@/pages/settings/SystemStatusPage";
 import { PayoutsPage } from "@/pages/settings/PayoutsPage";
 import { FinanceCompliancePage } from "@/pages/settings/FinanceCompliancePage";
@@ -112,6 +113,7 @@ export function App() {
               path="settings/finance-compliance"
               element={<FinanceCompliancePage />}
             />
+            <Route path="notifications" element={<RecentNotificationsPage />} />
             <Route
               path="settings/notifications"
               element={<NotificationsPage />}

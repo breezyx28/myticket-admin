@@ -1,0 +1,36 @@
+{
+  "eyebrow": "المنصة",
+  "title": "الإشعارات",
+  "subtitle": "تنبيهات التطبيق والتحديثات التشغيلية الأخيرة. اختر صفًا لفتح السجل المرتبط.",
+  "settingsLink": "إعدادات الإشعارات",
+  "stats": {
+    "unread": "{{count}} غير مقروء",
+    "total": "{{count}} إجمالي"
+  },
+  "searchPlaceholder": "بحث في العنوان، النص، النوع، المرجع…",
+  "filters": {
+    "readAll": "الكل",
+    "readUnread": "غير المقروء فقط",
+    "readRead": "المقروء فقط"
+  },
+  "empty": "لا توجد إشعارات بعد.",
+  "emptyFiltered": "لا توجد إشعارات تطابق عوامل التصفية.",
+  "loadError": "تعذّر تحميل الإشعارات.",
+  "columns": {
+    "notification": "الإشعار",
+    "kind": "النوع",
+    "related": "مرتبط بـ",
+    "time": "تاريخ الاستلام",
+    "status": "الحالة"
+  },
+  "status": {
+    "unread": "غير مقروء",
+    "read": "مقروء"
+  },
+  "open": "فتح",
+  "pagination": {
+    "showing": "عرض {{count}} من {{total}} · صفحة {{page}} من {{totalPages}}",
+    "previous": "السابق",
+    "next": "التالي"
+  }
+}

@@ -8,6 +8,7 @@ import enNav from './locales/en/nav.json';
 import enOperations from './locales/en/operations.json';
 import enProfile from './locales/en/profile.json';
 import enSettings from './locales/en/settings.json';
+import enNotifications from './locales/en/notifications.json';
 import enSupport from './locales/en/support.json';
 import enTrust from './locales/en/trust.json';
 import enValidation from './locales/en/validation.json';
@@ -21,6 +22,7 @@ import arNav from './locales/ar/nav.json';
 import arOperations from './locales/ar/operations.json';
 import arProfile from './locales/ar/profile.json';
 import arSettings from './locales/ar/settings.json';
+import arNotifications from './locales/ar/notifications.json';
 import arSupport from './locales/ar/support.json';
 import arTrust from './locales/ar/trust.json';
 import arValidation from './locales/ar/validation.json';
@@ -36,6 +38,7 @@ export const resources = {
     approvals: enApprovals,
     operations: enOperations,
     settings: enSettings,
+    notifications: enNotifications,
     insights: enInsights,
     trust: enTrust,
     support: enSupport,
@@ -51,6 +54,7 @@ export const resources = {
     approvals: arApprovals,
     operations: arOperations,
     settings: arSettings,
+    notifications: arNotifications,
     insights: arInsights,
     trust: arTrust,
     support: arSupport,

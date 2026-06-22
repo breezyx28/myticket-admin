@@ -167,7 +167,7 @@ function NotificationsPanel({
 
       <div className="border-t border-ink-10 bg-ink-5/40 px-4 py-2.5">
         <Link
-          to="/settings/notifications"
+          to="/notifications"
           onClick={onClose}
           className="block text-center text-[12px] font-semibold text-ink-60 transition-colors hover:text-ink"
         >
@@ -191,9 +191,11 @@ export function AdminNotificationsDropdown({ className }: AdminNotificationsDrop
   const [panelPos, setPanelPos] = useState<PanelPos | null>(null);
   const btnId = useId();
 
-  const { data, isLoading, isError, refetch, isFetching } = useGetNotificationsRecentQuery();
+  const { data, isLoading, isError, refetch, isFetching } = useGetNotificationsRecentQuery({
+    perPage: DROPDOWN_LIMIT,
+  });
 
-  const adminRows = useMemo(() => filterAdminOperationalNotifications(data ?? []), [data]);
+  const adminRows = useMemo(() => filterAdminOperationalNotifications(data?.items ?? []), [data?.items]);
   const items = useMemo(() => adminRows.slice(0, DROPDOWN_LIMIT), [adminRows]);
   const unreadCount = useMemo(
     () => adminRows.filter((row) => row.read === false).length,

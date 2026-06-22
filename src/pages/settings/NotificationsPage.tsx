@@ -2,21 +2,21 @@ import { ListFiltersBar } from '@/components/admin/ListFiltersBar';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { getCurrentLocale } from '@/i18n';
-import { filterAdminOperationalNotifications } from '@/lib/adminNotificationKinds';
 import { formatDateTime } from '@/lib/localeFormat';
-import { rowMatchesSearch } from '@/lib/listQuery';
 import { notifyError, notifySuccess } from '@/lib/notify';
+import { rowMatchesSearch } from '@/lib/listQuery';
 import { notificationSettingsSchema, type NotificationSettings } from '@/schemas/settings.schema';
 import {
   useGetNotificationSettingsQuery,
   useGetNotificationsDeliveryLogQuery,
-  useGetNotificationsRecentQuery,
   useSendTestNotificationMutation,
   useUpdateNotificationSettingsMutation,
 } from '@/services/adminApi';
 import { i18nZodResolver } from '@/lib/i18nZodResolver';
+import { Bell } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
+import { Link } from 'react-router-dom';
 import { Trans, useTranslation } from 'react-i18next';
 
 const monoArea =
@@ -26,14 +26,12 @@ export function NotificationsPage() {
   const { t } = useTranslation(['settings', 'common', 'nav']);
   const locale = getCurrentLocale();
   const q = useGetNotificationSettingsQuery();
-  const recentQ = useGetNotificationsRecentQuery();
   const deliveryQ = useGetNotificationsDeliveryLogQuery();
   const [save, saveState] = useUpdateNotificationSettingsMutation();
   const [sendTest, sendTestState] = useSendTestNotificationMutation();
   const form = useForm<NotificationSettings>({
     resolver: i18nZodResolver(notificationSettingsSchema),
   });
-  const [searchRecent, setSearchRecent] = useState('');
   const [searchDelivery, setSearchDelivery] = useState('');
   const [testJson, setTestJson] = useState('{}');
 
@@ -42,19 +40,6 @@ export function NotificationsPage() {
   }, [q.data, form]);
 
   const channels = useWatch({ control: form.control, name: 'channels' });
-
-  const filteredRecent = useMemo(() => {
-    return filterAdminOperationalNotifications(recentQ.data ?? []).filter((row) =>
-      rowMatchesSearch(searchRecent, [
-        row.id,
-        row.title,
-        row.body,
-        row.kind,
-        row.channel,
-        String(row.read ?? ''),
-      ]),
-    );
-  }, [recentQ.data, searchRecent]);
 
   const filteredDelivery = useMemo(() => {
     return (deliveryQ.data ?? []).filter((row) =>
@@ -65,28 +50,39 @@ export function NotificationsPage() {
         row.recipient,
         row.templateKey,
         row.errorMessage,
-      ])
+      ]),
     );
   }, [deliveryQ.data, searchDelivery]);
 
   return (
-    <div className="space-y-6">
-      <div>
-        <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-ink-40">
-          {t('nav:groups.platform')}
-        </p>
-        <h1 className="text-3xl font-extrabold text-ink">{t('settings:notifications.title')}</h1>
-        <p className="mt-2 max-w-2xl text-[14px] text-ink-60">
-          <Trans
-            ns="settings"
-            i18nKey="notifications.subtitle"
-            components={{ mono: <span className="font-mono text-ink" /> }}
-          />
-        </p>
+    <div className="mx-auto max-w-7xl space-y-8">
+      <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
+        <div className="max-w-2xl">
+          <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-ink-40">
+            {t('nav:groups.platform')}
+          </p>
+          <h1 className="mt-1 text-3xl font-extrabold tracking-tight text-balance text-ink">
+            {t('settings:notifications.title')}
+          </h1>
+          <p className="mt-2 text-[14px] leading-relaxed text-pretty text-ink-60">
+            <Trans
+              ns="settings"
+              i18nKey="notifications.subtitle"
+              components={{ mono: <span className="font-mono text-ink" /> }}
+            />
+          </p>
+        </div>
+        <Link
+          to="/notifications"
+          className="inline-flex h-10 shrink-0 items-center justify-center gap-2 self-start rounded-xl border border-ink-10 bg-white px-4 text-[13px] font-semibold text-ink shadow-[0_8px_24px_-12px_rgba(0,0,0,0.12)] transition-transform hover:bg-ink-5 active:scale-[0.96] md:self-auto"
+        >
+          <Bell className="h-4 w-4 text-ink-60" aria-hidden />
+          {t('settings:notifications.inboxLink')}
+        </Link>
       </div>
 
-      <Card className="rounded-3xl border-ink-10 shadow-card-sm">
-        <CardHeader>
+      <Card className="rounded-2xl border-ink-10 shadow-[0_20px_40px_-15px_rgba(0,0,0,0.06)]">
+        <CardHeader className="pb-2">
           <CardTitle className="text-lg">{t('settings:notifications.channelsTitle')}</CardTitle>
         </CardHeader>
         <CardContent>
@@ -109,7 +105,10 @@ export function NotificationsPage() {
                   type="checkbox"
                   checked={Boolean(channels?.email)}
                   onChange={(e) =>
-                    form.setValue('channels.email', e.target.checked, { shouldValidate: true, shouldDirty: true })
+                    form.setValue('channels.email', e.target.checked, {
+                      shouldValidate: true,
+                      shouldDirty: true,
+                    })
                   }
                 />
                 {t('settings:notifications.channelEmail')}
@@ -119,7 +118,10 @@ export function NotificationsPage() {
                   type="checkbox"
                   checked={Boolean(channels?.inApp)}
                   onChange={(e) =>
-                    form.setValue('channels.inApp', e.target.checked, { shouldValidate: true, shouldDirty: true })
+                    form.setValue('channels.inApp', e.target.checked, {
+                      shouldValidate: true,
+                      shouldDirty: true,
+                    })
                   }
                 />
                 {t('settings:notifications.channelInApp')}
@@ -129,7 +131,10 @@ export function NotificationsPage() {
                   type="checkbox"
                   checked={Boolean(channels?.push)}
                   onChange={(e) =>
-                    form.setValue('channels.push', e.target.checked, { shouldValidate: true, shouldDirty: true })
+                    form.setValue('channels.push', e.target.checked, {
+                      shouldValidate: true,
+                      shouldDirty: true,
+                    })
                   }
                 />
                 {t('settings:notifications.channelPush')}
@@ -139,7 +144,10 @@ export function NotificationsPage() {
                   type="checkbox"
                   checked={Boolean(channels?.sms)}
                   onChange={(e) =>
-                    form.setValue('channels.sms', e.target.checked, { shouldValidate: true, shouldDirty: true })
+                    form.setValue('channels.sms', e.target.checked, {
+                      shouldValidate: true,
+                      shouldDirty: true,
+                    })
                   }
                 />
                 {t('settings:notifications.channelSms')}
@@ -174,55 +182,8 @@ export function NotificationsPage() {
         </CardContent>
       </Card>
 
-      <Card className="rounded-3xl border-ink-10 shadow-card-sm">
-        <CardHeader>
-          <CardTitle className="text-lg">{t('settings:notifications.recentTitle')}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ListFiltersBar
-            searchValue={searchRecent}
-            onSearchChange={setSearchRecent}
-            searchPlaceholder={t('settings:notifications.recentSearchPlaceholder')}
-            className="mb-4"
-          />
-          {recentQ.isLoading ? <p className="text-sm text-ink-60">{t('common:loading')}</p> : null}
-          {!recentQ.isLoading && filteredRecent.length === 0 ? (
-            <p className="text-sm text-ink-60">{t('settings:notifications.noSearchMatches')}</p>
-          ) : null}
-          <div className="admin-table-scroll">
-            <table className="w-full min-w-[720px] text-left text-[14px]">
-              <thead className="text-[11px] font-bold uppercase tracking-wide text-ink-40">
-                <tr>
-                  <th className="px-4 py-3">{t('settings:notifications.recentColumns.time')}</th>
-                  <th className="px-4 py-3">{t('settings:notifications.recentColumns.title')}</th>
-                  <th className="px-4 py-3">{t('settings:notifications.recentColumns.channel')}</th>
-                  <th className="px-4 py-3">{t('settings:notifications.recentColumns.read')}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredRecent.map((row) => (
-                  <tr key={row.id} className="border-t border-ink-10 hover:bg-surface-tint">
-                    <td className="px-4 py-3 font-mono text-[13px] text-ink-60">
-                      {formatDateTime(row.createdAt, locale)}
-                    </td>
-                    <td className="px-4 py-3">
-                      <p className="font-medium text-ink">{row.title}</p>
-                      {row.body ? <p className="mt-0.5 text-[13px] text-ink-60">{row.body}</p> : null}
-                    </td>
-                    <td className="px-4 py-3 text-ink-60">{row.channel ?? t('common:none')}</td>
-                    <td className="px-4 py-3 text-ink-60">
-                      {row.read === undefined ? t('common:none') : row.read ? t('common:yes') : t('common:no')}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card className="rounded-3xl border-ink-10 shadow-card-sm">
-        <CardHeader>
+      <Card className="rounded-2xl border-ink-10 shadow-[0_20px_40px_-15px_rgba(0,0,0,0.06)]">
+        <CardHeader className="pb-2">
           <CardTitle className="text-lg">{t('settings:notifications.deliveryTitle')}</CardTitle>
         </CardHeader>
         <CardContent>
@@ -238,7 +199,7 @@ export function NotificationsPage() {
           ) : null}
           <div className="admin-table-scroll">
             <table className="w-full min-w-[880px] text-left text-[14px]">
-              <thead className="text-[11px] font-bold uppercase tracking-wide text-ink-40">
+              <thead className="bg-ink-5/50 text-[11px] font-bold uppercase tracking-wide text-ink-40">
                 <tr>
                   <th className="px-4 py-3">{t('settings:notifications.deliveryColumns.sent')}</th>
                   <th className="px-4 py-3">{t('settings:notifications.deliveryColumns.status')}</th>
@@ -251,12 +212,14 @@ export function NotificationsPage() {
               <tbody>
                 {filteredDelivery.map((row) => (
                   <tr key={row.id} className="border-t border-ink-10 hover:bg-surface-tint">
-                    <td className="px-4 py-3 font-mono text-[13px] text-ink-60">
+                    <td className="px-4 py-3 font-mono text-[13px] tabular-nums text-ink-60">
                       {row.sentAt ? formatDateTime(row.sentAt, locale) : t('common:none')}
                     </td>
                     <td className="px-4 py-3 capitalize text-ink-60">{row.status}</td>
                     <td className="px-4 py-3 text-ink-60">{row.channel ?? t('common:none')}</td>
-                    <td className="px-4 py-3 font-mono text-[12px] text-ink-60">{row.recipient ?? t('common:none')}</td>
+                    <td className="px-4 py-3 font-mono text-[12px] text-ink-60">
+                      {row.recipient ?? t('common:none')}
+                    </td>
                     <td className="px-4 py-3 text-ink-60">{row.templateKey ?? t('common:none')}</td>
                     <td className="max-w-[200px] truncate px-4 py-3 text-[13px] text-coral">
                       {row.errorMessage ?? t('common:none')}
@@ -269,12 +232,12 @@ export function NotificationsPage() {
         </CardContent>
       </Card>
 
-      <Card className="rounded-3xl border-ink-10 shadow-card-sm">
-        <CardHeader>
+      <Card className="rounded-2xl border-ink-10 shadow-[0_20px_40px_-15px_rgba(0,0,0,0.06)]">
+        <CardHeader className="pb-2">
           <CardTitle className="text-lg">{t('settings:notifications.testTitle')}</CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="mb-3 max-w-xl text-[13px] text-ink-60">
+          <p className="mb-3 max-w-xl text-[13px] text-pretty text-ink-60">
             <Trans
               ns="settings"
               i18nKey="notifications.testHint"

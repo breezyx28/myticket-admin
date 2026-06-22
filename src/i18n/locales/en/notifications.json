@@ -1,0 +1,36 @@
+{
+  "eyebrow": "Platform",
+  "title": "Notifications",
+  "subtitle": "Recent in-app alerts and operational updates. Select a row to open the related record.",
+  "settingsLink": "Notification settings",
+  "stats": {
+    "unread": "{{count}} unread",
+    "total": "{{count}} total"
+  },
+  "searchPlaceholder": "Search title, body, type, reference…",
+  "filters": {
+    "readAll": "All",
+    "readUnread": "Unread only",
+    "readRead": "Read only"
+  },
+  "empty": "No notifications yet.",
+  "emptyFiltered": "No notifications match your filters.",
+  "loadError": "Could not load notifications.",
+  "columns": {
+    "notification": "Notification",
+    "kind": "Type",
+    "related": "Related",
+    "time": "Received",
+    "status": "Status"
+  },
+  "status": {
+    "unread": "Unread",
+    "read": "Read"
+  },
+  "open": "Open",
+  "pagination": {
+    "showing": "Showing {{count}} of {{total}} · page {{page}} of {{totalPages}}",
+    "previous": "Previous",
+    "next": "Next"
+  }
+}
