@@ -410,7 +410,7 @@ function syncComplaintRow(id: string, patch: Partial<(typeof complaintsState)[nu
 function recentNotificationsQueryParams(
   filters?: AdminRecentNotificationsListParams | void,
 ): Record<string, string | number | boolean | undefined> {
-  const f = queryArg(filters);
+  const f = queryArg<AdminRecentNotificationsListParams>(filters);
   const params: Record<string, string | number | boolean | undefined> = {};
   if (f?.page) params.page = f.page;
   if (f?.perPage) params.per_page = f.perPage;
@@ -427,7 +427,7 @@ function filterRecentNotificationsMock(
 function categoryListQueryParams(
   filters?: CategoryListParams | void,
 ): Record<string, string | number | boolean | undefined> {
-  const f = queryArg(filters);
+  const f = queryArg<CategoryListParams>(filters);
   const params: Record<string, string | number | boolean | undefined> = {};
   if (f?.page) params.page = f.page;
   if (f?.perPage) params.per_page = f.perPage;
@@ -531,7 +531,7 @@ function filterUsersMock(params?: AdminUsersListParams): AdminUsersListResult {
 function usersListQueryParams(
   filters?: AdminUsersListParams | void,
 ): Record<string, string | number | boolean | undefined> {
-  const f = queryArg(filters);
+  const f = queryArg<AdminUsersListParams>(filters);
   const params: Record<string, string | number | boolean | undefined> = {};
   if (f?.page) params.page = f.page;
   if (f?.perPage) params.per_page = f.perPage;
@@ -573,7 +573,7 @@ function nextTourismAdMockId() {
 function tourismAdListQueryParams(
   filters?: TourismAdsListParams | void,
 ): Record<string, string | number | boolean | undefined> {
-  const f = queryArg(filters);
+  const f = queryArg<TourismAdsListParams>(filters);
   const params: Record<string, string | number | boolean | undefined> = {};
   if (f?.status) params.status = f.status;
   if (f?.source) params.source = f.source;
@@ -772,7 +772,7 @@ export const adminApi = createApi({
           ? [...r.map((row) => ({ type: 'TalentProfiles' as const, id: row.id })), 'TalentProfiles']
           : ['TalentProfiles'],
       async queryFn(filters, api, extraOptions) {
-        const f = queryArg(filters);
+        const f = queryArg<TalentProfilesListParams>(filters);
         const params: Record<string, string | number | boolean | undefined> = {};
         if (f?.status) params.status = f.status;
         if (f?.governmentIdStatus) {
@@ -1431,13 +1431,13 @@ export const adminApi = createApi({
       async queryFn(filters, api, extraOptions) {
         if (shouldUseMockReads()) {
           await delay(55);
-          return { data: filterTourismAdsMock(queryArg(filters)) };
+          return { data: filterTourismAdsMock(queryArg<TourismAdsListParams>(filters)) };
         }
         const livePath = LIVE_GET.getTourismAds;
         if (!livePath) {
           warnReadFallback('getTourismAds');
           await delay(55);
-          return { data: filterTourismAdsMock(queryArg(filters)) };
+          return { data: filterTourismAdsMock(queryArg<TourismAdsListParams>(filters)) };
         }
         if (!getAccessToken()) return unauthenticatedReadError();
         const params = tourismAdListQueryParams(filters);
@@ -2029,13 +2029,13 @@ export const adminApi = createApi({
       async queryFn(filters, api, extraOptions) {
         if (shouldUseMockReads()) {
           await delay(55);
-          return { data: filterUsersMock(queryArg(filters)) };
+          return { data: filterUsersMock(queryArg<AdminUsersListParams>(filters)) };
         }
         const livePath = LIVE_GET.getUsers;
         if (!livePath) {
           warnReadFallback('getUsers');
           await delay(55);
-          return { data: filterUsersMock(queryArg(filters)) };
+          return { data: filterUsersMock(queryArg<AdminUsersListParams>(filters)) };
         }
         if (!getAccessToken()) return unauthenticatedReadError();
         const params = usersListQueryParams(filters);
@@ -2333,13 +2333,13 @@ export const adminApi = createApi({
       async queryFn(filters, api, extraOptions) {
         if (shouldUseMockReads()) {
           await delay(45);
-          return { data: filterEventCategoriesMock(queryArg(filters)) };
+          return { data: filterEventCategoriesMock(queryArg<CategoryListParams>(filters)) };
         }
         const livePath = LIVE_GET.getCategories;
         if (!livePath) {
           warnReadFallback('getCategories');
           await delay(45);
-          return { data: filterEventCategoriesMock(queryArg(filters)) };
+          return { data: filterEventCategoriesMock(queryArg<CategoryListParams>(filters)) };
         }
         if (!getAccessToken()) return unauthenticatedReadError();
         const params = categoryListQueryParams(filters);
@@ -2371,13 +2371,13 @@ export const adminApi = createApi({
       async queryFn(filters, api, extraOptions) {
         if (shouldUseMockReads()) {
           await delay(45);
-          return { data: filterTalentCategoriesMock(queryArg(filters)) };
+          return { data: filterTalentCategoriesMock(queryArg<CategoryListParams>(filters)) };
         }
         const livePath = LIVE_GET.getTalentCategories;
         if (!livePath) {
           warnReadFallback('getTalentCategories');
           await delay(45);
-          return { data: filterTalentCategoriesMock(queryArg(filters)) };
+          return { data: filterTalentCategoriesMock(queryArg<CategoryListParams>(filters)) };
         }
         if (!getAccessToken()) return unauthenticatedReadError();
         const params = categoryListQueryParams(filters);
@@ -2409,13 +2409,13 @@ export const adminApi = createApi({
       async queryFn(filters, api, extraOptions) {
         if (shouldUseMockReads()) {
           await delay(45);
-          return { data: filterVendorServiceCategoriesMock(queryArg(filters)) };
+          return { data: filterVendorServiceCategoriesMock(queryArg<CategoryListParams>(filters)) };
         }
         const livePath = LIVE_GET.getVendorServiceCategories;
         if (!livePath) {
           warnReadFallback('getVendorServiceCategories');
           await delay(45);
-          return { data: filterVendorServiceCategoriesMock(queryArg(filters)) };
+          return { data: filterVendorServiceCategoriesMock(queryArg<CategoryListParams>(filters)) };
         }
         if (!getAccessToken()) return unauthenticatedReadError();
         const params = categoryListQueryParams(filters);
@@ -2773,13 +2773,13 @@ export const adminApi = createApi({
       async queryFn(filters, api, extraOptions) {
         if (shouldUseMockReads()) {
           await delay(45);
-          return { data: filterRecentNotificationsMock(queryArg(filters)) };
+          return { data: filterRecentNotificationsMock(queryArg<AdminRecentNotificationsListParams>(filters)) };
         }
         const livePath = LIVE_GET.getNotificationsRecent;
         if (!livePath) {
           warnReadFallback('getNotificationsRecent');
           await delay(45);
-          return { data: filterRecentNotificationsMock(queryArg(filters)) };
+          return { data: filterRecentNotificationsMock(queryArg<AdminRecentNotificationsListParams>(filters)) };
         }
         if (!getAccessToken()) return unauthenticatedReadError();
         const params = recentNotificationsQueryParams(filters);
