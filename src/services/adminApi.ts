@@ -76,8 +76,8 @@ import {
 } from '@/schemas/settings.schema';
 import { supportReplySchema, supportThreadDetailSchema } from '@/schemas/support.schema';
 import type { UpdateSupportStatusInput } from '@/schemas/support.schema';
-import type { RejectRoleApplicationInput } from '@/schemas/roleApplication.schema';
-import { roleApplicationSchema } from '@/schemas/roleApplication.schema';
+import type { RejectRoleApplicationInput, RoleApplicationDetail } from '@/schemas/roleApplication.schema';
+import { roleApplicationDetailSchema } from '@/schemas/roleApplication.schema';
 import type {
   RejectGovernmentIdInput,
   RejectTalentProfileInput,
@@ -157,7 +157,7 @@ import {
   mapAdminProfileDirectoryFromApi,
   mapPendingActionsFromApi,
   mapRatingsFromApi,
-  mapRoleApplicationFromApi,
+  mapRoleApplicationDetailFromApi,
   mapRoleApplicationsFromApi,
   mapSupportThreadDetailFromApi,
   mapSupportThreadsFromApi,
@@ -679,14 +679,14 @@ export const adminApi = createApi({
         });
       },
     }),
-    getRoleApplication: builder.query<NonNullable<(typeof roleApplicationsState)[number]>, string>({
+    getRoleApplication: builder.query<RoleApplicationDetail, string>({
       providesTags: (_r, _e, id) => [{ type: 'RoleApplications', id }],
       async queryFn(id, api, extraOptions) {
         await delay(40);
         const localRow = roleApplicationsState.find((r) => r.id === id);
-        const localParsed = localRow ? roleApplicationSchema.safeParse(localRow) : null;
+        const localParsed = localRow ? roleApplicationDetailSchema.safeParse(localRow) : null;
 
-        const resolveFromMock = (): { data: (typeof roleApplicationsState)[number] } | { error: { status: number; data: unknown } } => {
+        const resolveFromMock = (): { data: RoleApplicationDetail } | { error: { status: number; data: unknown } } => {
           if (!localParsed?.success) return { error: { status: 404, data: { message: tError('notFound') } } };
           return { data: localParsed.data };
         };
@@ -707,7 +707,7 @@ export const adminApi = createApi({
         );
         if (res.error) return { error: toFetchError(res.error) };
         try {
-          return { data: mapRoleApplicationFromApi(res.data) };
+          return { data: mapRoleApplicationDetailFromApi(res.data) };
         } catch (e) {
           return mapLiveReadFailure(e);
         }

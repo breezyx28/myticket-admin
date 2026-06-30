@@ -1,4 +1,4 @@
-import { placeholderAssetUrl } from "@/config/env";
+import { getApiBaseUrl, placeholderAssetUrl } from "@/config/env";
 import { tFallback, tMapperListError } from "@/lib/i18nMessage";
 import { mapLocalizedGeoNameFromApi } from "@/lib/localizedGeoName";
 import {
@@ -50,8 +50,15 @@ import {
 import {
   roleApplicationSchema,
   roleApplicationsListSchema,
+  roleApplicationDetailSchema,
   type RoleApplication,
+  type RoleApplicationDetail,
+  type RoleApplicationOrganizerPayload,
 } from "@/schemas/roleApplication.schema";
+import {
+  reviewStatusSchema,
+  roleApplicationTypeSchema,
+} from "@/schemas/shared";
 import {
   adminProfileDirectoryListSchema,
   adminProfileDirectoryRowSchema,
@@ -592,7 +599,116 @@ function extractRoleApplicationsPayload(raw: unknown): unknown[] {
   throwExpectedList("roleApplications", raw);
 }
 
-export function mapRoleApplicationFromApi(raw: unknown): RoleApplication {
+function normalizeRoleApplicationType(
+  raw: string | undefined,
+): RoleApplication["type"] {
+  const s = (raw ?? "talent").toLowerCase().replace(/\s+/g, "_");
+  const parsed = roleApplicationTypeSchema.safeParse(s);
+  if (parsed.success) return parsed.data;
+  return "talent";
+}
+
+function normalizeRoleApplicationStatus(
+  raw: string | undefined,
+): RoleApplication["status"] {
+  const s = (raw ?? "pending").toLowerCase().replace(/\s+/g, "_");
+  const parsed = reviewStatusSchema.safeParse(s);
+  if (parsed.success) return parsed.data;
+  if (
+    s === "submitted" ||
+    s === "awaiting_review" ||
+    s === "under_review" ||
+    s === "in_review" ||
+    s === "pending_review"
+  ) {
+    return "pending";
+  }
+  return "pending";
+}
+
+function resolveStorageUrl(raw: string | undefined): string | undefined {
+  if (!raw?.trim()) return undefined;
+  const trimmed = raw.trim().replace(/\\/g, "/");
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  const base = getApiBaseUrl();
+  const path = trimmed.replace(/^\/+/, "");
+  if (path.startsWith("storage/")) return `${base}/${path}`;
+  return `${base}/storage/${path}`;
+}
+
+function pickBoolFromApi(
+  o: Record<string, unknown>,
+  ...keys: string[]
+): boolean | undefined {
+  for (const key of keys) {
+    const v = o[key];
+    if (v === true || v === 1 || v === "1") return true;
+    if (v === false || v === 0 || v === "0") return false;
+  }
+  return undefined;
+}
+
+function mapOrganizerApplicationFromApi(
+  raw: unknown,
+): RoleApplicationOrganizerPayload | undefined {
+  if (!isRecord(raw)) return undefined;
+  const o = asObject(raw);
+  const documentUrl = resolveStorageUrl(
+    pickStr(o, "document_url", "documentUrl"),
+  );
+  const ownerInfo = pickStr(o, "owner_info", "ownerInfo");
+  const companyInfo = pickStr(o, "company_info", "companyInfo");
+  const bio = pickStr(o, "bio");
+  const payload: RoleApplicationOrganizerPayload = {
+    ...(pickStr(o, "display_name", "displayName")
+      ? { displayName: pickStr(o, "display_name", "displayName") }
+      : {}),
+    ...(resolveStorageUrl(pickStr(o, "profile_image_url", "profileImageUrl"))
+      ? {
+          profileImageUrl: resolveStorageUrl(
+            pickStr(o, "profile_image_url", "profileImageUrl"),
+          ),
+        }
+      : {}),
+    ...(bio ? { bio } : {}),
+    ...(pickStr(o, "contact_email", "contactEmail")
+      ? { contactEmail: pickStr(o, "contact_email", "contactEmail") }
+      : {}),
+    ...(pickStr(o, "contact_phone", "contactPhone")
+      ? { contactPhone: pickStr(o, "contact_phone", "contactPhone") }
+      : {}),
+    ...(pickBoolFromApi(o, "is_company", "isCompany") !== undefined
+      ? { isCompany: pickBoolFromApi(o, "is_company", "isCompany") }
+      : {}),
+    ...(pickStr(o, "company_name", "companyName")
+      ? { companyName: pickStr(o, "company_name", "companyName") }
+      : {}),
+    ...(companyInfo ? { companyInfo } : {}),
+    ...(pickStr(o, "owner_name", "ownerName")
+      ? { ownerName: pickStr(o, "owner_name", "ownerName") }
+      : {}),
+    ...(ownerInfo ? { ownerInfo } : {}),
+    ...(documentUrl ? { documentUrl } : {}),
+  };
+  return Object.keys(payload).length > 0 ? payload : undefined;
+}
+
+function buildRoleApplicationDocumentsSummary(
+  o: Record<string, unknown>,
+  organizer?: RoleApplicationOrganizerPayload,
+): string {
+  const explicit = pickStr(o, "documentsSummary", "documents_summary", "documents");
+  if (explicit?.trim()) return explicit.trim();
+  if (organizer?.documentUrl) return organizer.documentUrl;
+  const parts = [
+    organizer?.ownerInfo,
+    organizer?.companyInfo,
+    organizer?.bio,
+  ].filter((part): part is string => Boolean(part?.trim()));
+  return parts.join(" · ");
+}
+
+export function mapRoleApplicationDetailFromApi(raw: unknown): RoleApplicationDetail {
   const inner = unwrapApiJson(raw);
   const o = asObject(inner);
   const user = isRecord(o.user) ? asObject(o.user) : undefined;
@@ -603,39 +719,82 @@ export function mapRoleApplicationFromApi(raw: unknown): RoleApplication {
     "reject_reason",
     "rejection_reason",
   );
+  const internalNote = pickStr(o, "internalNote", "internal_note");
   const idNum = pickNum(o, "id");
   const idStr =
     pickStr(o, "id") ?? (idNum !== undefined ? String(Math.trunc(idNum)) : "");
+  const userIdNum = pickNum(o, "user_id", "userId");
+  const userId =
+    pickStr(o, "userId", "user_id") ??
+    (userIdNum !== undefined ? String(Math.trunc(userIdNum)) : undefined) ??
+    (applicant ? pickStr(applicant, "id") : undefined);
   const roleType =
-    pickStr(o, "type", "role_type", "requested_role", "role") ?? "talent";
+    pickStr(
+      o,
+      "type",
+      "role_type",
+      "requested_role",
+      "role",
+      "application_type",
+    ) ?? "talent";
+  const organizer = mapOrganizerApplicationFromApi(
+    o.organizer_application ?? o.organizerApplication,
+  );
+  const applicantName =
+    pickStr(
+      o,
+      "applicantName",
+      "applicant_name",
+      "name",
+      "full_name",
+      "display_name",
+      "stage_name",
+    ) ??
+    organizer?.displayName ??
+    (user ? pickStr(user, "full_name", "name", "display_name") : undefined) ??
+    (applicant ? pickStr(applicant, "full_name", "name", "display_name") : undefined) ??
+    "";
+  const email =
+    pickStr(o, "email", "applicant_email", "contact_email") ??
+    organizer?.contactEmail ??
+    (user ? pickStr(user, "email", "email_address") : undefined) ??
+    (applicant ? pickStr(applicant, "email", "email_address") : undefined) ??
+    "";
+  const phone =
+    pickStr(o, "phone", "applicant_phone") ??
+    organizer?.contactPhone ??
+    (applicant ? pickStr(applicant, "phone", "phone_number") : undefined);
+  const applicantBio = applicant ? pickStr(applicant, "bio") : undefined;
+  const profileImageUrl =
+    organizer?.profileImageUrl ??
+    resolveStorageUrl(
+      applicant ? pickStr(applicant, "profile_image_url", "profileImageUrl") : undefined,
+    );
   const candidate = {
     id: idStr,
-    applicantName:
-      pickStr(
-        o,
-        "applicantName",
-        "applicant_name",
-        "name",
-        "full_name",
-        "display_name",
-        "stage_name",
-      ) ??
-      (user ? pickStr(user, "full_name", "name", "display_name") : undefined) ??
-      (applicant ? pickStr(applicant, "full_name", "name", "display_name") : undefined) ??
-      "",
-    email:
-      pickStr(o, "email", "applicant_email", "contact_email") ??
-      (user ? pickStr(user, "email", "email_address") : undefined) ??
-      (applicant ? pickStr(applicant, "email", "email_address") : undefined) ??
-      "",
-    type: roleType,
-    status: pickStr(o, "status", "review_status") ?? "pending",
+    applicantName,
+    email,
+    type: normalizeRoleApplicationType(roleType),
+    status: normalizeRoleApplicationStatus(
+      pickStr(o, "status", "review_status"),
+    ),
     submittedAt: pickStr(o, "submittedAt", "submitted_at", "created_at") ?? "",
-    documentsSummary:
-      pickStr(o, "documentsSummary", "documents_summary", "documents") ?? "",
+    documentsSummary: buildRoleApplicationDocumentsSummary(o, organizer),
     ...(rejectReason ? { rejectReason } : {}),
+    ...(userId ? { userId } : {}),
+    ...(phone ? { phone } : {}),
+    ...(applicantBio ? { applicantBio } : {}),
+    ...(profileImageUrl ? { profileImageUrl } : {}),
+    ...(pickStr(o, "reviewedAt", "reviewed_at") ? { reviewedAt: pickStr(o, "reviewedAt", "reviewed_at") } : {}),
+    ...(internalNote ? { internalNote } : {}),
+    ...(organizer ? { organizer } : {}),
   };
-  return roleApplicationSchema.parse(candidate);
+  return roleApplicationDetailSchema.parse(candidate);
+}
+
+export function mapRoleApplicationFromApi(raw: unknown): RoleApplication {
+  const detail = mapRoleApplicationDetailFromApi(raw);
+  return roleApplicationSchema.parse(detail);
 }
 
 export function mapRoleApplicationsFromApi(raw: unknown): RoleApplication[] {

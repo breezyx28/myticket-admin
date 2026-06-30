@@ -39,6 +39,7 @@ import {
   mapSupportThreadsFromApi,
   mapPendingActionsFromApi,
   mapPlatformCountersFromApi,
+  mapRoleApplicationDetailFromApi,
   mapRoleApplicationFromApi,
   mapRoleApplicationsFromApi,
   mapTalentProfileDetailFromApi,
@@ -227,6 +228,88 @@ describe("mapRoleApplicationsFromApi / mapRoleApplicationFromApi", () => {
     });
     expect(out[0].id).toBe("1");
     expect(out[0].type).toBe("talent");
+  });
+
+  it("maps Laravel envelope with paginator, application_type, applicant, and submitted status", () => {
+    const out = mapRoleApplicationsFromApi({
+      data: {
+        current_page: 1,
+        data: [
+          {
+            id: 3,
+            user_id: 8,
+            application_type: "organizer",
+            status: "submitted",
+            submitted_at: "2026-06-30T16:15:53.000000Z",
+            applicant: {
+              id: 8,
+              email: "guest@myticket.com",
+              full_name: "Guest user",
+              display_name: "Guest user",
+            },
+          },
+        ],
+        per_page: 20,
+        total: 1,
+      },
+    });
+    expect(out).toHaveLength(1);
+    expect(out[0]).toMatchObject({
+      id: "3",
+      applicantName: "Guest user",
+      email: "guest@myticket.com",
+      type: "organizer",
+      status: "pending",
+      submittedAt: "2026-06-30T16:15:53.000000Z",
+      documentsSummary: "",
+    });
+  });
+
+  it("maps organizer detail payload from live API shape", () => {
+    const one = mapRoleApplicationDetailFromApi({
+      data: {
+        id: 3,
+        user_id: 8,
+        application_type: "organizer",
+        status: "submitted",
+        submitted_at: "2026-06-30T16:15:53.000000Z",
+        organizer_application: {
+          display_name: "Organizer Upgraded User",
+          profile_image_url:
+            "https://myticket-api.kat-jr.com/storage/users/profile-images/8/abc.jpg",
+          bio: "Organizer bio",
+          contact_email: "organizer@myticket.com",
+          contact_phone: "+9665562224698",
+          is_company: 0,
+          owner_name: "Organizer user",
+          owner_info: "Owner details",
+          document_url: null,
+        },
+        applicant: {
+          id: 8,
+          email: "guest@myticket.com",
+          phone: "+9665562224698",
+          full_name: "Guest user",
+          display_name: "Guest user",
+          profile_image_url: "users/profile-images/8/abc.jpg",
+          bio: "Applicant bio",
+        },
+      },
+    });
+    expect(one.id).toBe("3");
+    expect(one.userId).toBe("8");
+    expect(one.type).toBe("organizer");
+    expect(one.status).toBe("pending");
+    expect(one.applicantName).toBe("Guest user");
+    expect(one.email).toBe("guest@myticket.com");
+    expect(one.organizer).toMatchObject({
+      displayName: "Organizer Upgraded User",
+      contactEmail: "organizer@myticket.com",
+      ownerName: "Organizer user",
+      ownerInfo: "Owner details",
+      isCompany: false,
+    });
+    expect(one.profileImageUrl).toContain("storage/users/profile-images/8/abc.jpg");
   });
 
   it("maps single detail row with rejection_reason", () => {
