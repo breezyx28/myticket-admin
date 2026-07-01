@@ -20,6 +20,7 @@ export function placeholderAssetUrl(path: string): string {
 
 export type PendingActionPlaceholderKind =
   | 'role_application'
+  | 'talent_profile'
   | 'event'
   | 'support'
   | 'moderation'

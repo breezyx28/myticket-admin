@@ -483,6 +483,7 @@ function mapPendingActionRow(row: unknown): PendingAction {
     existingKind &&
     [
       "role_application",
+      "talent_profile",
       "event",
       "support",
       "moderation",
@@ -496,12 +497,7 @@ function mapPendingActionRow(row: unknown): PendingAction {
       id:
         pickStr(o, "id") ??
         (existingIdNum !== undefined ? String(Math.trunc(existingIdNum)) : ""),
-      kind: existingKind as
-        | "role_application"
-        | "event"
-        | "support"
-        | "moderation"
-        | "tourism_ad",
+      kind: existingKind as PendingAction["kind"],
       title: pickStr(o, "title") ?? "",
       subtitle: pickStr(o, "subtitle", "sub_title") ?? "",
       href: pickStr(o, "href") ?? "#",
