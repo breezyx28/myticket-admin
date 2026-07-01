@@ -1,4 +1,4 @@
-import { getApiBaseUrl, placeholderAssetUrl } from "@/config/env";
+import { getApiBaseUrl, pendingActionPlaceholderUrl, placeholderAssetUrl } from "@/config/env";
 import { tFallback, tMapperListError } from "@/lib/i18nMessage";
 import { mapLocalizedGeoNameFromApi } from "@/lib/localizedGeoName";
 import {
@@ -454,6 +454,26 @@ export function mapDashboardSummaryFromApi(
   return dashboardSummaryNestedSchema.parse(candidate);
 }
 
+function resolvePendingActionImageUrl(
+  kind: PendingAction["kind"],
+  o: Record<string, unknown>,
+): string {
+  const explicit = pickStr(o, "imageUrl", "image_url");
+  if (explicit?.trim()) {
+    const trimmed = explicit.trim();
+    if (/^https?:\/\//i.test(trimmed)) return trimmed;
+    return resolveStorageUrl(trimmed) ?? trimmed;
+  }
+  if (kind === "role_application") {
+    const applicant = isRecord(o.applicant) ? asObject(o.applicant) : undefined;
+    const applicantImage = applicant
+      ? resolveStorageUrl(pickStr(applicant, "profile_image_url", "profileImageUrl"))
+      : undefined;
+    if (applicantImage) return applicantImage;
+  }
+  return pendingActionPlaceholderUrl(kind);
+}
+
 function mapPendingActionRow(row: unknown): PendingAction {
   const o = asObject(row);
 
@@ -486,9 +506,10 @@ function mapPendingActionRow(row: unknown): PendingAction {
       subtitle: pickStr(o, "subtitle", "sub_title") ?? "",
       href: pickStr(o, "href") ?? "#",
       priority,
-      imageUrl:
-        pickStr(o, "imageUrl", "image_url") ??
-        placeholderAssetUrl("placeholder-image"),
+      imageUrl: resolvePendingActionImageUrl(
+        existingKind as PendingAction["kind"],
+        o,
+      ),
       dueLabel: pickStr(o, "dueLabel", "due_label") ?? "",
     };
     return pendingActionSchema.parse(candidate);
@@ -566,7 +587,7 @@ function mapPendingActionRow(row: unknown): PendingAction {
     subtitle,
     href,
     priority,
-    imageUrl: placeholderAssetUrl("placeholder-image"),
+    imageUrl: resolvePendingActionImageUrl(kind, o),
     dueLabel,
   };
   return pendingActionSchema.parse(candidate);

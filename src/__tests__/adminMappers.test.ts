@@ -163,6 +163,35 @@ describe("mapPendingActionsFromApi", () => {
     expect(out[0]).toMatchObject({ kind: "event", href: "/events/7", title: "Gala" });
     expect(out[1]).toMatchObject({ kind: "support", href: "/support/3", title: "Refund" });
   });
+
+  it("uses placeholder image for role_applications_submitted rows without image_url", () => {
+    const out = mapPendingActionsFromApi({
+      data: {
+        role_applications_submitted: [
+          {
+            id: 3,
+            user_id: 8,
+            status: "submitted",
+            submitted_at: "2026-06-30T16:15:53.000000Z",
+            applicant: {
+              id: 8,
+              email: "guest@myticket.com",
+              full_name: "Guest user",
+            },
+          },
+        ],
+      },
+    });
+    expect(out).toHaveLength(1);
+    expect(out[0]).toMatchObject({
+      id: "3",
+      kind: "role_application",
+      title: "Guest user",
+      subtitle: "guest@myticket.com",
+      href: "/approvals/roles/3",
+      imageUrl: "https://picsum.photos/seed/myticket-pending-role_application/800/360",
+    });
+  });
 });
 
 describe("mapPlatformCountersFromApi", () => {

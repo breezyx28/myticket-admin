@@ -18,6 +18,18 @@ export function placeholderAssetUrl(path: string): string {
   return `${PRODUCTION_API_BASE_URL}/${segment}`;
 }
 
+export type PendingActionPlaceholderKind =
+  | 'role_application'
+  | 'event'
+  | 'support'
+  | 'moderation'
+  | 'tourism_ad';
+
+/** Stable card art when pending-action API rows omit `image_url`. */
+export function pendingActionPlaceholderUrl(kind: PendingActionPlaceholderKind): string {
+  return `https://picsum.photos/seed/myticket-pending-${kind}/800/360`;
+}
+
 /** Live GETs unless explicitly set to `mock` (opt-out). */
 export function adminReadsSourceIsApi(): boolean {
   const raw = String(import.meta.env.VITE_ADMIN_READS_SOURCE ?? 'api').trim().toLowerCase();
